@@ -260,9 +260,26 @@ public final class ServerStreamFactory implements StreamFactory
             final long correlationId = begin.correlationId();
             final OctetsFW extension = begin.extension();
 
+            final String networkReplyName = begin.source().asString();
+            final long networkCorrelationId = begin.correlationId();
+
+            final MessageConsumer networkReply = router.supplyTarget(networkReplyName);
+            final long newNetworkReplyId = supplyStreamId.getAsLong();
+
+            doWindow(acceptThrottle, begin.streamId(), 1024, 1024);
+
 //            // TODO: need lightweight approach (start)
 
 
+            final BeginFW beginUpstream = beginRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+                .streamId(newNetworkReplyId)
+                .source("socks")
+                .sourceRef(0L)
+                .correlationId(networkCorrelationId)
+                .extension(e -> e.reset())
+                .build();
+
+            networkReply.accept(beginUpstream.typeId(), beginUpstream.buffer(), beginUpstream.offset(), beginUpstream.sizeof());
 
 
 
@@ -359,6 +376,7 @@ public final class ServerStreamFactory implements StreamFactory
             int index,
             int length)
         {
+            System.out.println("ServerConnectReplyStream doStream");
             streamState.accept(msgTypeId, buffer, index, length);
         }
 
