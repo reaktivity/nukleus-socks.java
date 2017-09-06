@@ -89,6 +89,7 @@ public final class ServerStreamFactory implements StreamFactory
         this.supplyCorrelationId = requireNonNull(supplyCorrelationId);
         this.correlations = requireNonNull(correlations);
         this.wrapRoute = this::wrapRoute;
+        System.out.println("Got the StreamFactory going....");
     }
 
     @Override
@@ -106,10 +107,12 @@ public final class ServerStreamFactory implements StreamFactory
 
         if (sourceRef == 0L)
         {
+            System.out.println("newConnectReplyStream");
             newStream = newConnectReplyStream(begin, throttle);
         }
         else
         {
+            System.out.println("newAcceptStream");
             newStream = newAcceptStream(begin, throttle);
         }
 
@@ -137,7 +140,7 @@ public final class ServerStreamFactory implements StreamFactory
         if (route != null)
         {
             final long acceptId = begin.streamId();
-
+            System.out.println("Creating new Server accept Stream");
             newStream = new ServerAcceptStream(acceptThrottle, acceptId, acceptRef)::handleStream;
         }
 
@@ -159,6 +162,7 @@ public final class ServerStreamFactory implements StreamFactory
         int index,
         int length)
     {
+        System.out.println("WrapRoute");
         return routeRO.wrap(buffer, index, index + length);
     }
 
@@ -256,15 +260,25 @@ public final class ServerStreamFactory implements StreamFactory
             final long correlationId = begin.correlationId();
             final OctetsFW extension = begin.extension();
 
-            // TODO: need lightweight approach (start)
-            final Map<String, String> headers = new LinkedHashMap<>();
+//            // TODO: need lightweight approach (start)
 
-            final String version = headers.get("sec-websocket-version");
-            final String key = headers.get("sec-websocket-key");
-            final String protocols = headers.get("sec-websocket-protocol");
-            // TODO: need lightweight approach (end)
 
-                doReset(acceptThrottle, acceptId); // 404
+
+
+
+
+
+
+
+
+//            final Map<String, String> headers = new LinkedHashMap<>();
+//
+//            final String version = headers.get("sec-websocket-version");
+//            final String key = headers.get("sec-websocket-key");
+//            final String protocols = headers.get("sec-websocket-protocol");
+//            // TODO: need lightweight approach (end)
+//
+//                doReset(acceptThrottle, acceptId); // 404
 
             this.streamState = this::afterBegin;
         }

@@ -1,17 +1,16 @@
 /**
  * Copyright 2016-2017 The Reaktivity Project
  *
- * The Reaktivity Project licenses this file to you under the Apache License,
- * version 2.0 (the "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at:
+ * The Reaktivity Project licenses this file to you under the Apache License, version 2.0 (the
+ * "License"); you may not use this file except in compliance with the License. You may obtain a
+ * copy of the License at:
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
  */
 package org.reaktivity.nukleus.socks.internal;
 
@@ -21,7 +20,6 @@ import static java.nio.ByteOrder.nativeOrder;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import java.util.function.ToIntFunction;
-
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.reaktivity.nukleus.Controller;
@@ -29,166 +27,155 @@ import org.reaktivity.nukleus.ControllerSpi;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.function.MessagePredicate;
 import org.reaktivity.nukleus.socks.internal.types.Flyweight;
+import org.reaktivity.nukleus.socks.internal.types.SocksMode;
 import org.reaktivity.nukleus.socks.internal.types.control.Role;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
 import org.reaktivity.nukleus.socks.internal.types.control.UnrouteFW;
 
-public final class SocksController implements Controller
-{
-    private static final int MAX_SEND_LENGTH = 1024; // TODO: Configuration and Context
+public final class SocksController implements Controller {
 
-    // TODO: thread-safe flyweights or command queue from public methods
-    private final RouteFW.Builder routeRW = new RouteFW.Builder();
-    private final UnrouteFW.Builder unrouteRW = new UnrouteFW.Builder();
+  private static final int MAX_SEND_LENGTH = 1024; // TODO: Configuration and Context
 
-    private final SocksRouteExFW.Builder routeExRW = new SocksRouteExFW.Builder();
+  // TODO: thread-safe flyweights or command queue from public methods
+  private final RouteFW.Builder routeRW = new RouteFW.Builder();
+  private final UnrouteFW.Builder unrouteRW = new UnrouteFW.Builder();
 
-    private final ControllerSpi controllerSpi;
-    private final MutableDirectBuffer writeBuffer;
+  private final SocksRouteExFW.Builder routeExRW = new SocksRouteExFW.Builder();
 
-    public SocksController(
-        ControllerSpi controllerSpi)
-    {
-        this.controllerSpi = controllerSpi;
-        this.writeBuffer = new UnsafeBuffer(allocateDirect(MAX_SEND_LENGTH).order(nativeOrder()));
-    }
+  private final ControllerSpi controllerSpi;
+  private final MutableDirectBuffer writeBuffer;
 
-    @Override
-    public int process()
-    {
-        return controllerSpi.doProcess();
-    }
+  public SocksController(
+      ControllerSpi controllerSpi) {
+    this.controllerSpi = controllerSpi;
+    this.writeBuffer = new UnsafeBuffer(allocateDirect(MAX_SEND_LENGTH).order(nativeOrder()));
+  }
 
-    @Override
-    public void close() throws Exception
-    {
-        controllerSpi.doClose();
-    }
+  @Override
+  public int process() {
+    return controllerSpi.doProcess();
+  }
 
-    @Override
-    public Class<SocksController> kind()
-    {
-        return SocksController.class;
-    }
+  @Override
+  public void close() throws Exception {
+    controllerSpi.doClose();
+  }
 
-    @Override
-    public String name()
-    {
-        return "ws";
-    }
+  @Override
+  public Class<SocksController> kind() {
+    return SocksController.class;
+  }
 
-    public <T> T supplySource(
-        String source,
-        BiFunction<MessagePredicate, ToIntFunction<MessageConsumer>, T> factory)
-    {
-        return controllerSpi.doSupplySource(source, factory);
-    }
+  @Override
+  public String name() {
+    return "socks";
+  }
 
-    public <T> T supplyTarget(
-        String target,
-        BiFunction<ToIntFunction<MessageConsumer>, MessagePredicate, T> factory)
-    {
-        return controllerSpi.doSupplyTarget(target, factory);
-    }
+  public <T> T supplySource(
+      String source,
+      BiFunction<MessagePredicate, ToIntFunction<MessageConsumer>, T> factory) {
+    return controllerSpi.doSupplySource(source, factory);
+  }
 
-    public CompletableFuture<Long> routeServer(
-        String source,
-        long sourceRef,
-        String target,
-        long targetRef,
-        String protocol)
-    {
-        long correlationId = controllerSpi.nextCorrelationId();
+  public <T> T supplyTarget(
+      String target,
+      BiFunction<ToIntFunction<MessageConsumer>, MessagePredicate, T> factory) {
+    return controllerSpi.doSupplyTarget(target, factory);
+  }
 
-        RouteFW route = routeRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .correlationId(correlationId)
-                .role(b -> b.set(Role.SERVER))
-                .source(source)
-                .sourceRef(sourceRef)
-                .target(target)
-                .targetRef(targetRef)
-                .extension(b -> b.set(visitRouteEx(protocol)))
-                .build();
+  public CompletableFuture<Long> routeServer(
+      String source,
+      long sourceRef,
+      String target,
+      long targetRef,
+      String mode) {
+    long correlationId = controllerSpi.nextCorrelationId();
 
-        return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
-    }
+    RouteFW route = routeRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+        .correlationId(correlationId)
+        .role(b -> b.set(Role.SERVER))
+        .source(source)
+        .sourceRef(sourceRef)
+        .target(target)
+        .targetRef(targetRef)
+        .extension(b -> b.set(visitRouteEx(mode)))
+        .build();
 
-    public CompletableFuture<Long> routeClient(
-        String source,
-        long sourceRef,
-        String target,
-        long targetRef,
-        String protocol)
-    {
-        long correlationId = controllerSpi.nextCorrelationId();
+    return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
+  }
 
-        RouteFW route = routeRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .correlationId(correlationId)
-                .role(b -> b.set(Role.CLIENT))
-                .source(source)
-                .sourceRef(sourceRef)
-                .target(target)
-                .targetRef(targetRef)
-                .extension(b -> b.set(visitRouteEx(protocol)))
-                .build();
+  public CompletableFuture<Long> routeClient(
+      String source,
+      long sourceRef,
+      String target,
+      long targetRef,
+      String mode) {
+    long correlationId = controllerSpi.nextCorrelationId();
 
-        return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
-    }
+    RouteFW route = routeRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+        .correlationId(correlationId)
+        .role(b -> b.set(Role.CLIENT))
+        .source(source)
+        .sourceRef(sourceRef)
+        .target(target)
+        .targetRef(targetRef)
+        .extension(b -> b.set(visitRouteEx(mode)))
+        .build();
 
-    public CompletableFuture<Void> unrouteServer(
-        String source,
-        long sourceRef,
-        String target,
-        long targetRef,
-        String protocol)
-    {
-        long correlationId = controllerSpi.nextCorrelationId();
+    return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
+  }
 
-        UnrouteFW unroute = unrouteRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                                     .correlationId(correlationId)
-                                     .role(b -> b.set(Role.SERVER))
-                                     .source(source)
-                                     .sourceRef(sourceRef)
-                                     .target(target)
-                                     .targetRef(targetRef)
-                                     .extension(b -> b.set(visitRouteEx(protocol)))
-                                     .build();
+  public CompletableFuture<Void> unrouteServer(
+      String source,
+      long sourceRef,
+      String target,
+      long targetRef,
+      String mode) {
+    long correlationId = controllerSpi.nextCorrelationId();
 
-        return controllerSpi.doUnroute(unroute.typeId(), unroute.buffer(), unroute.offset(), unroute.sizeof());
-    }
+    UnrouteFW unroute = unrouteRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+        .correlationId(correlationId)
+        .role(b -> b.set(Role.SERVER))
+        .source(source)
+        .sourceRef(sourceRef)
+        .target(target)
+        .targetRef(targetRef)
+        .extension(b -> b.set(visitRouteEx(mode)))
+        .build();
 
-    public CompletableFuture<Void> unrouteClient(
-        String source,
-        long sourceRef,
-        String target,
-        long targetRef,
-        String protocol)
-    {
-        long correlationId = controllerSpi.nextCorrelationId();
+    return controllerSpi
+        .doUnroute(unroute.typeId(), unroute.buffer(), unroute.offset(), unroute.sizeof());
+  }
 
-        UnrouteFW unroute = unrouteRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                                     .correlationId(correlationId)
-                                     .role(b -> b.set(Role.CLIENT))
-                                     .source(source)
-                                     .sourceRef(sourceRef)
-                                     .target(target)
-                                     .targetRef(targetRef)
-                                     .extension(b -> b.set(visitRouteEx(protocol)))
-                                     .build();
+  public CompletableFuture<Void> unrouteClient(
+      String source,
+      long sourceRef,
+      String target,
+      long targetRef,
+      String mode) {
+    long correlationId = controllerSpi.nextCorrelationId();
 
-        return controllerSpi.doUnroute(unroute.typeId(), unroute.buffer(), unroute.offset(), unroute.sizeof());
-    }
+    UnrouteFW unroute = unrouteRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+        .correlationId(correlationId)
+        .role(b -> b.set(Role.CLIENT))
+        .source(source)
+        .sourceRef(sourceRef)
+        .target(target)
+        .targetRef(targetRef)
+        .extension(b -> b.set(visitRouteEx(mode)))
+        .build();
 
-    private Flyweight.Builder.Visitor visitRouteEx(
-        String mode)
-    {
-//        SocksModeFW.Builder builder = new SocksModeFW.Builder();
-//        builder.wrap(buffer, offset, maxLimit)
-        return (buffer, offset, limit) ->
-            routeExRW.wrap(buffer, offset, limit)
-//                     .mode(mode)
-                     .build()
-                     .sizeof();
-    }
+    return controllerSpi
+        .doUnroute(unroute.typeId(), unroute.buffer(), unroute.offset(), unroute.sizeof());
+  }
+
+  private Flyweight.Builder.Visitor visitRouteEx(
+      String mode) {
+    return (MutableDirectBuffer buffer, int offset, int limit) ->
+        routeExRW.wrap(buffer, offset, limit)
+            .mode(builder -> builder.set(SocksMode.valueOf(mode.toUpperCase())))
+            .build()
+            .sizeof();
+  }
 }
