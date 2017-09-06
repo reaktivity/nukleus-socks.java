@@ -18,8 +18,6 @@ package org.reaktivity.nukleus.socks.internal.stream;
 import static java.util.Objects.requireNonNull;
 import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
@@ -124,13 +122,14 @@ public final class ServerStreamFactory implements StreamFactory
         final MessageConsumer acceptThrottle)
     {
         final long acceptRef = begin.sourceRef();
-        final String acceptName = begin.source().asString();
+        final String acceptName = begin.source()
+            .asString();
 
         final MessagePredicate filter = (t, b, o, l) ->
         {
             final RouteFW route = routeRO.wrap(b, o, l);
-            return acceptRef == route.sourceRef() &&
-                    acceptName.equals(route.source().asString());
+            return acceptRef == route.sourceRef() && acceptName.equals(route.source()
+                .asString());
         };
 
         final RouteFW route = router.resolve(filter, this::wrapRoute);
@@ -270,7 +269,6 @@ public final class ServerStreamFactory implements StreamFactory
 
 //            // TODO: need lightweight approach (start)
 
-
             final BeginFW beginUpstream = beginRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                 .streamId(newNetworkReplyId)
                 .source("socks")
@@ -310,14 +308,12 @@ public final class ServerStreamFactory implements StreamFactory
         {
         }
 
-        private void handleAbort(
-            AbortFW abort)
+        private void handleAbort(AbortFW abort)
         {
             // TODO: WsAbortEx
         }
 
-        private void handleWindow(
-            WindowFW window)
+        private void handleWindow(WindowFW window)
         {
             final int targetWindowBytesDelta = window.update();
             final int targetWindowFramesDelta = window.frames();
@@ -337,8 +333,7 @@ public final class ServerStreamFactory implements StreamFactory
             }
         }
 
-        private void handleReset(
-            ResetFW reset)
+        private void handleReset(ResetFW reset)
         {
             doReset(acceptThrottle, acceptId);
         }
@@ -423,8 +418,7 @@ public final class ServerStreamFactory implements StreamFactory
             }
         }
 
-        private void handleBegin(
-            BeginFW begin)
+        private void handleBegin(BeginFW begin)
         {
             final long connectRef = begin.sourceRef();
             final long correlationId = begin.correlationId();
@@ -439,7 +433,8 @@ public final class ServerStreamFactory implements StreamFactory
                 final long newAcceptReplyId = supplyStreamId.getAsLong();
                 final long newCorrelationId = correlation.correlationId();
 
-//                doHttpBegin(newAcceptReply, newAcceptReplyId, 0L, newCorrelationId, setHttpHeaders(handshakeHash, protocol));
+                //                doHttpBegin(newAcceptReply, newAcceptReplyId, 0L, newCorrelationId, setHttpHeaders
+                // (handshakeHash, protocol));
                 router.setThrottle(acceptReplyName, newAcceptReplyId, this::handleThrottle);
 
                 this.acceptReply = newAcceptReply;
@@ -454,21 +449,17 @@ public final class ServerStreamFactory implements StreamFactory
             }
         }
 
-        private void handleData(
-            DataFW data)
+        private void handleData(DataFW data)
         {
         }
 
-        private void handleEnd(
-            EndFW end)
+        private void handleEnd(EndFW end)
         {
         }
 
-        private void handleAbort(
-            AbortFW abort)
+        private void handleAbort(AbortFW abort)
         {
         }
-
 
         private void handleThrottle(
             int msgTypeId,
@@ -518,13 +509,12 @@ public final class ServerStreamFactory implements StreamFactory
 
             if (targetWindowBytesDelta > 0 || targetWindowFramesDelta > 0)
             {
-                doWindow(connectReplyThrottle, connectReplyId,
-                        Math.max(targetWindowBytesDelta, 0), Math.max(targetWindowFramesDelta, 0));
+                doWindow(connectReplyThrottle, connectReplyId, Math.max(targetWindowBytesDelta, 0),
+                    Math.max(targetWindowFramesDelta, 0));
             }
         }
 
-        private void handleReset(
-            ResetFW reset)
+        private void handleReset(ResetFW reset)
         {
             doReset(connectReplyThrottle, connectReplyId);
         }
@@ -536,7 +526,8 @@ public final class ServerStreamFactory implements StreamFactory
         short code)
     {
         // TODO: WsAbortEx
-        final AbortFW abort = abortRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+        final AbortFW abort =
+            abortRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                 .streamId(streamId)
                 .extension(e -> e.reset())
                 .build();
@@ -551,10 +542,10 @@ public final class ServerStreamFactory implements StreamFactory
         final int writableFrames)
     {
         final WindowFW window = windowRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .streamId(throttleId)
-                .update(writableBytes)
-                .frames(writableFrames)
-                .build();
+            .streamId(throttleId)
+            .update(writableBytes)
+            .frames(writableFrames)
+            .build();
 
         throttle.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
     }
@@ -563,7 +554,8 @@ public final class ServerStreamFactory implements StreamFactory
         final MessageConsumer throttle,
         final long throttleId)
     {
-        final WindowFW window = windowRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+        final WindowFW window =
+            windowRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                 .streamId(throttleId)
                 .update(0)
                 .frames(0)
@@ -577,8 +569,8 @@ public final class ServerStreamFactory implements StreamFactory
         final long throttleId)
     {
         final ResetFW reset = resetRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-               .streamId(throttleId)
-               .build();
+            .streamId(throttleId)
+            .build();
 
         throttle.accept(reset.typeId(), reset.buffer(), reset.offset(), reset.sizeof());
     }

@@ -37,8 +37,8 @@ public class RFC1928IT
             .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
             .addScriptRoot("client", "org/reaktivity/specification/socks")
             .addScriptRoot("server", "org/reaktivity/specification/nukleus/socks/streams");
-
     private final TestRule timeout = new DisableOnDebug(new Timeout(3, SECONDS));
+
 
     private final ReaktorRule reaktor = new ReaktorRule()
         .directory("target/nukleus-itests")
