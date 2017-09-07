@@ -34,11 +34,10 @@ import org.reaktivity.reaktor.test.ReaktorRule;
 public class RFC1928IT
 {
     private final K3poRule k3po = new K3poRule()
-            .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
-            .addScriptRoot("client", "org/reaktivity/specification/socks")
-            .addScriptRoot("server", "org/reaktivity/specification/nukleus/socks/streams");
+        .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
+        .addScriptRoot("client", "org/reaktivity/specification/socks")
+        .addScriptRoot("server", "org/reaktivity/specification/nukleus/socks/streams");
     private final TestRule timeout = new DisableOnDebug(new Timeout(3, SECONDS));
-
 
     private final ReaktorRule reaktor = new ReaktorRule()
         .directory("target/nukleus-itests")
@@ -49,16 +48,17 @@ public class RFC1928IT
         .clean();
 
     @Rule
-    public final TestRule chain = outerRule(reaktor).around(k3po).around(timeout);
+    public final TestRule chain = outerRule(reaktor).around(k3po)
+        .around(timeout);
 
     @Test
     @ScriptProperty({
-      "mode 'FORWARD'"
+        "mode 'FORWARD'"
     })
     @Specification({
-      "${route}/server/controller",
-      "${client}/client.connect.send.data/client",
-      "${server}/client.connect.send.data/server" })
+        "${route}/server/controller",
+        "${client}/client.connect.send.data/client",
+        "${server}/client.connect.send.data/server"})
     public void shouldEchoBinaryFrameWithPayloadLength125() throws Exception
     {
         k3po.finish();

@@ -23,6 +23,7 @@ import org.agrona.collections.Long2ObjectHashMap;
 import org.reaktivity.nukleus.Configuration;
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.route.RouteManager;
+import org.reaktivity.nukleus.socks.internal.stream.server.ServerStreamFactory;
 import org.reaktivity.nukleus.stream.StreamFactory;
 import org.reaktivity.nukleus.stream.StreamFactoryBuilder;
 
