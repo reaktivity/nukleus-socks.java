@@ -15,9 +15,41 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream;
 
-public class SocksNegotiationFW
+import org.agrona.BitUtil;
+import org.agrona.DirectBuffer;
+import org.reaktivity.nukleus.socks.internal.types.Flyweight;
+
+public class SocksNegotiationFW extends Flyweight
 {
 
+    private static final int FIELD_OFFSET_VERSION = 0;
+    private static final int FIELD_SIZEBY_VERSION = BitUtil.SIZE_OF_BYTE;
 
+    private static final int FIELD_OFFSET_METHODS = FIELD_OFFSET_VERSION + FIELD_SIZEBY_VERSION;
+    private static final int FIELD_SIZEBY_METHODS = BitUtil.SIZE_OF_BYTE;
+
+
+    @Override
+    public int limit()
+    {
+        return limit(buffer(), offset());
+    }
+
+    private int limit(DirectBuffer buffer, int offset)
+    {
+        final int currentFieldOffsetMethods = offset() + FIELD_OFFSET_METHODS;
+        return currentFieldOffsetMethods + FIELD_SIZEBY_METHODS + buffer().getByte(currentFieldOffsetMethods);
+    }
+
+    public boolean canWrap(DirectBuffer buffer, int offset, int maxLimit)
+    {
+        final int maxLength = maxLimit - offset;
+        if (maxLength < 2)
+        {
+            return false;
+        }
+
+        return limit(buffer, offset) <= maxLength;
+    }
 
 }

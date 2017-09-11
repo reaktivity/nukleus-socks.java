@@ -237,16 +237,63 @@ final class AcceptStreamHandler extends DefaultStreamHandler
     private void handleNegotiationData(
         DataFW data)
     {
-        // first time
-        int bufferPoolSlot = streamContext.bufferPool.acquire(acceptReplyStreamId); // FIXME use the acceptStreamID
+        int limit = data.limit();
+        int offset = data.offset();
+        int size = limit - offset;
+        DirectBuffer buffer = data.buffer();
+
+        /*
+         * Fragmented writes might have already occurred, let's resume
+         */
+        if(this.slotLimit != 0)
+        {
+            /*
+             * Get the previously created buffer
+             *    1. The slotIndex was initialized in a previous wrapping attempt
+             *    2. The slotOffset represents the offset at which writing will be done into the buffer
+             *    3. What is slotLimit ?
+             */
+            MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(this.slotIndex, this.slotOffset);
+            acceptBuffer.putBytes(this.slotLimit, buffer, offset, size);
+            this.slotLimit += size;
+            this.slotOffset = this.slotLimit;
+
+            // re-align the input buffer
+            buffer = acceptBuffer;
+            offset = 0;
+            limit = this.slotLimit;
+            size =  this.slotLimit;
+        }
 
 
-        MutableDirectBuffer buffer = streamContext.bufferPool.buffer(bufferPoolSlot);
-        // accumulate
+        if(streamContext.socksNegotiationRO.canWrap(buffer, offset, limit))
+        {
+
+        }
+        else
+        {
+            /*
+             * Initialize the accumulation buffer
+             */
+            if (this.slotIndex == NO_SLOT)
+            {
+                this.slotIndex = streamContext.bufferPool.acquire(acceptReplyStreamId); // FIXME use the acceptStreamID
+                MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(slotIndex);
+                acceptBuffer.putBytes(0, buffer, offset, size);
+                this.slotLimit = size;
+            }
+        }
 
 
-        // last time
-        streamContext.bufferPool.release(bufferPoolSlot);
+        /*
+         * Release the accumulation buffer
+         */
+        if (offset == limit && this.slotIndex != NO_SLOT)
+        {
+            streamContext.bufferPool.release(this.slotIndex);
+            this.slotOffset = 0;
+            this.slotIndex = NO_SLOT;
+        }
     }
 
     private void handleEnd(
