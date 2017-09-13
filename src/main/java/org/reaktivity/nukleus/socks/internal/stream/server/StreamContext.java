@@ -26,7 +26,8 @@ import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageFunction;
 import org.reaktivity.nukleus.route.RouteManager;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
-import org.reaktivity.nukleus.socks.internal.stream.SocksNegotiationFW;
+import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationRequestFW;
+import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationResponseFW;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
@@ -66,8 +67,8 @@ public class StreamContext
     final Long2ObjectHashMap<Correlation> correlations;
     final MessageFunction<RouteFW> wrapRoute;
 
-    final SocksNegotiationFW socksNegotiationRO = new SocksNegotiationFW();
-    final SocksNegotiationFW socksNegotiationRW = new SocksNegotiationFW(); // TODO add .Builder (type + declaration)
+    final SocksNegotiationRequestFW socksNegotiationRO = new SocksNegotiationRequestFW();
+    final SocksNegotiationResponseFW.Builder socksNegotiationRW = new SocksNegotiationResponseFW.Builder();
 
     public StreamContext(
         Configuration config,

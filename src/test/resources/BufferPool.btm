@@ -1,0 +1,26 @@
+#
+# Rules that enhance testing to log certain paths through the code
+# DO NOT include code making changes to the accessed data structures
+#
+
+RULE canWrap check
+CLASS org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationRequestFW
+METHOD canWrap(org.agrona.DirectBuffer, int, int)
+HELPER org.reaktivity.nukleus.socks.internal.SocksBufferHelper$SocksNegotiationFWCanWrap
+IF TRUE
+DO write($1, $2, $3)
+ENDRULE
+
+
+
+
+RULE wrap show
+CLASS org.reaktivity.nukleus.socks.internal.types.Flyweight
+METHOD wrap(org.agrona.DirectBuffer, int, int)
+HELPER org.reaktivity.nukleus.socks.internal.SocksBufferHelper$Flyweight
+IF TRUE
+DO System.out.println("Wrapping flyweight")
+#write($0, $1, $2, $3)
+ENDRULE
+
+

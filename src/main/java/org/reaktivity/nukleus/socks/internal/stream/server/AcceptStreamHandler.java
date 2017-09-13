@@ -21,6 +21,9 @@ import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.function.MessagePredicate;
+import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationRequestFW;
+import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationResponseFW;
+import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
@@ -211,7 +214,6 @@ final class AcceptStreamHandler extends DefaultStreamHandler
 
 
 
-
     private void handleAcceptReplyThrottle(
         int msgTypeId,
         DirectBuffer buffer,
@@ -237,15 +239,18 @@ final class AcceptStreamHandler extends DefaultStreamHandler
     private void handleNegotiationData(
         DataFW data)
     {
-        int limit = data.limit();
-        int offset = data.offset();
+        OctetsFW payload = data.payload();
+        DirectBuffer buffer = payload.buffer();
+        int limit = payload.limit();
+        int offset = payload.offset();
         int size = limit - offset;
-        DirectBuffer buffer = data.buffer();
 
 
         // Fragmented writes might have already occurred
-        if(this.slotLimit != 0)
+        if(this.slotOffset != 0)
         {
+            System.out.println("Recovering saved buffer");
+
             // Append incoming data to the buffer
             MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(this.slotIndex, this.slotOffset);
             acceptBuffer.putBytes(0, buffer, offset, size);
@@ -265,16 +270,63 @@ final class AcceptStreamHandler extends DefaultStreamHandler
             }
 
 
-            // Do the actual decoding
-            // streamContext.socksNegotiationRO.wrap(buffer, offset, limit);
+            // Wrap the frame and extract the incoming data
+            final SocksNegotiationRequestFW socksNegotiation = streamContext.socksNegotiationRO.wrap(buffer, offset, limit);
+            if (socksNegotiation.version() != 0x05)
+            {
+                throw new IllegalStateException(
+                    String.format("Unsupported SOCKS protocol version (expected 0x05, received 0x%02x",
+                        socksNegotiation.version()));
+            }
+
+            if (socksNegotiation.nmethods() != 0x01)
+            {
+                throw new IllegalStateException(
+                    String.format("Unsupported SOCKS number of authentication methods (expected 1, received %d",
+                        socksNegotiation.nmethods()));
+            }
+
+            if (socksNegotiation.methods()[0] != (byte) 0x00)
+            {
+                throw new IllegalStateException(
+                    String.format("Unsupported SOCKS authentication method (expected 0x00, received 0x%02x",
+                        socksNegotiation.methods()[0]));
+            }
+
+
+            // TODO Send back the negotiation response
+            //
+            //
+            System.out.println("Constructing reply");
+            SocksNegotiationResponseFW socksNegotiationResponseFW = streamContext.socksNegotiationRW
+                .wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
+                .version((byte) 0x05)
+                .method((byte) 0x00)
+                .build();
+
+            final int socksNegotiationResponseFWSize = socksNegotiationResponseFW.sizeof();
+            DataFW dataReply = streamContext.dataRW.wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
+                .streamId(acceptReplyStreamId)
+                .payload(p -> p.set((b, o, m) -> socksNegotiationResponseFWSize)
+                    .put(socksNegotiationResponseFW.buffer(), socksNegotiationResponseFW.offset(), socksNegotiationResponseFWSize))
+                .build();
+
+            doWindow(acceptThrottle, acceptReplyStreamId, 1024, 1024); // TODO replace hardcoded values
+
+            acceptReply.accept(
+                dataReply.typeId(),
+                dataReply.buffer(),
+                dataReply.offset(),
+                dataReply.sizeof());
+
         }
         else if (this.slotIndex == NO_SLOT)
         {
             // Initialize the accumulation buffer
             this.slotIndex = streamContext.bufferPool.acquire(acceptReplyStreamId); // FIXME use the acceptStreamID
-            MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(slotIndex);
+            MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(this.slotIndex);
             acceptBuffer.putBytes(0, buffer, offset, size);
-            this.slotLimit = size;
+            this.slotOffset = size;
 
         }
     }
