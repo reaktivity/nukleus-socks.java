@@ -242,57 +242,40 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         int size = limit - offset;
         DirectBuffer buffer = data.buffer();
 
-        /*
-         * Fragmented writes might have already occurred, let's resume
-         */
+
+        // Fragmented writes might have already occurred
         if(this.slotLimit != 0)
         {
-            /*
-             * Get the previously created buffer
-             *    1. The slotIndex was initialized in a previous wrapping attempt
-             *    2. The slotOffset represents the offset at which writing will be done into the buffer
-             *    3. What is slotLimit ?
-             */
+            // Append incoming data to the buffer
             MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(this.slotIndex, this.slotOffset);
-            acceptBuffer.putBytes(this.slotLimit, buffer, offset, size);
-            this.slotLimit += size;
-            this.slotOffset = this.slotLimit;
-
-            // re-align the input buffer
-            buffer = acceptBuffer;
-            offset = 0;
-            limit = this.slotLimit;
-            size =  this.slotLimit;
+            acceptBuffer.putBytes(0, buffer, offset, size);
+            this.slotOffset += size;                                  // New starting point is moved to the end of the buffer
+            buffer = streamContext.bufferPool.buffer(this.slotIndex); // Try to decode from the beginning of the buffer
+            offset = 0;                                               //
+            limit = this.slotOffset;                                  //
         }
 
-
-        if(streamContext.socksNegotiationRO.canWrap(buffer, offset, limit))
+        if(streamContext.socksNegotiationRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
         {
-
-        }
-        else
-        {
-            /*
-             * Initialize the accumulation buffer
-             */
-            if (this.slotIndex == NO_SLOT)
+            if (this.slotIndex != NO_SLOT) // Can safely release the buffer
             {
-                this.slotIndex = streamContext.bufferPool.acquire(acceptReplyStreamId); // FIXME use the acceptStreamID
-                MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(slotIndex);
-                acceptBuffer.putBytes(0, buffer, offset, size);
-                this.slotLimit = size;
+                streamContext.bufferPool.release(this.slotIndex);
+                this.slotOffset = 0;
+                this.slotIndex = NO_SLOT;
             }
+
+
+            // Do the actual decoding
+            // streamContext.socksNegotiationRO.wrap(buffer, offset, limit);
         }
-
-
-        /*
-         * Release the accumulation buffer
-         */
-        if (offset == limit && this.slotIndex != NO_SLOT)
+        else if (this.slotIndex == NO_SLOT)
         {
-            streamContext.bufferPool.release(this.slotIndex);
-            this.slotOffset = 0;
-            this.slotIndex = NO_SLOT;
+            // Initialize the accumulation buffer
+            this.slotIndex = streamContext.bufferPool.acquire(acceptReplyStreamId); // FIXME use the acceptStreamID
+            MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(slotIndex);
+            acceptBuffer.putBytes(0, buffer, offset, size);
+            this.slotLimit = size;
+
         }
     }
 
