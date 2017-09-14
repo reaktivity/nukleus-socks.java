@@ -19,6 +19,7 @@ import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.function.MessagePredicate;
 import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationRequestFW;
@@ -59,6 +60,7 @@ final class AcceptStreamHandler extends DefaultStreamHandler
 
     MessageConsumer acceptReply;
     long acceptReplyStreamId;
+    String acceptName;
 
 
     AcceptStreamHandler(
@@ -126,8 +128,7 @@ final class AcceptStreamHandler extends DefaultStreamHandler
     {
         System.out.println("Handle Begin");
         // ACCEPT STREAM
-        final String acceptName = begin.source()
-            .asString();
+        this.acceptName = begin.source().asString();
         final long acceptRef = begin.sourceRef();
         final long acceptCorrelationId = begin.correlationId();
         final long acceptStreamId = begin.streamId();
@@ -213,7 +214,6 @@ final class AcceptStreamHandler extends DefaultStreamHandler
     }
 
 
-
     private void handleAcceptReplyThrottle(
         int msgTypeId,
         DirectBuffer buffer,
@@ -249,8 +249,6 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         // Fragmented writes might have already occurred
         if(this.slotOffset != 0)
         {
-            System.out.println("Recovering saved buffer");
-
             // Append incoming data to the buffer
             MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(this.slotIndex, this.slotOffset);
             acceptBuffer.putBytes(0, buffer, offset, size);
@@ -279,6 +277,7 @@ final class AcceptStreamHandler extends DefaultStreamHandler
                         socksNegotiation.version()));
             }
 
+            // FIXME should allow multiple authentication methods if one of them is "No Authentication"
             if (socksNegotiation.nmethods() != 0x01)
             {
                 throw new IllegalStateException(
@@ -293,43 +292,73 @@ final class AcceptStreamHandler extends DefaultStreamHandler
                         socksNegotiation.methods()[0]));
             }
 
-
-            // TODO Send back the negotiation response
-            //
-            //
-            System.out.println("Constructing reply");
+            // Reply with Socks version 5 and "NO AUTHENTICATION REQUIRED"
+            doWindow(acceptThrottle, acceptReplyStreamId, 1024, 1024); // TODO replace hardcoded values
             SocksNegotiationResponseFW socksNegotiationResponseFW = streamContext.socksNegotiationRW
-                .wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
+                .wrap(streamContext.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, streamContext.writeBuffer.capacity())
                 .version((byte) 0x05)
                 .method((byte) 0x00)
                 .build();
-
-            final int socksNegotiationResponseFWSize = socksNegotiationResponseFW.sizeof();
-            DataFW dataReply = streamContext.dataRW.wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
+            DataFW dataReplyFW = streamContext.dataRW.wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
                 .streamId(acceptReplyStreamId)
-                .payload(p -> p.set((b, o, m) -> socksNegotiationResponseFWSize)
-                    .put(socksNegotiationResponseFW.buffer(), socksNegotiationResponseFW.offset(), socksNegotiationResponseFWSize))
+                .payload(p -> p.set(socksNegotiationResponseFW.buffer(), socksNegotiationResponseFW.offset(), socksNegotiationResponseFW.sizeof()))
+                .extension(e -> e.reset())
                 .build();
-
-            doWindow(acceptThrottle, acceptReplyStreamId, 1024, 1024); // TODO replace hardcoded values
-
             acceptReply.accept(
-                dataReply.typeId(),
-                dataReply.buffer(),
-                dataReply.offset(),
-                dataReply.sizeof());
+                dataReplyFW.typeId(),
+                dataReplyFW.buffer(),
+                dataReplyFW.offset(),
+                dataReplyFW.sizeof());
 
+            this.streamState = this::afterNegotiation;
         }
         else if (this.slotIndex == NO_SLOT)
         {
             // Initialize the accumulation buffer
-            this.slotIndex = streamContext.bufferPool.acquire(acceptReplyStreamId); // FIXME use the acceptStreamID
+            this.slotIndex = streamContext.bufferPool.acquire(acceptReplyStreamId);
+            // FIXME use the acceptStreamID
+            // FIXME might not get a slot, in this case should return an exception
             MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(this.slotIndex);
             acceptBuffer.putBytes(0, buffer, offset, size);
             this.slotOffset = size;
-
         }
     }
+
+    private void afterNegotiation(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
+    {
+        switch (msgTypeId)
+        {
+        case DataFW.TYPE_ID:
+            final DataFW data = streamContext.dataRO.wrap(buffer, index, index + length);
+            handleConnectRequestData(data);
+            break;
+        case EndFW.TYPE_ID:
+        case AbortFW.TYPE_ID:
+            doAbort(acceptReply, acceptReplyStreamId);
+            break;
+        default:
+            doReset(acceptThrottle, acceptId);
+            break;
+        }
+    }
+
+
+
+    private void handleConnectRequestData(
+        DataFW data)
+    {
+        OctetsFW payload = data.payload();
+        DirectBuffer buffer = payload.buffer();
+        int limit = payload.limit();
+        int offset = payload.offset();
+        int size = limit - offset;
+
+    }
+
 
     private void handleEnd(
         EndFW end)

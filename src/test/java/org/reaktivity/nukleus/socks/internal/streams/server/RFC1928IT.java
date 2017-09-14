@@ -31,9 +31,9 @@ import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
 import org.reaktivity.reaktor.test.ReaktorRule;
 
-@RunWith(org.jboss.byteman.contrib.bmunit.BMUnitRunner.class)
-@BMUnitConfig(loadDirectory="src/test/resources")
-@BMScript(value="BufferPool.btm")
+//@RunWith(org.jboss.byteman.contrib.bmunit.BMUnitRunner.class)
+//@BMUnitConfig(loadDirectory="src/test/resources")
+//@BMScript(value="BufferPool.btm")
 public class RFC1928IT
 {
     private final K3poRule k3po = new K3poRule()

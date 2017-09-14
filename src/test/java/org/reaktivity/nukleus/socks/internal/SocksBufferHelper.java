@@ -67,7 +67,7 @@ public final class SocksBufferHelper
         int offset,
         int maxLimit)
     {
-        System.out.print(message);
+        System.out.print(message + " " + buffer.toString());
         for (int i = offset; i < maxLimit; i++)
         {
             System.out.print(String.format("%02X ", buffer.getByte(i)));

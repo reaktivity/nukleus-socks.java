@@ -19,7 +19,8 @@ CLASS org.reaktivity.nukleus.socks.internal.types.Flyweight
 METHOD wrap(org.agrona.DirectBuffer, int, int)
 HELPER org.reaktivity.nukleus.socks.internal.SocksBufferHelper$Flyweight
 IF TRUE
-DO System.out.println("Wrapping flyweight")
+DO
+System.out.println("Wrapping flyweight")
 #write($0, $1, $2, $3)
 ENDRULE
 
