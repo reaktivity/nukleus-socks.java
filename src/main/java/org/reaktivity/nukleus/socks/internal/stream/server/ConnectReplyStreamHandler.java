@@ -123,8 +123,11 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
             final long newAcceptReplyId = streamContext.supplyStreamId.getAsLong();
             final long newCorrelationId = correlation.correlationId();
 
-            //                doHttpBegin(newAcceptReply, newAcceptReplyId, 0L, newCorrelationId, setHttpHeaders
-            // (handshakeHash, protocol));
+
+            // TODO get the SocksCommandRequest from the Correlation
+            // TODO use it to populate a SocksCommandResponse and sent it on the acceptReplyStream
+
+
             streamContext.router.setThrottle(acceptReplyName, newAcceptReplyId, this::handleThrottle);
 
             this.acceptReply = newAcceptReply;

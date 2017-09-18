@@ -19,9 +19,9 @@ import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
-import org.agrona.concurrent.UnsafeBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.function.MessagePredicate;
+import org.reaktivity.nukleus.socks.internal.stream.Correlation;
 import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationRequestFW;
 import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationResponseFW;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
@@ -45,12 +45,7 @@ final class AcceptStreamHandler extends DefaultStreamHandler
     private MessageConsumer streamState;
 
     private int slotIndex = NO_SLOT;
-    private int slotLimit;
     private int slotOffset;
-
-    private int payloadProgress;
-    private int payloadLength;
-    private int maskingKey;
 
     private int acceptWindowBytes;
     private int acceptWindowFrames;
@@ -61,7 +56,7 @@ final class AcceptStreamHandler extends DefaultStreamHandler
     MessageConsumer acceptReply;
     long acceptReplyStreamId;
     String acceptName;
-
+    long acceptRef;
 
     AcceptStreamHandler(
         StreamContext streamContext,
@@ -72,7 +67,8 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         super(streamContext);
         this.acceptThrottle = acceptThrottle;
         this.acceptId = acceptId;
-        this.streamState = this::beforeBegin;
+        this.streamState = this::beforeBeginState;
+        // FIXME why not use and wait for a Begin frame ?
     }
 
     RouteFW resolveTarget(
@@ -106,7 +102,7 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         streamState.accept(msgTypeId, buffer, index, length);
     }
 
-    private void beforeBegin(
+    private void beforeBeginState(
         int msgTypeId,
         DirectBuffer buffer,
         int index,
@@ -129,69 +125,38 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         System.out.println("Handle Begin");
         // ACCEPT STREAM
         this.acceptName = begin.source().asString();
-        final long acceptRef = begin.sourceRef();
+        this.acceptRef = begin.sourceRef();
         final long acceptCorrelationId = begin.correlationId();
         final long acceptStreamId = begin.streamId();
 
-        ///////////////  ACCEPT REPLY STREAM /////////////////////////////
-        // acceptCorrelationId = acceptCorrelationId; They are the same for acceptReply
-        // and accept stream
-        { // Readability indent, will remove
-            this.acceptReply = streamContext.router.supplyTarget(acceptName);
-            this.acceptReplyStreamId = streamContext.supplyStreamId.getAsLong();
-            final long acceptReplyRef = 0; // Bi-directional reply
+        this.acceptReply = streamContext.router.supplyTarget(acceptName);
+        this.acceptReplyStreamId = streamContext.supplyStreamId.getAsLong();
+        final long acceptReplyRef = 0; // Bi-directional reply
 
-            // to WRITE to AcceptReplyStream
-            BeginFW beginToAcceptReply = streamContext.beginRW
-                .wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
-                .streamId(acceptReplyStreamId)
-                .source("socks")
-                .sourceRef(acceptReplyRef)
-                .correlationId(acceptCorrelationId)
-                .extension(e -> e.reset()) // TODO SOCKS5 handshake
-                .build();
+        // to WRITE to AcceptReplyStream
+        BeginFW beginToAcceptReply = streamContext.beginRW
+            .wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
+            .streamId(acceptReplyStreamId)
+            .source("socks")
+            .sourceRef(acceptReplyRef)
+            .correlationId(acceptCorrelationId)
+            .extension(e -> e.reset()) // TODO SOCKS5 handshake
+            .build();
 
-            acceptReply.accept(
-                beginToAcceptReply.typeId(),
-                beginToAcceptReply.buffer(),
-                beginToAcceptReply.offset(),
-                beginToAcceptReply.sizeof());
+        acceptReply.accept(
+            beginToAcceptReply.typeId(),
+            beginToAcceptReply.buffer(),
+            beginToAcceptReply.offset(),
+            beginToAcceptReply.sizeof());
 
-            streamContext.router.setThrottle(acceptName, acceptReplyStreamId, this::handleAcceptReplyThrottle);
-        }
-
-/*        /////////////// CONNECT STREAM //////////////////
-        { // Readability indent, will remove
-            final RouteFW connectRoute = resolveTarget(acceptRef, acceptName);
-            final String connectName = connectRoute.target()
-                .asString();
-            final MessageConsumer connect = streamContext.router.supplyTarget(connectName);
-            final long connectRef = connectRoute.targetRef();
-
-            // Initialize connect stream
-            final long connectStreamId = streamContext.supplyStreamId.getAsLong();
-            final long connectCorrelationId = streamContext.supplyCorrelationId.getAsLong();
-            streamContext.correlations.put(connectCorrelationId, new Correlation()); // Use this map on the CONNECT STREAM
-
-            // TODO: need lightweight approach (start)
-            final BeginFW connectBegin = streamContext.beginRW
-                .wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
-                .streamId(connectStreamId)
-                .source("socks")
-                .sourceRef(connectRef)
-                .correlationId(connectCorrelationId)
-                // .extension(e -> e.reset())
-                .build();
-            connect.accept(connectBegin.typeId(), connectBegin.buffer(), connectBegin.offset(), connectBegin.sizeof());
-            streamContext.router.setThrottle(connectName, connectStreamId, this::handleAcceptReplyThrottle);
-        }*/
+        streamContext.router.setThrottle(acceptName, acceptReplyStreamId, this::handleAcceptReplyThrottle);
 
         // tell accept stream you can handle more data
         doWindow(acceptThrottle, begin.streamId(), 1024, 1024); // TODO replace hardcoded values
-        this.streamState = this::afterBegin;
+        this.streamState = this::afterBeginState;
     }
 
-    private void afterBegin(
+    private void afterBeginState(
         int msgTypeId,
         DirectBuffer buffer,
         int index,
@@ -213,29 +178,6 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         }
     }
 
-
-    private void handleAcceptReplyThrottle(
-        int msgTypeId,
-        DirectBuffer buffer,
-        int index,
-        int length)
-    {
-        switch (msgTypeId)
-        {
-        case WindowFW.TYPE_ID:
-            final WindowFW window = streamContext.windowRO.wrap(buffer, index, index + length);
-            handleWindow(window);
-            break;
-        case ResetFW.TYPE_ID:
-            final ResetFW reset = streamContext.resetRO.wrap(buffer, index, index + length);
-            handleReset(reset);
-            break;
-        default:
-            // ignore
-            break;
-        }
-    }
-
     private void handleNegotiationData(
         DataFW data)
     {
@@ -244,7 +186,6 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         int limit = payload.limit();
         int offset = payload.offset();
         int size = limit - offset;
-
 
         // Fragmented writes might have already occurred
         if(this.slotOffset != 0)
@@ -266,7 +207,6 @@ final class AcceptStreamHandler extends DefaultStreamHandler
                 this.slotOffset = 0;
                 this.slotIndex = NO_SLOT;
             }
-
 
             // Wrap the frame and extract the incoming data
             final SocksNegotiationRequestFW socksNegotiation = streamContext.socksNegotiationRO.wrap(buffer, offset, limit);
@@ -310,13 +250,12 @@ final class AcceptStreamHandler extends DefaultStreamHandler
                 dataReplyFW.offset(),
                 dataReplyFW.sizeof());
 
-            this.streamState = this::afterNegotiation;
+            this.streamState = this::afterNegotiationState;
         }
         else if (this.slotIndex == NO_SLOT)
         {
             // Initialize the accumulation buffer
-            this.slotIndex = streamContext.bufferPool.acquire(acceptReplyStreamId);
-            // FIXME use the acceptStreamID
+            this.slotIndex = streamContext.bufferPool.acquire(acceptId);
             // FIXME might not get a slot, in this case should return an exception
             MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(this.slotIndex);
             acceptBuffer.putBytes(0, buffer, offset, size);
@@ -324,7 +263,7 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         }
     }
 
-    private void afterNegotiation(
+    private void afterNegotiationState(
         int msgTypeId,
         DirectBuffer buffer,
         int index,
@@ -346,8 +285,6 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         }
     }
 
-
-
     private void handleConnectRequestData(
         DataFW data)
     {
@@ -357,8 +294,87 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         int offset = payload.offset();
         int size = limit - offset;
 
+        // Fragmented writes might have already occurred
+        if(this.slotOffset != 0)
+        {
+            // Append incoming data to the buffer
+            MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(this.slotIndex, this.slotOffset);
+            acceptBuffer.putBytes(0, buffer, offset, size);
+            this.slotOffset += size;                                  // New starting point is moved to the end of the buffer
+            buffer = streamContext.bufferPool.buffer(this.slotIndex); // Try to decode from the beginning of the buffer
+            offset = 0;                                               //
+            limit = this.slotOffset;                                  //
+        }
+
+        if(streamContext.socksConnectRequestFW.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
+        {
+            if (this.slotIndex != NO_SLOT) // Can safely release the buffer
+            {
+                streamContext.bufferPool.release(this.slotIndex);
+                this.slotOffset = 0;
+                this.slotIndex = NO_SLOT;
+            }
+
+            // Create a Begin Frame
+            final RouteFW connectRoute = resolveTarget(acceptRef, acceptName);
+            final String connectName = connectRoute.target()
+                .asString();
+            final MessageConsumer connect = streamContext.router.supplyTarget(connectName);
+            final long connectRef = connectRoute.targetRef();
+
+            // Initialize connect stream
+            final long connectStreamId = streamContext.supplyStreamId.getAsLong();
+            final long connectCorrelationId = streamContext.supplyCorrelationId.getAsLong();
+
+            // TODO add the socksConnectRequestFW relevant data into the
+            streamContext.correlations.put(connectCorrelationId, new Correlation()); // Use this map on the CONNECT STREAM
+
+            final BeginFW connectBegin = streamContext.beginRW
+                .wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
+                .streamId(connectStreamId)
+                .source("socks")
+                .sourceRef(connectRef)
+                .correlationId(connectCorrelationId)
+                .extension(e -> e.reset())
+                .build();
+            connect.accept(connectBegin.typeId(), connectBegin.buffer(), connectBegin.offset(), connectBegin.sizeof());
+            streamContext.router.setThrottle(connectName, connectStreamId, this::handleAcceptReplyThrottle); // FIXME handleAcceptReplyThrottle ?
+
+
+            this.streamState = this::afterNegotiationState;
+        }
+        else if (this.slotIndex == NO_SLOT)
+        {
+            // Initialize the accumulation buffer
+            this.slotIndex = streamContext.bufferPool.acquire(acceptId);
+            // FIXME might not get a slot, in this case should return an exception
+            MutableDirectBuffer acceptBuffer = streamContext.bufferPool.buffer(this.slotIndex);
+            acceptBuffer.putBytes(0, buffer, offset, size);
+            this.slotOffset = size;
+        }
     }
 
+    private void handleAcceptReplyThrottle(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
+    {
+        switch (msgTypeId)
+        {
+        case WindowFW.TYPE_ID:
+            final WindowFW window = streamContext.windowRO.wrap(buffer, index, index + length);
+            handleWindow(window);
+            break;
+        case ResetFW.TYPE_ID:
+            final ResetFW reset = streamContext.resetRO.wrap(buffer, index, index + length);
+            handleReset(reset);
+            break;
+        default:
+            // ignore
+            break;
+        }
+    }
 
     private void handleEnd(
         EndFW end)

@@ -26,6 +26,7 @@ import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageFunction;
 import org.reaktivity.nukleus.route.RouteManager;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
+import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksCommandRequestFW;
 import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationRequestFW;
 import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationResponseFW;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
@@ -59,7 +60,8 @@ public class StreamContext
     final OctetsFW octetsRO = new OctetsFW();
 
     final RouteManager router;
-    final MutableDirectBuffer writeBuffer;
+    final MutableDirectBuffer writeBuffer; // TODO consider using 2 buffers: S -> T and T -> S
+
     final BufferPool bufferPool;
     final LongSupplier supplyStreamId;
     final LongSupplier supplyCorrelationId;
@@ -67,8 +69,10 @@ public class StreamContext
     final Long2ObjectHashMap<Correlation> correlations;
     final MessageFunction<RouteFW> wrapRoute;
 
+    // Socks protocol flyweights
     final SocksNegotiationRequestFW socksNegotiationRO = new SocksNegotiationRequestFW();
     final SocksNegotiationResponseFW.Builder socksNegotiationRW = new SocksNegotiationResponseFW.Builder();
+    final SocksCommandRequestFW socksConnectRequestFW = new SocksCommandRequestFW();
 
     public StreamContext(
         Configuration config,

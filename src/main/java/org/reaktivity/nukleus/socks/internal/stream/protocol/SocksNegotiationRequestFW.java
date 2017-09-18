@@ -19,7 +19,7 @@ import org.agrona.BitUtil;
 import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 
-public class SocksNegotiationRequestFW extends Flyweight
+public class SocksNegotiationRequestFW extends Flyweight implements Fragmented
 {
 
     private static final int FIELD_OFFSET_VERSION = 0;
@@ -31,17 +31,10 @@ public class SocksNegotiationRequestFW extends Flyweight
     @Override
     public int limit()
     {
-        return limit(buffer(), offset());
+        return decodeLimit(buffer(), offset());
     }
 
-    private int limit(
-        DirectBuffer buffer,
-        int offset)
-    {
-        final int currentFieldOffsetMethods = offset + FIELD_OFFSET_METHODS;
-        return currentFieldOffsetMethods + FIELD_SIZEBY_METHODS + buffer.getByte(currentFieldOffsetMethods);
-    }
-
+    @Override
     public boolean canWrap(
         DirectBuffer buffer,
         int offset,
@@ -53,7 +46,15 @@ public class SocksNegotiationRequestFW extends Flyweight
             return false;
         }
 
-        return limit(buffer, offset) <= maxLimit;
+        return decodeLimit(buffer, offset) <= maxLimit;
+    }
+
+    private int decodeLimit(
+        DirectBuffer buffer,
+        int offset)
+    {
+        final int currentFieldOffsetMethods = offset + FIELD_OFFSET_METHODS;
+        return currentFieldOffsetMethods + FIELD_SIZEBY_METHODS + buffer.getByte(currentFieldOffsetMethods);
     }
 
     @Override
