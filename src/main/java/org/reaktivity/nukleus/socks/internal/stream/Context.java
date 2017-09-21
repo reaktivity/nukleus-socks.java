@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package org.reaktivity.nukleus.socks.internal.stream.server;
+package org.reaktivity.nukleus.socks.internal.stream;
 
 import static java.util.Objects.requireNonNull;
 
@@ -25,10 +25,9 @@ import org.reaktivity.nukleus.Configuration;
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageFunction;
 import org.reaktivity.nukleus.route.RouteManager;
-import org.reaktivity.nukleus.socks.internal.stream.Correlation;
-import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksCommandRequestFW;
-import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationRequestFW;
-import org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationResponseFW;
+import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandRequestFW;
+import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationRequestFW;
+import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationResponseFW;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
@@ -38,43 +37,43 @@ import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-public class StreamContext
+public class Context
 {
-    final RouteFW routeRO = new RouteFW();
-    final BeginFW beginRO = new BeginFW();
-    final DataFW dataRO = new DataFW();
-    final EndFW endRO = new EndFW();
-    final AbortFW abortRO = new AbortFW();
+    public final RouteFW routeRO = new RouteFW();
+    public final BeginFW beginRO = new BeginFW();
+    public final DataFW dataRO = new DataFW();
+    public final EndFW endRO = new EndFW();
+    public final AbortFW abortRO = new AbortFW();
 
-    final BeginFW.Builder beginRW = new BeginFW.Builder();
-    final DataFW.Builder dataRW = new DataFW.Builder();
-    final EndFW.Builder endRW = new EndFW.Builder();
-    final AbortFW.Builder abortRW = new AbortFW.Builder();
+    public final BeginFW.Builder beginRW = new BeginFW.Builder();
+    public final DataFW.Builder dataRW = new DataFW.Builder();
+    public final EndFW.Builder endRW = new EndFW.Builder();
+    public final AbortFW.Builder abortRW = new AbortFW.Builder();
 
-    final WindowFW windowRO = new WindowFW();
-    final ResetFW resetRO = new ResetFW();
+    public final WindowFW windowRO = new WindowFW();
+    public final ResetFW resetRO = new ResetFW();
 
-    final WindowFW.Builder windowRW = new WindowFW.Builder();
-    final ResetFW.Builder resetRW = new ResetFW.Builder();
+    public final WindowFW.Builder windowRW = new WindowFW.Builder();
+    public final ResetFW.Builder resetRW = new ResetFW.Builder();
 
-    final OctetsFW octetsRO = new OctetsFW();
+    public final OctetsFW octetsRO = new OctetsFW();
 
-    final RouteManager router;
-    final MutableDirectBuffer writeBuffer; // TODO consider using 2 buffers: S -> T and T -> S
+    public final RouteManager router;
+    public final MutableDirectBuffer writeBuffer; // TODO consider using 2 buffers: S -> T and T -> S
 
-    final BufferPool bufferPool;
-    final LongSupplier supplyStreamId;
-    final LongSupplier supplyCorrelationId;
+    public final BufferPool bufferPool;
+    public final LongSupplier supplyStreamId;
+    public final LongSupplier supplyCorrelationId;
 
-    final Long2ObjectHashMap<Correlation> correlations;
-    final MessageFunction<RouteFW> wrapRoute;
+    public final Long2ObjectHashMap<Correlation> correlations;
+    public final MessageFunction<RouteFW> wrapRoute;
 
     // Socks protocol flyweights
-    final SocksNegotiationRequestFW socksNegotiationRO = new SocksNegotiationRequestFW();
-    final SocksNegotiationResponseFW.Builder socksNegotiationRW = new SocksNegotiationResponseFW.Builder();
-    final SocksCommandRequestFW socksConnectRequestFW = new SocksCommandRequestFW();
+    public final SocksNegotiationRequestFW socksNegotiationRO = new SocksNegotiationRequestFW();
+    public final SocksNegotiationResponseFW.Builder socksNegotiationRW = new SocksNegotiationResponseFW.Builder();
+    public final SocksCommandRequestFW socksConnectRequestRO = new SocksCommandRequestFW();
 
-    public StreamContext(
+    public Context(
         Configuration config,
         RouteManager router,
         MutableDirectBuffer writeBuffer,
@@ -91,6 +90,5 @@ public class StreamContext
         this.supplyCorrelationId = requireNonNull(supplyCorrelationId);
         this.correlations = requireNonNull(correlations);
         this.wrapRoute = requireNonNull(wrapRoute);
-        System.out.println("Got the StreamContext setup ....");
     }
 }

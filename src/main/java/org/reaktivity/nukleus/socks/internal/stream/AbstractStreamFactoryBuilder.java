@@ -23,22 +23,20 @@ import org.agrona.collections.Long2ObjectHashMap;
 import org.reaktivity.nukleus.Configuration;
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.route.RouteManager;
-import org.reaktivity.nukleus.socks.internal.stream.server.ServerStreamFactory;
-import org.reaktivity.nukleus.stream.StreamFactory;
 import org.reaktivity.nukleus.stream.StreamFactoryBuilder;
 
-public final class ServerStreamFactoryBuilder implements StreamFactoryBuilder
+public abstract class AbstractStreamFactoryBuilder implements StreamFactoryBuilder
 {
-    private final Configuration config;
-    private final Long2ObjectHashMap<Correlation> correlations;
+    protected final Configuration config;
+    protected final Long2ObjectHashMap<Correlation> correlations;
 
-    private RouteManager router;
-    private MutableDirectBuffer writeBuffer;
-    private LongSupplier supplyStreamId;
-    private LongSupplier supplyCorrelationId;
-    private Supplier<BufferPool> supplyBufferPool;
+    protected RouteManager router;
+    protected MutableDirectBuffer writeBuffer;
+    protected LongSupplier supplyStreamId;
+    protected LongSupplier supplyCorrelationId;
+    protected Supplier<BufferPool> supplyBufferPool;
 
-    public ServerStreamFactoryBuilder(
+    public AbstractStreamFactoryBuilder(
         Configuration config)
     {
         this.config = config;
@@ -46,7 +44,7 @@ public final class ServerStreamFactoryBuilder implements StreamFactoryBuilder
     }
 
     @Override
-    public ServerStreamFactoryBuilder setRouteManager(
+    public AbstractStreamFactoryBuilder setRouteManager(
         RouteManager router)
     {
         this.router = router;
@@ -54,7 +52,7 @@ public final class ServerStreamFactoryBuilder implements StreamFactoryBuilder
     }
 
     @Override
-    public ServerStreamFactoryBuilder setWriteBuffer(
+    public AbstractStreamFactoryBuilder setWriteBuffer(
         MutableDirectBuffer writeBuffer)
     {
         this.writeBuffer = writeBuffer;
@@ -62,7 +60,7 @@ public final class ServerStreamFactoryBuilder implements StreamFactoryBuilder
     }
 
     @Override
-    public ServerStreamFactoryBuilder setStreamIdSupplier(
+    public AbstractStreamFactoryBuilder setStreamIdSupplier(
         LongSupplier supplyStreamId)
     {
         this.supplyStreamId = supplyStreamId;
@@ -70,7 +68,7 @@ public final class ServerStreamFactoryBuilder implements StreamFactoryBuilder
     }
 
     @Override
-    public ServerStreamFactoryBuilder setCorrelationIdSupplier(
+    public AbstractStreamFactoryBuilder setCorrelationIdSupplier(
         LongSupplier supplyCorrelationId)
     {
         this.supplyCorrelationId = supplyCorrelationId;
@@ -83,14 +81,5 @@ public final class ServerStreamFactoryBuilder implements StreamFactoryBuilder
     {
         this.supplyBufferPool = supplyBufferPool;
         return this;
-    }
-
-    @Override
-    public StreamFactory build()
-    {
-        final BufferPool bufferPool = supplyBufferPool.get();
-
-        return new ServerStreamFactory(config, router, writeBuffer,
-                bufferPool, supplyStreamId, supplyCorrelationId, correlations);
     }
 }

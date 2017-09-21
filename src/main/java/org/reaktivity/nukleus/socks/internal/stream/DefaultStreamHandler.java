@@ -13,20 +13,20 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package org.reaktivity.nukleus.socks.internal.stream.server;
+package org.reaktivity.nukleus.socks.internal.stream;
 
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-class DefaultStreamHandler
+public class DefaultStreamHandler
 {
-    protected final StreamContext streamContext;
+    protected final Context context;
 
-    DefaultStreamHandler(StreamContext streamContext)
+    public DefaultStreamHandler(Context context)
     {
-        this.streamContext = streamContext;
+        this.context = context;
     }
 
     protected void doAbort(
@@ -34,8 +34,8 @@ class DefaultStreamHandler
         long streamId)
     {
         final AbortFW abort =
-            streamContext.abortRW
-                .wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
+            context.abortRW
+                .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(streamId)
                 .extension(e -> e.reset())
                 .build();
@@ -48,8 +48,8 @@ class DefaultStreamHandler
         final int writableBytes,
         final int writableFrames)
     {
-        final WindowFW window = streamContext.windowRW
-            .wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
+        final WindowFW window = context.windowRW
+            .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(throttleId)
             .update(writableBytes)
             .frames(writableFrames)
@@ -62,8 +62,8 @@ class DefaultStreamHandler
         final long throttleId)
     {
         final WindowFW window =
-            streamContext.windowRW
-                .wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
+            context.windowRW
+                .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(throttleId)
                 .update(0)
                 .frames(0)
@@ -76,8 +76,8 @@ class DefaultStreamHandler
         final long throttleId)
     {
         final ResetFW reset =
-            streamContext.resetRW
-                .wrap(streamContext.writeBuffer, 0, streamContext.writeBuffer.capacity())
+            context.resetRW
+                .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(throttleId)
                 .build();
         throttle.accept(reset.typeId(), reset.buffer(), reset.offset(), reset.sizeof());

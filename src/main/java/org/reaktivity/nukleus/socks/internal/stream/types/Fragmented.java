@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package org.reaktivity.nukleus.socks.internal.stream.protocol;
+package org.reaktivity.nukleus.socks.internal.stream.types;
 
 import org.agrona.DirectBuffer;
 

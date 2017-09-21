@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package org.reaktivity.nukleus.socks.internal.stream.server;
+package org.reaktivity.nukleus.socks.internal.stream.client;
 
 import java.util.function.Consumer;
 
@@ -124,11 +124,11 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
             final MessageConsumer newAcceptReply = context.router.supplyTarget(acceptReplyName);
             final long newAcceptReplyId = context.supplyStreamId.getAsLong();
             final long newCorrelationId = correlation.correlationId();
-//            begin.extension().get()
 
 
-            // TODO get the SocksCommandRequest from the Correlation
-            // TODO use it to populate a SocksCommandResponse and sent it on the acceptReplyStream
+            // TODO the Socks Server has responded with a Begin Frame
+            // TODO negotiate the version and authentication methods
+            // FIXME how to deal with the correlation (the response back on the accept reply)
 
 
             context.router.setThrottle(acceptReplyName, newAcceptReplyId, this::handleThrottle);

@@ -4,7 +4,7 @@
 #
 
 RULE canWrap check
-CLASS org.reaktivity.nukleus.socks.internal.stream.protocol.SocksNegotiationRequestFW
+CLASS SocksNegotiationRequestFW
 METHOD canWrap(org.agrona.DirectBuffer, int, int)
 HELPER org.reaktivity.nukleus.socks.internal.SocksBufferHelper$SocksNegotiationFWCanWrap
 IF TRUE

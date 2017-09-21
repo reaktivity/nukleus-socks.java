@@ -15,13 +15,15 @@
  */
 package org.reaktivity.nukleus.socks.internal;
 
+import static org.reaktivity.nukleus.route.RouteKind.CLIENT;
 import static org.reaktivity.nukleus.route.RouteKind.SERVER;
 
 import org.reaktivity.nukleus.Configuration;
 import org.reaktivity.nukleus.Nukleus;
 import org.reaktivity.nukleus.NukleusBuilder;
 import org.reaktivity.nukleus.NukleusFactorySpi;
-import org.reaktivity.nukleus.socks.internal.stream.ServerStreamFactoryBuilder;
+import org.reaktivity.nukleus.socks.internal.stream.client.ClientStreamFactoryBuilder;
+import org.reaktivity.nukleus.socks.internal.stream.server.ServerStreamFactoryBuilder;
 
 public final class SocksNukleusFactorySpi implements NukleusFactorySpi
 {
@@ -36,7 +38,9 @@ public final class SocksNukleusFactorySpi implements NukleusFactorySpi
         Configuration config,
         NukleusBuilder builder)
     {
-        return builder.streamFactory(SERVER, new ServerStreamFactoryBuilder(config))
-                      .build();
+        return builder
+            .streamFactory(CLIENT, new ClientStreamFactoryBuilder(config))
+            .streamFactory(SERVER, new ServerStreamFactoryBuilder(config))
+            .build();
     }
 }

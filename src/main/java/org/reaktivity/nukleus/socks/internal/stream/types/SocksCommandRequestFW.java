@@ -13,13 +13,12 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package org.reaktivity.nukleus.socks.internal.stream.protocol;
+package org.reaktivity.nukleus.socks.internal.stream.types;
 
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.nio.ByteOrder;
 
 import org.agrona.BitUtil;
 import org.agrona.DirectBuffer;
@@ -58,7 +57,7 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
 
     // DST.ADDR offset is computed for each request
 
-    private static final int FIELD_SIZEBY_PORTTYP = BitUtil.SIZE_OF_SHORT; // Offset 0, relative to end of ADDRDST field
+    private static final int FIELD_SIZEBY_DSTPORT = BitUtil.SIZE_OF_SHORT; // Offset 0, relative to end of ADDRDST field
 
     // Temporary data used for decoding
     private final StringFW domainFW = new StringFW();
@@ -110,7 +109,7 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
 
         }
 
-        return addrTypOffset + FIELD_SIZEBY_ADDRTYP + addrVariableSize + addrLength + FIELD_SIZEBY_PORTTYP;
+        return addrTypOffset + FIELD_SIZEBY_ADDRTYP + addrVariableSize + addrLength + FIELD_SIZEBY_DSTPORT;
     }
 
     @Override
@@ -166,6 +165,7 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
 
     public int port()
     {
-        return buffer().getShort(decodeLimit(buffer(), offset()) - FIELD_SIZEBY_PORTTYP, ByteOrder.BIG_ENDIAN);
+        int portOffset = decodeLimit(buffer(), offset()) - FIELD_SIZEBY_DSTPORT;
+        return ((buffer().getByte(portOffset) & 0xff) << 8) | (buffer().getByte(portOffset + 1) & 0xff);
     }
 }
