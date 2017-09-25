@@ -22,6 +22,8 @@ import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
 import org.reaktivity.nukleus.socks.internal.stream.DefaultStreamHandler;
+import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationRequestFW;
+import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
@@ -55,6 +57,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
         this.connectReplyThrottle = connectReplyThrottle;
         this.connectReplyId = connectReplyId;
         this.streamState = this::beforeBegin;
+        this.windowHandler = this::processInitialWindow; // TODO Should have more handlers depending on state ?
     }
 
     void handleStream(
@@ -114,24 +117,73 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
     {
         final long connectRef = begin.sourceRef();
         final long correlationId = begin.correlationId();
-
         final Correlation correlation = context.correlations.remove(correlationId);
-
         if (connectRef == 0L && correlation != null)
         {
-            final String acceptReplyName = correlation.acceptName();
-
-            final MessageConsumer newAcceptReply = context.router.supplyTarget(acceptReplyName);
-            final long newAcceptReplyId = context.supplyStreamId.getAsLong();
-            final long newCorrelationId = correlation.correlationId();
-
-
             // TODO the Socks Server has responded with a Begin Frame
             // TODO negotiate the version and authentication methods
             // FIXME how to deal with the correlation (the response back on the accept reply)
 
+            // Reply with Socks version 5 and "NO AUTHENTICATION REQUIRED"
+//            doWindow(acceptThrottle, acceptReplyStreamId, 1024, 1024); // TODO replace hardcoded values
 
-            context.router.setThrottle(acceptReplyName, newAcceptReplyId, this::handleThrottle);
+            final MessageConsumer connect =  context.router.supplyTarget(begin.source().asString());
+//            System.out.println("connectRoute: "+  connectRoute + " connectName: " + connectName);
+
+//
+            final long connectStreamId = correlation.connectStreamId();
+
+            SocksNegotiationRequestFW socksNegotiationRequestFW = context.socksNegotiationRequestRW
+                .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
+                .version((byte) 0x05)
+                .nmethods((byte) 0x01)
+                .method(new byte[] {0x00})
+                .build();
+
+            DataFW dataRequestFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                .streamId(connectStreamId)
+                .payload(p -> p.set(
+                    socksNegotiationRequestFW.buffer(),
+                    socksNegotiationRequestFW.offset(),
+                    socksNegotiationRequestFW.sizeof()))
+                .extension(e -> e.reset())
+                .build();
+
+            connect.accept(
+                dataRequestFW.typeId(),
+                dataRequestFW.buffer(),
+                dataRequestFW.offset(),
+                dataRequestFW.sizeof());
+
+            doWindow(this::handleThrottle, connectReplyId, 1024, 1024); // TODO replace hardcoded values
+
+
+
+
+            // TODO only send this frame when Socks Connection has been established
+            // TODO how to store the correlation object ? (just pass it along ?)
+            // TODO Threading model - can we have a new stream that would overwrite data ?
+
+            final String acceptReplyName = correlation.acceptName();
+            final MessageConsumer newAcceptReply = context.router.supplyTarget(acceptReplyName);
+            final long newAcceptReplyId = context.supplyStreamId.getAsLong();
+            final long acceptCorrelationId = correlation.acceptCorrelationId();
+            final long acceptReplyRef = 0; // Bi-directional reply
+            BeginFW beginToAcceptReply = context.beginRW
+                .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                .streamId(newAcceptReplyId)
+                .source("socks")
+                .sourceRef(acceptReplyRef)
+                .correlationId(acceptCorrelationId)
+                .extension(e -> e.reset())
+                .build();
+            newAcceptReply.accept(
+                beginToAcceptReply.typeId(),
+                beginToAcceptReply.buffer(),
+                beginToAcceptReply.offset(),
+                beginToAcceptReply.sizeof());
+
+//            context.router.setThrottle(acceptReplyName, newAcceptReplyId, this::handleThrottle);
 
             this.acceptReply = newAcceptReply;
             this.acceptReplyId = newAcceptReplyId;
@@ -143,6 +195,29 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
         {
             doReset(connectReplyThrottle, connectReplyId);
         }
+    }
+
+
+
+    RouteFW resolveTarget(
+        long sourceRef,
+        String sourceName)
+    {
+        return context.router.resolve
+            (
+                (msgTypeId, buffer, offset, limit) ->
+                {
+                    RouteFW route = context.routeRO.wrap(buffer, offset, limit);
+                    // TODO implement mode and destination
+                    return sourceRef == route.sourceRef() &&
+                        sourceName.equals(route.source()
+                            .asString());
+                },
+                (msgTypeId, buffer, offset, length) ->
+                {
+                    return context.routeRO.wrap(buffer, offset, offset + length);
+                }
+            );
     }
 
     private void handleData(DataFW data)

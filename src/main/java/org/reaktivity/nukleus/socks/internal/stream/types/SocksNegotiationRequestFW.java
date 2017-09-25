@@ -17,6 +17,7 @@ package org.reaktivity.nukleus.socks.internal.stream.types;
 
 import org.agrona.BitUtil;
 import org.agrona.DirectBuffer;
+import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 
 public class SocksNegotiationRequestFW extends Flyweight implements Fragmented
@@ -25,8 +26,8 @@ public class SocksNegotiationRequestFW extends Flyweight implements Fragmented
     private static final int FIELD_OFFSET_VERSION = 0;
     private static final int FIELD_SIZEBY_VERSION = BitUtil.SIZE_OF_BYTE;
 
-    private static final int FIELD_OFFSET_METHODS = FIELD_OFFSET_VERSION + FIELD_SIZEBY_VERSION;
-    private static final int FIELD_SIZEBY_METHODS = BitUtil.SIZE_OF_BYTE;
+    private static final int FIELD_OFFSET_NMETHODS = FIELD_OFFSET_VERSION + FIELD_SIZEBY_VERSION;
+    private static final int FIELD_SIZEBY_NMETHODS = BitUtil.SIZE_OF_BYTE;
 
     @Override
     public int limit()
@@ -53,8 +54,8 @@ public class SocksNegotiationRequestFW extends Flyweight implements Fragmented
         DirectBuffer buffer,
         int offset)
     {
-        final int currentFieldOffsetMethods = offset + FIELD_OFFSET_METHODS;
-        return currentFieldOffsetMethods + FIELD_SIZEBY_METHODS + buffer.getByte(currentFieldOffsetMethods);
+        final int currentFieldOffsetMethods = offset + FIELD_OFFSET_NMETHODS;
+        return currentFieldOffsetMethods + FIELD_SIZEBY_NMETHODS + buffer.getByte(currentFieldOffsetMethods);
     }
 
     @Override
@@ -72,13 +73,49 @@ public class SocksNegotiationRequestFW extends Flyweight implements Fragmented
 
     public byte nmethods()
     {
-        return (buffer().getByte(offset() + FIELD_OFFSET_METHODS));
+        return (buffer().getByte(offset() + FIELD_OFFSET_NMETHODS));
     }
 
     public byte[] methods()
     {
         byte[] methods = new byte[sizeof()];
-        buffer().getBytes(offset() + FIELD_OFFSET_METHODS + FIELD_SIZEBY_METHODS, methods);
+        buffer().getBytes(offset() + FIELD_OFFSET_NMETHODS + FIELD_SIZEBY_NMETHODS, methods);
         return methods;
+    }
+
+    public static final class Builder extends Flyweight.Builder<SocksNegotiationRequestFW>
+    {
+        public Builder()
+        {
+            super(new SocksNegotiationRequestFW());
+        }
+
+        @Override
+        public Builder wrap(
+            MutableDirectBuffer buffer,
+            int offset,
+            int maxLimit)
+        {
+            super.wrap(buffer, offset, maxLimit);
+            return this;
+        }
+
+        public Builder version(byte version)
+        {
+            buffer().putByte(offset() + FIELD_OFFSET_VERSION, version);
+            return this;
+        }
+
+        public Builder nmethods(byte nmethods)
+        {
+            buffer().putByte(offset() + FIELD_OFFSET_NMETHODS, nmethods);
+            return this;
+        }
+
+        public Builder method(byte[] methods)
+        {
+            buffer().putBytes(offset() + FIELD_OFFSET_NMETHODS + FIELD_SIZEBY_NMETHODS, methods);
+            return this;
+        }
     }
 }

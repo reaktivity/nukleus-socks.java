@@ -203,10 +203,10 @@ final class AcceptStreamHandler extends DefaultStreamHandler
             limit = this.slotOffset;                                  //
         }
 
-        if(context.socksNegotiationRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
+        if(context.socksNegotiationRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
         {
             // Wrap the frame and extract the incoming data
-            final SocksNegotiationRequestFW socksNegotiation = context.socksNegotiationRO.wrap(buffer, offset, limit);
+            final SocksNegotiationRequestFW socksNegotiation = context.socksNegotiationRequestRO.wrap(buffer, offset, limit);
             if (socksNegotiation.version() != 0x05)
             {
                 throw new IllegalStateException(
@@ -231,7 +231,7 @@ final class AcceptStreamHandler extends DefaultStreamHandler
 
             // Reply with Socks version 5 and "NO AUTHENTICATION REQUIRED"
             doWindow(acceptThrottle, acceptReplyStreamId, 1024, 1024); // TODO replace hardcoded values
-            SocksNegotiationResponseFW socksNegotiationResponseFW = context.socksNegotiationRW
+            SocksNegotiationResponseFW socksNegotiationResponseFW = context.socksNegotiationResponseRW
                 .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
                 .version((byte) 0x05)
                 .method((byte) 0x00)

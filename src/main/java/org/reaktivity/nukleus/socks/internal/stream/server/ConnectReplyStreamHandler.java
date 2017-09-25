@@ -123,7 +123,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
 
             final MessageConsumer newAcceptReply = context.router.supplyTarget(acceptReplyName);
             final long newAcceptReplyId = context.supplyStreamId.getAsLong();
-            final long newCorrelationId = correlation.correlationId();
+            final long newCorrelationId = correlation.acceptCorrelationId();
 //            begin.extension().get()
 
 

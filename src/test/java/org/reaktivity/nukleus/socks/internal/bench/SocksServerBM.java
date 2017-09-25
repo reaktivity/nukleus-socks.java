@@ -81,9 +81,9 @@ public class SocksServerBM
 //        this.target = controller.supplyTarget("target", Target::new);
 //
 //        final long sourceId = random.nextLong();
-//        final long correlationId = random.nextLong();
+//        final long acceptCorrelationId = random.nextLong();
 //
-//        source.reinit(sourceRef, sourceId, correlationId);
+//        source.reinit(sourceRef, sourceId, acceptCorrelationId);
 //        target.reinit();
 //
 //        source.doBegin();
@@ -143,7 +143,7 @@ public class SocksServerBM
 //        private void reinit(
 //            long sourceRef,
 //            long sourceId,
-//            long correlationId)
+//            long acceptCorrelationId)
 //        {
 //            final MutableDirectBuffer writeBuffer = new UnsafeBuffer(new byte[256]);
 //
@@ -164,7 +164,7 @@ public class SocksServerBM
 //            this.begin = beginRW.wrap(writeBuffer, 0, writeBuffer.capacity())
 //                    .streamId(sourceId)
 //                    .sourceRef(sourceRef)
-//                    .correlationId(correlationId)
+//                    .acceptCorrelationId(acceptCorrelationId)
 //                    .extension(e -> e.set(visitHttpBeginEx(headers)))
 //                    .build();
 //

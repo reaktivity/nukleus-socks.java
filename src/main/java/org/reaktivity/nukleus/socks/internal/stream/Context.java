@@ -69,8 +69,12 @@ public class Context
     public final MessageFunction<RouteFW> wrapRoute;
 
     // Socks protocol flyweights
-    public final SocksNegotiationRequestFW socksNegotiationRO = new SocksNegotiationRequestFW();
-    public final SocksNegotiationResponseFW.Builder socksNegotiationRW = new SocksNegotiationResponseFW.Builder();
+    public final SocksNegotiationRequestFW socksNegotiationRequestRO = new SocksNegotiationRequestFW();
+    public final SocksNegotiationRequestFW.Builder socksNegotiationRequestRW = new SocksNegotiationRequestFW.Builder();
+
+    public final SocksNegotiationResponseFW socksNegotiationResponseRO = new SocksNegotiationResponseFW();
+    public final SocksNegotiationResponseFW.Builder socksNegotiationResponseRW = new SocksNegotiationResponseFW.Builder();
+
     public final SocksCommandRequestFW socksConnectRequestRO = new SocksCommandRequestFW();
 
     public Context(

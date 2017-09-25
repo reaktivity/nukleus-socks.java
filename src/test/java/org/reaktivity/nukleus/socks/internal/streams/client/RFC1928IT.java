@@ -54,7 +54,7 @@ public class RFC1928IT
     @Test
     @ScriptProperty({
         "mode 'FORWARD'",
-        "serverAccept \"nukleus://target/streams/socks\""
+        "serverAccept 'nukleus://target/streams/socks#source'"
     })
     @Specification({
         "${route}/client/controller",

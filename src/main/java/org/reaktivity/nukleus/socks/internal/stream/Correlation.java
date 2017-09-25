@@ -18,16 +18,37 @@ package org.reaktivity.nukleus.socks.internal.stream;
 public class Correlation
 {
 
-    public long correlationId()
+    long connectStreamId;
+    long acceptCorrelationId;
+    String acceptName;
+
+    public long acceptCorrelationId()
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return acceptCorrelationId;
     }
 
     public String acceptName()
     {
-        // TODO Auto-generated method stub
-        return null;
+        return acceptName;
     }
 
+    public void acceptCorrelationId(long correlationId)
+    {
+        this.acceptCorrelationId = correlationId;
+    }
+
+    public void acceptName(String acceptName)
+    {
+        this.acceptName = acceptName;
+    }
+
+    public long connectStreamId()
+    {
+        return connectStreamId;
+    }
+
+    public void connectStreamId(long connectStreamId)
+    {
+        this.connectStreamId = connectStreamId;
+    }
 }
