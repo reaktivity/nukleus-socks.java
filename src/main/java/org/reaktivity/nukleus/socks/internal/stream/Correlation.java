@@ -18,9 +18,21 @@ package org.reaktivity.nukleus.socks.internal.stream;
 public class Correlation
 {
 
-    long connectStreamId;
-    long acceptCorrelationId;
-    String acceptName;
+    // TODO comment these fields
+    private long acceptCorrelationId;
+    private String acceptName;
+    private AcceptTransitionListener acceptTransitionListener;
+    private long connectStreamId;
+
+    public AcceptTransitionListener acceptTransitionListener()
+    {
+        return acceptTransitionListener;
+    }
+
+    public void acceptTransitionListener(AcceptTransitionListener acceptTransitionListener)
+    {
+        this.acceptTransitionListener = acceptTransitionListener;
+    }
 
     public long acceptCorrelationId()
     {
@@ -51,4 +63,5 @@ public class Correlation
     {
         this.connectStreamId = connectStreamId;
     }
+
 }

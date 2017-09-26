@@ -19,6 +19,8 @@ import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
 import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
+import org.reaktivity.nukleus.socks.internal.metadata.State;
+import org.reaktivity.nukleus.socks.internal.stream.AcceptTransitionListener;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
 import org.reaktivity.nukleus.socks.internal.stream.DefaultStreamHandler;
@@ -30,7 +32,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-final class AcceptStreamHandler extends DefaultStreamHandler
+public final class AcceptStreamHandler extends DefaultStreamHandler implements AcceptTransitionListener
 {
     private final MessageConsumer acceptThrottle;
 
@@ -67,15 +69,17 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         long acceptCorrelationId)
     {
         super(context);
+        // init state machine
+        this.streamState = this::beforeBeginState;
+
+        // save reusable data (eventually mode to context)
         this.acceptThrottle = acceptThrottle;
         this.acceptStreamId = acceptStreamId;
         this.acceptSourceRef = acceptSourceRef;
         this.acceptSourceName = acceptSourceName;
         this.acceptCorrelationId = acceptCorrelationId;
-        this.streamState = this::beforeBeginState;
-
-        System.out.println(this.getClass() + " init");
     }
+
 
     RouteFW resolveTarget(
         long sourceRef,
@@ -108,6 +112,7 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         streamState.accept(msgTypeId, buffer, index, length);
     }
 
+    @State
     private void beforeBeginState(
         int msgTypeId,
         DirectBuffer buffer,
@@ -129,34 +134,24 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         BeginFW begin)
     {
         System.out.println(this.getClass() + " handleBegin");
-
         // TODO confirm this is same BeginFW instance as the one used to create the current AcceptStreamHandler
-
-
-        // TODO Implement actual SOCKS negotiation and connection with Socks Server
-
-
-        // Initialize connect stream
         final RouteFW connectRoute = resolveTarget(acceptSourceRef, acceptSourceName);
-        final String connectName = connectRoute.target().asString();
+        final String connectName = connectRoute.target()
+            .asString();
         final MessageConsumer connect = context.router.supplyTarget(connectName);
         final long connectRef = connectRoute.targetRef();
         final long connectStreamId = context.supplyStreamId.getAsLong();
         final long connectCorrelationId = context.supplyCorrelationId.getAsLong();
 
-        System.out.println("Sending window on stream: " + connectStreamId);
-        doWindow(this::handleAcceptReplyThrottle, connectStreamId, 1024, 1024); // TODO replace hardcoded values
-
-        System.out.println("Will connect to: " + connectName + " with ref: " + connectRef);
-        System.out.println("MessageConsumer connect: " + connect + " with connectStreamId: " + connectStreamId + " connectCorrelationId: " + connectCorrelationId);
 
 
         final Correlation correlation = new Correlation();
         correlation.acceptCorrelationId(begin.correlationId());
         correlation.acceptName(acceptSourceName);
         correlation.connectStreamId(connectStreamId);
+        correlation.acceptTransitionListener(this);
 
-        context.correlations.put(connectCorrelationId, correlation); // Use this map on the CONNECT STREAM
+        context.correlations.put(connectCorrelationId, correlation);
         final BeginFW connectBegin = context.beginRW
             .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(connectStreamId)
@@ -166,40 +161,43 @@ final class AcceptStreamHandler extends DefaultStreamHandler
             .extension(e -> e.reset())
             .build();
         connect.accept(connectBegin.typeId(), connectBegin.buffer(), connectBegin.offset(), connectBegin.sizeof());
+
+
+        // doWindow(this::handleAcceptReplyThrottle, connectStreamId, 1024, 1024); // TODO replace hardcoded values
         context.router.setThrottle(connectName, connectStreamId, this::handleConnectThrottle); // FIXME handleAcceptReplyThrottle ?
-        // tell accept stream you can handle more data
-
-
-
-
-//        // TODO will send the begin frame on the acceptReplyStream when socks CONNECT is done
-//        // to WRITE to AcceptReplyStream
-//        final long acceptCorrelationId = begin.correlationId();
-//        this.acceptReply = context.router.supplyTarget(acceptSourceName);
-//        this.acceptReplyStreamId = context.supplyStreamId.getAsLong();
-//        final long acceptReplyRef = 0; // Bi-directional reply
-//        BeginFW beginToAcceptReply = context.beginRW
-//            .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-//            .streamId(acceptReplyStreamId)
-//            .source("socks")
-//            .sourceRef(acceptReplyRef)
-//            .correlationId(acceptCorrelationId)
-//            .extension(e -> e.reset())
-//            .build();
-//        acceptReply.accept(
-//            beginToAcceptReply.typeId(),
-//            beginToAcceptReply.buffer(),
-//            beginToAcceptReply.offset(),
-//            beginToAcceptReply.sizeof());
-//
-//        context.router.setThrottle(acceptSourceName, acceptReplyStreamId, this::handleAcceptReplyThrottle);
-//
-//        // tell accept stream you can handle more data
-//        doWindow(acceptThrottle, begin.streamId(), 1024, 1024); // TODO replace hardcoded values
-        //        this.streamState = this::afterBeginState;
+        this.streamState = this::beforeConnectState;
     }
 
-    private void afterNegotiationState(
+
+    @Override
+    public void transitionToConnectionReady()
+    {
+        // checkState();
+        // TODO send the BeginStream back on the AcceptReplyStream
+        // doSendBeginStream
+        // tell accept stream you can handle more data
+        this.doWindow(acceptThrottle, acceptStreamId, 1024, 1024); // TODO replace hardcoded values
+        this.streamState = this::afterConnectState;
+    }
+
+    @Override
+    public void transitionToAborted()
+    {
+
+    }
+
+    @State
+    private void beforeConnectState(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
+    {
+        doReset(acceptThrottle, acceptStreamId);
+    }
+
+    @State
+    private void afterConnectState(
         int msgTypeId,
         DirectBuffer buffer,
         int index,
@@ -242,7 +240,6 @@ final class AcceptStreamHandler extends DefaultStreamHandler
             break;
         }
     }
-
 
     private void handleConnectThrottle(
         int msgTypeId,
