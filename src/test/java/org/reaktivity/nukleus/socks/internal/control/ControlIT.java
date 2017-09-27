@@ -49,7 +49,10 @@ public class ControlIT
         .around(reaktor);
 
     @Test
-    @ScriptProperty("mode 'FORWARD'")
+    @ScriptProperty(
+        "mode 'FORWARD'"
+
+    )
     @Specification({
         "${route}/server/controller"
     })

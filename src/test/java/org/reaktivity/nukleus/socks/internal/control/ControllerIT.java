@@ -63,7 +63,7 @@ public class ControllerIT
         k3po.start();
 
         reaktor.controller(SocksController.class)
-            .routeServer("source", 0L, "target", targetRef, "Forward")
+            .routeServer("source", 0L, "target", targetRef, "Forward", "example.com:8080")
             .get();
 
         k3po.finish();
@@ -81,7 +81,7 @@ public class ControllerIT
         k3po.start();
 
         reaktor.controller(SocksController.class)
-            .routeServer("source", 0L, "target", targetRef, "Reverse")
+            .routeServer("source", 0L, "target", targetRef, "Reverse", "example.com:8080")
             .get();
 
         k3po.finish();
@@ -99,7 +99,7 @@ public class ControllerIT
         k3po.start();
 
         reaktor.controller(SocksController.class)
-            .routeClient("source", 0L, "target", targetRef, "Forward")
+            .routeClient("source", 0L, "target", targetRef, "Forward", "example.com:8080")
             .get();
 
         k3po.finish();
@@ -117,7 +117,7 @@ public class ControllerIT
         k3po.start();
 
         reaktor.controller(SocksController.class)
-            .routeClient("source", 0L, "target", targetRef, "Reverse")
+            .routeClient("source", 0L, "target", targetRef, "Reverse", "example.com:8080")
             .get();
 
         k3po.finish();
@@ -136,13 +136,13 @@ public class ControllerIT
         k3po.start();
 
         long sourceRef = reaktor.controller(SocksController.class)
-            .routeServer("source", 0L, "target", targetRef, "Forward")
+            .routeServer("source", 0L, "target", targetRef, "Forward", "example.com:8080")
             .get();
 
         k3po.notifyBarrier("ROUTED_SERVER");
 
         reaktor.controller(SocksController.class)
-            .unrouteServer("source", sourceRef, "target", targetRef, "Forward")
+            .unrouteServer("source", sourceRef, "target", targetRef, "Forward", "example.com:8080")
             .get();
 
         k3po.finish();
@@ -161,13 +161,13 @@ public class ControllerIT
         k3po.start();
 
         long sourceRef = reaktor.controller(SocksController.class)
-            .routeServer("source", 0L, "target", targetRef, "Reverse")
+            .routeServer("source", 0L, "target", targetRef, "Reverse", "example.com:8080")
             .get();
 
         k3po.notifyBarrier("ROUTED_SERVER");
 
         reaktor.controller(SocksController.class)
-            .unrouteServer("source", sourceRef, "target", targetRef, "Reverse")
+            .unrouteServer("source", sourceRef, "target", targetRef, "Reverse", "example.com:8080")
             .get();
 
         k3po.finish();
@@ -186,13 +186,13 @@ public class ControllerIT
         k3po.start();
 
         long sourceRef = reaktor.controller(SocksController.class)
-            .routeClient("source", 0L, "target", targetRef, "Forward")
+            .routeClient("source", 0L, "target", targetRef, "Forward", "example.com:8080")
             .get();
 
         k3po.notifyBarrier("ROUTED_CLIENT");
 
         reaktor.controller(SocksController.class)
-            .unrouteClient("source", sourceRef, "target", targetRef, "Forward")
+            .unrouteClient("source", sourceRef, "target", targetRef, "Forward", "example.com:8080")
             .get();
 
         k3po.finish();
@@ -211,13 +211,13 @@ public class ControllerIT
         k3po.start();
 
         long sourceRef = reaktor.controller(SocksController.class)
-            .routeClient("source", 0L, "target", targetRef, "Reverse")
+            .routeClient("source", 0L, "target", targetRef, "Reverse", "example.com:8080")
             .get();
 
         k3po.notifyBarrier("ROUTED_CLIENT");
 
         reaktor.controller(SocksController.class)
-            .unrouteClient("source", sourceRef, "target", targetRef, "Reverse")
+            .unrouteClient("source", sourceRef, "target", targetRef, "Reverse", "example.com:8080")
             .get();
 
         k3po.finish();

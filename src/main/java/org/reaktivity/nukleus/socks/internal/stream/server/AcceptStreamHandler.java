@@ -313,9 +313,9 @@ final class AcceptStreamHandler extends DefaultStreamHandler
             limit = this.slotOffset;                                  //
         }
 
-        if(context.socksConnectRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
+        if(context.socksConnectionRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
         {
-            final SocksCommandRequestFW socksCommandRequestFW = context.socksConnectRequestRO.wrap(buffer, offset, limit);
+            final SocksCommandRequestFW socksCommandRequestFW = context.socksConnectionRequestRO.wrap(buffer, offset, limit);
             System.out.println(
                 "Received connection request for domain: " + socksCommandRequestFW.domain() +
                 " and port: " + socksCommandRequestFW.port()
@@ -336,7 +336,7 @@ final class AcceptStreamHandler extends DefaultStreamHandler
             final long connectStreamId = context.supplyStreamId.getAsLong();
             final long connectCorrelationId = context.supplyCorrelationId.getAsLong();
 
-            // TODO add the socksConnectRequestRO relevant data into, if any, into the Correlation
+            // TODO add the socksConnectionRequestRO relevant data into, if any, into the Correlation
             context.correlations.put(connectCorrelationId, new Correlation()); // Use this map on the CONNECT STREAM
 
             final BeginFW connectBegin = context.beginRW

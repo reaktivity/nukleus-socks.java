@@ -26,10 +26,12 @@ import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageFunction;
 import org.reaktivity.nukleus.route.RouteManager;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandRequestFW;
+import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandResponseFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationRequestFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationResponseFW;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
+import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
@@ -68,6 +70,8 @@ public class Context
     public final Long2ObjectHashMap<Correlation> correlations;
     public final MessageFunction<RouteFW> wrapRoute;
 
+    public final SocksRouteExFW routeExRO = new SocksRouteExFW();
+
     // Socks protocol flyweights
     public final SocksNegotiationRequestFW socksNegotiationRequestRO = new SocksNegotiationRequestFW();
     public final SocksNegotiationRequestFW.Builder socksNegotiationRequestRW = new SocksNegotiationRequestFW.Builder();
@@ -75,7 +79,11 @@ public class Context
     public final SocksNegotiationResponseFW socksNegotiationResponseRO = new SocksNegotiationResponseFW();
     public final SocksNegotiationResponseFW.Builder socksNegotiationResponseRW = new SocksNegotiationResponseFW.Builder();
 
-    public final SocksCommandRequestFW socksConnectRequestRO = new SocksCommandRequestFW();
+    public final SocksCommandRequestFW socksConnectionRequestRO = new SocksCommandRequestFW();
+    public final SocksCommandRequestFW.Builder socksConnectionRequestRW = new SocksCommandRequestFW.Builder();
+
+    public final SocksCommandResponseFW socksConnectionResponseRO = new SocksCommandResponseFW();
+    public final SocksCommandResponseFW.Builder socksConnectionResponseRW = new SocksCommandResponseFW.Builder();
 
     public Context(
         Configuration config,

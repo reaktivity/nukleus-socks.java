@@ -99,7 +99,8 @@ public final class SocksController implements Controller
         long sourceRef,
         String target,
         long targetRef,
-        String mode)
+        String mode,
+        String dstAddrPort)
     {
         long correlationId = controllerSpi.nextCorrelationId();
 
@@ -110,7 +111,7 @@ public final class SocksController implements Controller
             .sourceRef(sourceRef)
             .target(target)
             .targetRef(targetRef)
-            .extension(b -> b.set(visitRouteEx(mode)))
+            .extension(b -> b.set(visitRouteEx(mode, dstAddrPort)))
             .build();
 
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
@@ -121,7 +122,9 @@ public final class SocksController implements Controller
         long sourceRef,
         String target,
         long targetRef,
-        String mode)
+        String mode,
+        String dstAddrPort
+        )
     {
         long correlationId = controllerSpi.nextCorrelationId();
 
@@ -132,7 +135,7 @@ public final class SocksController implements Controller
             .sourceRef(sourceRef)
             .target(target)
             .targetRef(targetRef)
-            .extension(b -> b.set(visitRouteEx(mode)))
+            .extension(b -> b.set(visitRouteEx(mode, dstAddrPort)))
             .build();
 
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
@@ -143,7 +146,9 @@ public final class SocksController implements Controller
         long sourceRef,
         String target,
         long targetRef,
-        String mode)
+        String mode,
+        String dstAddrPort
+        )
     {
         long correlationId = controllerSpi.nextCorrelationId();
 
@@ -154,7 +159,7 @@ public final class SocksController implements Controller
             .sourceRef(sourceRef)
             .target(target)
             .targetRef(targetRef)
-            .extension(b -> b.set(visitRouteEx(mode)))
+            .extension(b -> b.set(visitRouteEx(mode, dstAddrPort)))
             .build();
 
         return controllerSpi
@@ -166,7 +171,8 @@ public final class SocksController implements Controller
         long sourceRef,
         String target,
         long targetRef,
-        String mode)
+        String mode,
+        String dstAddrPort)
     {
         long correlationId = controllerSpi.nextCorrelationId();
 
@@ -177,7 +183,7 @@ public final class SocksController implements Controller
             .sourceRef(sourceRef)
             .target(target)
             .targetRef(targetRef)
-            .extension(b -> b.set(visitRouteEx(mode)))
+            .extension(b -> b.set(visitRouteEx(mode, dstAddrPort)))
             .build();
 
         return controllerSpi
@@ -185,11 +191,12 @@ public final class SocksController implements Controller
     }
 
     private Flyweight.Builder.Visitor visitRouteEx(
-        String mode)
+        String mode, String dstAddrPort)
     {
         return (MutableDirectBuffer buffer, int offset, int limit) ->
             routeExRW.wrap(buffer, offset, limit)
                 .mode(builder -> builder.set(SocksMode.valueOf(mode.toUpperCase())))
+                .destAddrPort(dstAddrPort)
                 .build()
                 .sizeof();
     }

@@ -23,6 +23,7 @@ public class Correlation
     private String acceptName;
     private AcceptTransitionListener acceptTransitionListener;
     private long connectStreamId;
+    private long connectRef;
 
     public AcceptTransitionListener acceptTransitionListener()
     {
@@ -64,4 +65,13 @@ public class Correlation
         this.connectStreamId = connectStreamId;
     }
 
+    public long connectRef()
+    {
+        return connectRef;
+    }
+
+    public void connectRef(long connectRef)
+    {
+        this.connectRef = connectRef;
+    }
 }

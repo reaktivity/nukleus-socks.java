@@ -19,9 +19,11 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 
 import org.agrona.BitUtil;
 import org.agrona.DirectBuffer;
+import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 import org.reaktivity.nukleus.socks.internal.types.StringFW;
 
@@ -167,5 +169,75 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
     {
         int portOffset = decodeLimit(buffer(), offset()) - FIELD_SIZEBY_DSTPORT;
         return ((buffer().getByte(portOffset) & 0xff) << 8) | (buffer().getByte(portOffset + 1) & 0xff);
+    }
+
+    public static final class Builder extends Flyweight.Builder<SocksCommandRequestFW>
+    {
+        public Builder()
+        {
+            super(new SocksCommandRequestFW());
+        }
+
+        @Override
+        public Builder wrap(
+            MutableDirectBuffer buffer,
+            int offset,
+            int maxLimit)
+        {
+            super.wrap(buffer, offset, maxLimit);
+            buffer().putByte(offset() + FIELD_OFFSET_RSV, (byte) 0x00);
+            return this;
+        }
+
+        public Builder version(byte version)
+        {
+            buffer().putByte(offset() + FIELD_OFFSET_VERSION, version);
+            return this;
+        }
+
+        public Builder command(byte command)
+        {
+            buffer().putByte(offset() + FIELD_OFFSET_COMMAND, command);
+            return this;
+        }
+
+        public Builder destination(String destinationAddress)
+        {
+            String[] tokens = destinationAddress.split(":");
+            int port = Integer.parseInt(tokens[1]);
+            // Remove digits, ., : and [ ], and check if there is anything remaining
+            if (tokens[0].replaceAll("[0-9\\.\\]\\[:]", "").length() == 0)
+            {
+                try
+                {
+                    InetAddress inetAddress = InetAddress.getByName(tokens[0]);
+                    return this.destination(inetAddress instanceof Inet4Address ? (byte) 0x01 : (byte) 0x04,
+                        inetAddress.getAddress(), port);
+                } catch (UnknownHostException e)
+                {
+                    throw new IllegalStateException("Unable to encode destinationAddress: " + destinationAddress, e);
+                }
+            }
+
+            return this.destination((byte) 0x03, tokens[0].getBytes(StandardCharsets.UTF_8), port);
+        }
+
+        public Builder destination(
+            byte atyp,
+            byte[] addr,
+            int port)
+        {
+            buffer().putByte(offset() + FIELD_OFFSET_ADDRTYP, atyp);
+
+            int addrOffset = offset() + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP;
+            if (atyp == 0x03)
+            {
+                buffer().putByte(addrOffset++, (byte) addr.length);
+            }
+            buffer().putBytes(addrOffset, addr);
+            buffer().putByte(addrOffset + addr.length, (byte) ((port >> 8) & 0xFF));
+            buffer().putByte(addrOffset + addr.length + 1, (byte) (port & 0xFF));
+            return this;
+        }
     }
 }

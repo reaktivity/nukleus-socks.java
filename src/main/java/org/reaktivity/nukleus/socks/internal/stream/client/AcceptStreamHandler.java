@@ -42,9 +42,9 @@ public final class AcceptStreamHandler extends DefaultStreamHandler implements A
     private final long acceptCorrelationId;
 
     private long acceptReplyStreamId;
+    private long connectStreamId;
 
     private MessageConsumer connectTarget;
-    private long connectId;
 
     private MessageConsumer streamState;
 
@@ -80,26 +80,24 @@ public final class AcceptStreamHandler extends DefaultStreamHandler implements A
         this.acceptCorrelationId = acceptCorrelationId;
     }
 
-
     RouteFW resolveTarget(
         long sourceRef,
         String sourceName)
     {
-        return context.router.resolve
-            (
-                (msgTypeId, buffer, offset, limit) ->
-                {
-                    RouteFW route = context.routeRO.wrap(buffer, offset, limit);
-                    // TODO implement mode and destination
-                    return sourceRef == route.sourceRef() &&
-                        sourceName.equals(route.source()
-                            .asString());
-                },
-                (msgTypeId, buffer, offset, length) ->
-                {
-                    return context.routeRO.wrap(buffer, offset, offset + length);
-                }
-            );
+        return context.router.resolve(
+            (msgTypeId, buffer, offset, limit) ->
+            {
+                RouteFW route = context.routeRO.wrap(buffer, offset, limit);
+                // TODO implement mode and destination
+                return sourceRef == route.sourceRef() &&
+                    sourceName.equals(route.source()
+                        .asString());
+            },
+            (msgTypeId, buffer, offset, length) ->
+            {
+                return context.routeRO.wrap(buffer, offset, offset + length);
+            }
+        );
     }
 
     void handleStream(
@@ -134,22 +132,24 @@ public final class AcceptStreamHandler extends DefaultStreamHandler implements A
         BeginFW begin)
     {
         System.out.println(this.getClass() + " handleBegin");
+
+        acceptReply = context.router.supplyTarget(acceptSourceName);
+
         // TODO confirm this is same BeginFW instance as the one used to create the current AcceptStreamHandler
         final RouteFW connectRoute = resolveTarget(acceptSourceRef, acceptSourceName);
         final String connectName = connectRoute.target()
             .asString();
         final MessageConsumer connect = context.router.supplyTarget(connectName);
         final long connectRef = connectRoute.targetRef();
-        final long connectStreamId = context.supplyStreamId.getAsLong();
+        connectStreamId = context.supplyStreamId.getAsLong();
         final long connectCorrelationId = context.supplyCorrelationId.getAsLong();
-
-
 
         final Correlation correlation = new Correlation();
         correlation.acceptCorrelationId(begin.correlationId());
         correlation.acceptName(acceptSourceName);
         correlation.connectStreamId(connectStreamId);
         correlation.acceptTransitionListener(this);
+        correlation.connectRef(connectRef);
 
         context.correlations.put(connectCorrelationId, correlation);
         final BeginFW connectBegin = context.beginRW
@@ -162,12 +162,11 @@ public final class AcceptStreamHandler extends DefaultStreamHandler implements A
             .build();
         connect.accept(connectBegin.typeId(), connectBegin.buffer(), connectBegin.offset(), connectBegin.sizeof());
 
-
         // doWindow(this::handleAcceptReplyThrottle, connectStreamId, 1024, 1024); // TODO replace hardcoded values
-        context.router.setThrottle(connectName, connectStreamId, this::handleConnectThrottle); // FIXME handleAcceptReplyThrottle ?
+        context.router.setThrottle(connectName, connectStreamId,
+            this::handleConnectThrottle); // FIXME handleAcceptReplyThrottle ?
         this.streamState = this::beforeConnectState;
     }
-
 
     @Override
     public void transitionToConnectionReady()
@@ -207,7 +206,7 @@ public final class AcceptStreamHandler extends DefaultStreamHandler implements A
         {
         case DataFW.TYPE_ID:
             final DataFW data = context.dataRO.wrap(buffer, index, index + length);
-            //            handleConnectRequestData(data);
+            handleHighLevelData(data);
             break;
         case EndFW.TYPE_ID:
         case AbortFW.TYPE_ID:
@@ -217,6 +216,29 @@ public final class AcceptStreamHandler extends DefaultStreamHandler implements A
             doReset(acceptThrottle, acceptStreamId);
             break;
         }
+    }
+
+    private void handleHighLevelData(DataFW data)
+    {
+        DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+            .streamId(connectStreamId)
+            .payload(p -> p.set(
+                data.payload().buffer(),
+                data.payload().offset(),
+                data.payload().sizeof()))
+            .extension(e -> e.reset())
+            .build();
+
+        final RouteFW connectRoute = resolveTarget(acceptSourceRef, acceptSourceName);
+        final String connectName = connectRoute.target().asString();
+        final MessageConsumer connect = context.router.supplyTarget(connectName);
+        connect.accept(
+            dataForwardFW.typeId(),
+            dataForwardFW.buffer(),
+            dataForwardFW.offset(),
+            dataForwardFW.sizeof());
+
+        this.doWindow(acceptThrottle, acceptStreamId, 1024, 1024); // TODO replace hardcoded values
     }
 
     private void handleAcceptReplyThrottle(
