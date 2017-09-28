@@ -23,10 +23,10 @@ import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.metadata.State;
+import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamHandler;
 import org.reaktivity.nukleus.socks.internal.stream.AcceptTransitionListener;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
-import org.reaktivity.nukleus.socks.internal.stream.DefaultStreamHandler;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandRequestFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandResponseFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationRequestFW;
@@ -41,24 +41,35 @@ import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-final class ConnectReplyStreamHandler extends DefaultStreamHandler
+final class ConnectReplyStreamHandler extends AbstractStreamHandler
 {
+    // Can be used to send RESET and WINDOW back to the TARGET on the CONNECT-REPLY stream
     private final MessageConsumer connectReplyThrottle;
-    private final long connectReplyId;
 
-    private MessageConsumer acceptReply;
-    private MessageConsumer connect;
+    // CONNECT-REPLY stream identifier
+    private final long connectReplyStreamId;
 
-    private long acceptReplyId;
-    private long connectId;
+    // Can be used to send BEGIN, DATA, END, ABORT frames to the SOURCE on the ACCEPT-REPLY stream
+    private MessageConsumer acceptReplyEndpoint;
+
+    // ACCEPT-REPLY stream identifier
+    private long acceptReplyStreamId;
+
+    // Can be used to send BEGIN, DATA, END, ABORT frames to the TARGET on the CONNECT stream
+    private MessageConsumer connectEndpoint;
+
+    // CONNECT stream identifier
+    private long connectStreamId;
 
     private MessageConsumer streamState;
 
+    /* Start of Window */
     private int targetWindowBytes;
     private int targetWindowFrames;
 
     private int targetWindowBytesAdjustment;
     private int targetWindowFramesAdjustment;
+    /* End of Window */
 
     private Consumer<WindowFW> windowHandler;
 
@@ -79,18 +90,18 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
     {
         super(context);
         this.connectReplyThrottle = connectReplyThrottle;
-        this.connectReplyId = connectReplyId;
+        this.connectReplyStreamId = connectReplyId;
         this.streamState = this::beforeBegin;
         this.windowHandler = this::processInitialWindow; // TODO Should have more handlers depending on state ?
     }
 
-    void handleStream(
+    @Override
+    protected void handleStream(
         int msgTypeId,
         DirectBuffer buffer,
         int index,
         int length)
     {
-        System.out.println("ServerConnectReplyStream doStream");
         streamState.accept(msgTypeId, buffer, index, length);
     }
 
@@ -108,7 +119,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
         }
         else
         {
-            doReset(connectReplyThrottle, connectReplyId);
+            doReset(connectReplyThrottle, connectReplyStreamId);
         }
     }
 
@@ -134,7 +145,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
             handleAbort(abort);
             break;
         default:
-            doReset(connectReplyThrottle, connectReplyId);
+            doReset(connectReplyThrottle, connectReplyStreamId);
             break;
         }
     }
@@ -149,9 +160,9 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
             // Reply with Socks version 5 and "NO AUTHENTICATION REQUIRED"
             //            doWindow(acceptThrottle, acceptReplyStreamId, 1024, 1024); // TODO replace hardcoded values
 
-            connect = context.router.supplyTarget(begin.source()
+            connectEndpoint = context.router.supplyTarget(begin.source()
                 .asString());
-            connectId = correlation.connectStreamId();
+            connectStreamId = correlation.connectStreamId();
             SocksNegotiationRequestFW socksNegotiationRequestFW = context.socksNegotiationRequestRW
                 .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
                 .version((byte) 0x05)
@@ -160,7 +171,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
                 .build();
 
             DataFW dataRequestFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-                .streamId(connectId)
+                .streamId(connectStreamId)
                 .payload(p -> p.set(
                     socksNegotiationRequestFW.buffer(),
                     socksNegotiationRequestFW.offset(),
@@ -168,7 +179,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
                 .extension(e -> e.reset())
                 .build();
 
-            connect.accept(
+            connectEndpoint.accept(
                 dataRequestFW.typeId(),
                 dataRequestFW.buffer(),
                 dataRequestFW.offset(),
@@ -184,7 +195,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
 
 
             // TODO is this correct throttle consumer ?
-            doWindow(this::handleThrottle, connectReplyId, 1024, 1024); // TODO replace hardcoded values
+            doWindow(this::handleThrottle, connectReplyStreamId, 1024, 1024); // TODO replace hardcoded values
 
             // TODO only send this frame when Socks Connection has been established
             // TODO how to store the correlation object ? (just pass it along ?)
@@ -197,7 +208,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
         }
         else
         {
-            doReset(connectReplyThrottle, connectReplyId);
+            doReset(connectReplyThrottle, connectReplyStreamId);
         }
     }
 
@@ -210,10 +221,10 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
                 (msgTypeId, buffer, offset, limit) ->
                 {
                     RouteFW route = context.routeRO.wrap(buffer, offset, limit);
-                    // TODO implement mode
+                    final SocksRouteExFW routeEx = route.extension().get(context.routeExRO::wrap);
                     return targetRef == route.targetRef() &&
                         targetName.equals(route.target()
-                            .asString());
+                            .asString()) && "FORWARD".equalsIgnoreCase(routeEx.mode().toString());
                 },
                 (msgTypeId, buffer, offset, length) ->
                 {
@@ -270,14 +281,14 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
                 .destination(destAddrPort)
                 .build();
             DataFW dataReplyFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-                .streamId(connectId)
+                .streamId(connectStreamId)
                 .payload(p -> p.set(
                     socksConnectRequestFW.buffer(),
                     socksConnectRequestFW.offset(),
                     socksConnectRequestFW.sizeof()))
                 .extension(e -> e.reset())
                 .build();
-            connect.accept(
+            connectEndpoint.accept(
                 dataReplyFW.typeId(),
                 dataReplyFW.buffer(),
                 dataReplyFW.offset(),
@@ -295,7 +306,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
         else if (this.slotIndex == NO_SLOT)
         {
             // Initialize the accumulation buffer
-            this.slotIndex = context.bufferPool.acquire(connectId);
+            this.slotIndex = context.bufferPool.acquire(connectStreamId);
             // FIXME might not get a slot, in this case should return an exception
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex);
             acceptBuffer.putBytes(0, buffer, offset, size);
@@ -325,7 +336,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
             handleAbort(abort);
             break;
         default:
-            doReset(connectReplyThrottle, connectReplyId);
+            doReset(connectReplyThrottle, connectReplyStreamId);
             break;
         }
     }
@@ -369,30 +380,27 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
                         socksConnectionResponse.reply()));
             }
 
-            final MessageConsumer newAcceptReply = context.router.supplyTarget(acceptReplyName);
-            final long newAcceptReplyId = context.supplyStreamId.getAsLong();
+            this.acceptReplyEndpoint = context.router.supplyTarget(acceptReplyName);
+            this.acceptReplyStreamId = context.supplyStreamId.getAsLong();
             final long acceptReplyRef = 0; // Bi-directional reply
             BeginFW beginToAcceptReply = context.beginRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-                .streamId(newAcceptReplyId)
+                .streamId(acceptReplyStreamId)
                 .source("socks")
                 .sourceRef(acceptReplyRef)
                 .correlationId(acceptCorrelationId)
                 .extension(e -> e.reset())
                 .build();
-            newAcceptReply.accept(
+            acceptReplyEndpoint.accept(
                 beginToAcceptReply.typeId(),
                 beginToAcceptReply.buffer(),
                 beginToAcceptReply.offset(),
                 beginToAcceptReply.sizeof());
 
-            // TODO understand why following 2 lines
-            this.acceptReply = newAcceptReply;
-            this.acceptReplyId = newAcceptReplyId;
+            // Signal Target nukleus we can receive more data
+            doWindow(connectReplyThrottle, connectReplyStreamId, 1024, 1024); // TODO remove hardcoded values
 
-            doWindow(connectReplyThrottle, connectReplyId, 1024, 1024); // TODO remove hardcoded values
-
-            // Change current handler's state amd the one of the AcceptStreamHandler
+            // Change current handler's state and the one of the AcceptStreamHandler
             this.streamState = this::afterConnectionResponse;
             acceptTransitionListener.transitionToConnectionReady();
 
@@ -407,7 +415,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
         else if (this.slotIndex == NO_SLOT)
         {
             // Initialize the accumulation buffer
-            this.slotIndex = context.bufferPool.acquire(connectId);
+            this.slotIndex = context.bufferPool.acquire(connectStreamId);
             // FIXME might not get a slot, in this case should return an exception
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex);
             acceptBuffer.putBytes(0, buffer, offset, size);
@@ -437,7 +445,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
             handleAbort(abort);
             break;
         default:
-            doReset(connectReplyThrottle, connectReplyId);
+            doReset(connectReplyThrottle, connectReplyStreamId);
             break;
         }
     }
@@ -445,7 +453,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
     private void handleHighLevelData(DataFW data)
     {
         DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-            .streamId(acceptReplyId)
+            .streamId(acceptReplyStreamId)
             .payload(p -> p.set(
                 data.payload().buffer(),
                 data.payload().offset(),
@@ -454,7 +462,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
             .build();
 
         final MessageConsumer newAcceptReply = context.router.supplyTarget(acceptReplyName);
-        this.acceptReply.accept(
+        this.acceptReplyEndpoint.accept(
             dataForwardFW.typeId(),
             dataForwardFW.buffer(),
             dataForwardFW.offset(),
@@ -463,7 +471,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
         // TODO understand why following line
 //        this.acceptReply = newAcceptReply;
 
-        doWindow(connectReplyThrottle, connectReplyId, 1024, 1024); // TODO remove hardcoded values
+        doWindow(connectReplyThrottle, connectReplyStreamId, 1024, 1024); // TODO remove hardcoded values
     }
 
 
@@ -523,13 +531,13 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
 
         if (targetWindowBytesDelta > 0 || targetWindowFramesDelta > 0)
         {
-            doWindow(connectReplyThrottle, connectReplyId, Math.max(targetWindowBytesDelta, 0),
+            doWindow(connectReplyThrottle, connectReplyStreamId, Math.max(targetWindowBytesDelta, 0),
                 Math.max(targetWindowFramesDelta, 0));
         }
     }
 
     private void handleReset(ResetFW reset)
     {
-        doReset(connectReplyThrottle, connectReplyId);
+        doReset(connectReplyThrottle, connectReplyStreamId);
     }
 }

@@ -15,19 +15,28 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream;
 
+import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-public class DefaultStreamHandler
+public abstract class AbstractStreamHandler
 {
+    public static final String NUKLEUS_SOCKS_NAME = "socks";
+
     protected final Context context;
 
-    public DefaultStreamHandler(Context context)
+    public AbstractStreamHandler(Context context)
     {
         this.context = context;
     }
+
+    protected abstract void handleStream(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length);
 
     protected void doAbort(
         MessageConsumer stream,

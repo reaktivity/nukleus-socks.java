@@ -21,7 +21,7 @@ import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
-import org.reaktivity.nukleus.socks.internal.stream.DefaultStreamHandler;
+import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamHandler;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
@@ -29,7 +29,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-final class ConnectReplyStreamHandler extends DefaultStreamHandler
+final class ConnectReplyStreamHandler extends AbstractStreamHandler
 {
     private final MessageConsumer connectReplyThrottle;
     private final long connectReplyId;
@@ -57,7 +57,7 @@ final class ConnectReplyStreamHandler extends DefaultStreamHandler
         this.streamState = this::beforeBegin;
     }
 
-    void handleStream(
+    protected void handleStream(
         int msgTypeId,
         DirectBuffer buffer,
         int index,

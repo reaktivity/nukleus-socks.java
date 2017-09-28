@@ -22,7 +22,7 @@ import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.function.MessagePredicate;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
-import org.reaktivity.nukleus.socks.internal.stream.DefaultStreamHandler;
+import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamHandler;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandRequestFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationRequestFW;
@@ -37,7 +37,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
 
-final class AcceptStreamHandler extends DefaultStreamHandler
+final class AcceptStreamHandler extends AbstractStreamHandler
 {
     private final MessageConsumer acceptThrottle;
     private final long acceptId;
@@ -97,7 +97,7 @@ final class AcceptStreamHandler extends DefaultStreamHandler
         return context.routeRO.wrap(buffer, index, index + length);
     }
 
-    void handleStream(
+    protected void handleStream(
         int msgTypeId,
         DirectBuffer buffer,
         int index,

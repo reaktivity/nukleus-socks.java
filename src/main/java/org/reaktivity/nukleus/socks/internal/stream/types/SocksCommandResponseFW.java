@@ -213,7 +213,7 @@ public class SocksCommandResponseFW extends Flyweight implements Fragmented
             int maxLimit)
         {
             super.wrap(buffer, offset, maxLimit);
-            buffer().putByte(offset() + FIELD_OFFSET_RSV, (byte) 0x00);
+            buffer().putByte(offset + FIELD_OFFSET_RSV, (byte) 0x00);
             return this;
         }
 
