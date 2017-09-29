@@ -126,7 +126,6 @@ final class AcceptStreamHandler extends AbstractStreamHandler
     private void handleBegin(
         BeginFW begin)
     {
-        System.out.println("Handle Begin");
         // ACCEPT STREAM
         this.acceptName = begin.source().asString();
         this.acceptRef = begin.sourceRef();
@@ -316,10 +315,6 @@ final class AcceptStreamHandler extends AbstractStreamHandler
         if(context.socksConnectionRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
         {
             final SocksCommandRequestFW socksCommandRequestFW = context.socksConnectionRequestRO.wrap(buffer, offset, limit);
-            System.out.println(
-                "Received connection request for domain: " + socksCommandRequestFW.domain() +
-                " and port: " + socksCommandRequestFW.port()
-            );
             //
             // TODO validate the CONNECT request: Protocol version, command, address type
             //

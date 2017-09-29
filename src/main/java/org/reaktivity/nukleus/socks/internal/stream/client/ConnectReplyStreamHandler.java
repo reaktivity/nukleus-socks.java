@@ -185,11 +185,8 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
                 dataRequestFW.offset(),
                 dataRequestFW.sizeof());
 
-
-
             // TODO check if connectRoute can be passed through the correlation
             final RouteFW connectRoute = resolveSource(correlation.connectRef(), begin.source().asString());
-            System.out.println(connectRoute);
             final SocksRouteExFW routeEx = connectRoute.extension().get(context.routeExRO::wrap);
             destAddrPort = routeEx.destAddrPort().asString();
 
@@ -197,8 +194,6 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
             // TODO is this correct throttle consumer ?
             doWindow(this::handleThrottle, connectReplyStreamId, 1024, 1024); // TODO replace hardcoded values
 
-            // TODO only send this frame when Socks Connection has been established
-            // TODO how to store the correlation object ? (just pass it along ?)
             // TODO Threading model - can we have a new stream that would overwrite data ?
             acceptReplyName = correlation.acceptName();
             acceptCorrelationId = correlation.acceptCorrelationId();

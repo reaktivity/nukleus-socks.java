@@ -45,7 +45,6 @@ public class ClientStreamFactory implements StreamFactory
         LongSupplier supplyCorrelationId,
         Long2ObjectHashMap<Correlation> correlations)
     {
-        System.out.println(this.getClass() + " init");
         this.context =
             new Context(
                 config,
@@ -66,19 +65,13 @@ public class ClientStreamFactory implements StreamFactory
         int length,
         MessageConsumer throttle)
     {
-        System.out.println(this.getClass() + "newStream");
-
         final BeginFW begin = context.beginRO.wrap(buffer, index, index + length);
-        final long sourceRef = begin.sourceRef();
-
-        if (sourceRef == 0L)
+        if (begin.sourceRef() == 0L)
         {
-            System.out.println("connect reply stream");
             return newConnectReplyStream(begin, throttle);
         }
         else
         {
-            System.out.println("accept stream");
             return newAcceptStream(begin, throttle);
         }
     }
@@ -123,7 +116,6 @@ public class ClientStreamFactory implements StreamFactory
         int index,
         int length)
     {
-        System.out.println("WrapRoute");
         return context.routeRO.wrap(buffer, index, index + length);
     }
 }

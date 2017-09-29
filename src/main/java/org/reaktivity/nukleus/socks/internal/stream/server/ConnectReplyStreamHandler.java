@@ -63,7 +63,6 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
         int index,
         int length)
     {
-        System.out.println("ServerConnectReplyStream doStream");
         streamState.accept(msgTypeId, buffer, index, length);
     }
 

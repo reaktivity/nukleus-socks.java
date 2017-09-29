@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package org.reaktivity.nukleus.socks.internal.streams.client;
+package org.reaktivity.nukleus.socks.internal.streams.forward.client;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.rules.RuleChain.outerRule;
@@ -28,15 +28,12 @@ import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
 import org.reaktivity.reaktor.test.ReaktorRule;
 
-//@RunWith(org.jboss.byteman.contrib.bmunit.BMUnitRunner.class)
-//@BMUnitConfig(loadDirectory="src/test/resources")
-//@BMScript(value="BufferPool.btm")
-public class RFC1928IT
+public class ConnectionIT
 {
     private final K3poRule k3po = new K3poRule()
         .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
-        .addScriptRoot("client", "org/reaktivity/specification/nukleus/socks/streams")
-        .addScriptRoot("server", "org/reaktivity/specification/socks");
+        .addScriptRoot("client", "org/reaktivity/specification/nukleus/socks/streams/forward")
+        .addScriptRoot("server", "org/reaktivity/specification/socks/rfc1928/forward");
     private final TestRule timeout = new DisableOnDebug(new Timeout(3, SECONDS));
 
     private final ReaktorRule reaktor = new ReaktorRule()
@@ -61,7 +58,7 @@ public class RFC1928IT
         "${client}/client.connect.send.data/client",
         "${server}/client.connect.send.data/server"
     })
-    public void shouldEchoBinaryFrameWithPayloadLength125() throws Exception
+    public void shouldConnectAndSendDataBothWays() throws Exception
     {
         k3po.finish();
     }

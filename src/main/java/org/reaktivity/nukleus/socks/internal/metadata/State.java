@@ -18,8 +18,11 @@ package org.reaktivity.nukleus.socks.internal.metadata;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
-// TODO implement a checker for https://checkerframework.org/
-
+/**
+    Marker annotation for methods that override MessageConsumer.accept but are called
+    by method references and cannot by marked with @Override
+    TODO implement a checker with https://checkerframework.org/ for signature
+*/
 @Retention(RetentionPolicy.RUNTIME)
 public @interface State
 {

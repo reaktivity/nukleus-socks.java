@@ -70,12 +70,10 @@ public final class ServerStreamFactory implements StreamFactory
 
         if (sourceRef == 0L)
         {
-            System.out.println("newConnectReplyStream");
             return newConnectReplyStream(begin, throttle);
         }
         else
         {
-            System.out.println("newAcceptStream");
             return newAcceptStream(begin, throttle);
         }
     }
@@ -98,7 +96,6 @@ public final class ServerStreamFactory implements StreamFactory
         if (route != null)
         {
             final long acceptId = begin.streamId();
-            System.out.println("Creating new Server accept Stream");
             return new AcceptStreamHandler(context, acceptThrottle, acceptId, acceptRef)::handleStream;
         }
         return null;
@@ -118,7 +115,6 @@ public final class ServerStreamFactory implements StreamFactory
         int index,
         int length)
     {
-        System.out.println("WrapRoute");
         return context.routeRO.wrap(buffer, index, index + length);
     }
 
