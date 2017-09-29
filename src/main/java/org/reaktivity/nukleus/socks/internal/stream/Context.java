@@ -38,6 +38,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
+import org.reaktivity.specification.socks.internal.types.stream.TcpBeginExFW;
 
 public class Context
 {
@@ -46,6 +47,8 @@ public class Context
     public final DataFW dataRO = new DataFW();
     public final EndFW endRO = new EndFW();
     public final AbortFW abortRO = new AbortFW();
+
+    public final TcpBeginExFW tcpBeginExRO = new TcpBeginExFW();
 
     public final BeginFW.Builder beginRW = new BeginFW.Builder();
     public final DataFW.Builder dataRW = new DataFW.Builder();
@@ -62,6 +65,7 @@ public class Context
 
     public final RouteManager router;
     public final MutableDirectBuffer writeBuffer; // TODO consider using 2 buffers: S -> T and T -> S
+                                                  // TODO or confirm there cannot be a race condition
 
     public final BufferPool bufferPool;
     public final LongSupplier supplyStreamId;

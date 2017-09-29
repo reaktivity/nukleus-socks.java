@@ -19,23 +19,25 @@ import java.util.function.Consumer;
 
 import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
+import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamHandler;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
-import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamHandler;
+import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandResponseFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
+import org.reaktivity.specification.socks.internal.types.stream.TcpBeginExFW;
 
 final class ConnectReplyStreamHandler extends AbstractStreamHandler
 {
     private final MessageConsumer connectReplyThrottle;
     private final long connectReplyId;
 
-    private MessageConsumer acceptReply;
-    private long acceptReplyId;
+    private MessageConsumer acceptReplyEndpoint;
+    private long acceptReplyStreamId;
 
     private MessageConsumer streamState;
 
@@ -119,21 +121,70 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
         if (connectRef == 0L && correlation != null)
         {
             final String acceptReplyName = correlation.acceptName();
-
+            System.out.println(acceptReplyName);
+            // this.acceptReplyEndpoint = context.router.supplyTarget(acceptReplyName);
             final MessageConsumer newAcceptReply = context.router.supplyTarget(acceptReplyName);
             final long newAcceptReplyId = context.supplyStreamId.getAsLong();
             final long newCorrelationId = correlation.acceptCorrelationId();
-//            begin.extension().get()
-
 
             // TODO get the SocksCommandRequest from the Correlation
             // TODO use it to populate a SocksCommandResponse and sent it on the acceptReplyStream
+            final TcpBeginExFW tcpBeginEx = begin.extension()
+                .get(context.tcpBeginExRO::wrap);
+            System.out.println("localAddress: " + tcpBeginEx.localAddress()
+                .toString());
+            System.out.println("localPort: " + tcpBeginEx.localPort());
+            // TODO transform the TcpBeginExFW into the bound address and port of SocksCommandResponseFW
 
+            byte socksAtyp;
+            byte[] socksAddr;
+            int socksPort = tcpBeginEx.localPort();
+            if (tcpBeginEx.localAddress()
+                .kind() == 1)
+            {
+                socksAtyp = (byte) 0x01;
+                socksAddr = new byte[4];
+            }
+            else
+            {
+                socksAtyp = (byte) 0x04;
+                socksAddr = new byte[16];
+            }
+            tcpBeginEx.localAddress()
+                .ipv4Address()
+                .get((directBuffer, offset, limit) ->
+                {
+                    directBuffer.getBytes(offset, socksAddr);
+                    return null;
+                });
 
-            context.router.setThrottle(acceptReplyName, newAcceptReplyId, this::handleThrottle);
+            long connectStreamId = correlation.connectStreamId();
+            MessageConsumer connectEndpoint = correlation.connectEndpoint();
 
-            this.acceptReply = newAcceptReply;
-            this.acceptReplyId = newAcceptReplyId;
+            SocksCommandResponseFW socksConnectResponseFW = context.socksConnectionResponseRW
+                .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
+                .version((byte) 0x05)
+                .reply((byte) 0x00) // CONNECT
+                .bind(socksAtyp, socksAddr, socksPort)
+                .build();
+            DataFW dataReplyFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                .streamId(newAcceptReplyId)
+                .payload(p -> p.set(
+                    socksConnectResponseFW.buffer(),
+                    socksConnectResponseFW.offset(),
+                    socksConnectResponseFW.sizeof()))
+                .extension(e -> e.reset())
+                .build();
+            newAcceptReply.accept(
+                dataReplyFW.typeId(),
+                dataReplyFW.buffer(),
+                dataReplyFW.offset(),
+                dataReplyFW.sizeof());
+
+            // doWindow(connectReplyThrottle, connectReplyStreamId, 1024, 1024); // TODO remove hardcoded values
+
+            this.acceptReplyEndpoint = newAcceptReply;
+            this.acceptReplyStreamId = newAcceptReplyId;
 
             this.streamState = this::afterBeginOrData;
             this.windowHandler = this::processInitialWindow;

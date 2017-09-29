@@ -15,6 +15,8 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream;
 
+import org.reaktivity.nukleus.function.MessageConsumer;
+
 public class Correlation
 {
 
@@ -24,6 +26,7 @@ public class Correlation
     private AcceptTransitionListener acceptTransitionListener;
     private long connectStreamId;
     private long connectRef;
+    private MessageConsumer connectEndpoint;
 
     public AcceptTransitionListener acceptTransitionListener()
     {
@@ -73,5 +76,15 @@ public class Correlation
     public void connectRef(long connectRef)
     {
         this.connectRef = connectRef;
+    }
+
+    public MessageConsumer connectEndpoint()
+    {
+        return connectEndpoint;
+    }
+
+    public void connectEndpoint(MessageConsumer connectEndpoint)
+    {
+        this.connectEndpoint = connectEndpoint;
     }
 }

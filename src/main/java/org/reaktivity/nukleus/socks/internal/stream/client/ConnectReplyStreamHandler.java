@@ -207,27 +207,6 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
         }
     }
 
-    // TODO might not be needed, could use Correlation
-    RouteFW resolveSource(
-        long targetRef,
-        String targetName)
-    {
-        return context.router.resolve(
-                (msgTypeId, buffer, offset, limit) ->
-                {
-                    RouteFW route = context.routeRO.wrap(buffer, offset, limit);
-                    final SocksRouteExFW routeEx = route.extension().get(context.routeExRO::wrap);
-                    return targetRef == route.targetRef() &&
-                        targetName.equals(route.target()
-                            .asString()) && "FORWARD".equalsIgnoreCase(routeEx.mode().toString());
-                },
-                (msgTypeId, buffer, offset, length) ->
-                {
-                    return context.routeRO.wrap(buffer, offset, offset + length);
-                }
-            );
-    }
-
     private void handleNegotiationResponse(DataFW data)
     {
         OctetsFW payload = data.payload();
@@ -534,5 +513,26 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
     private void handleReset(ResetFW reset)
     {
         doReset(connectReplyThrottle, connectReplyStreamId);
+    }
+
+    // TODO might not be needed, could use Correlation
+    RouteFW resolveSource(
+        long targetRef,
+        String targetName)
+    {
+        return context.router.resolve(
+            (msgTypeId, buffer, offset, limit) ->
+            {
+                RouteFW route = context.routeRO.wrap(buffer, offset, limit);
+                final SocksRouteExFW routeEx = route.extension().get(context.routeExRO::wrap);
+                return targetRef == route.targetRef() &&
+                    targetName.equals(route.target()
+                        .asString()) && "FORWARD".equalsIgnoreCase(routeEx.mode().toString());
+            },
+            (msgTypeId, buffer, offset, length) ->
+            {
+                return context.routeRO.wrap(buffer, offset, offset + length);
+            }
+        );
     }
 }

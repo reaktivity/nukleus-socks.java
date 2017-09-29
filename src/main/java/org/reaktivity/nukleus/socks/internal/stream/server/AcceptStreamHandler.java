@@ -36,7 +36,6 @@ import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-
 final class AcceptStreamHandler extends AbstractStreamHandler
 {
     private final MessageConsumer acceptThrottle;
@@ -55,7 +54,6 @@ final class AcceptStreamHandler extends AbstractStreamHandler
     private int sourceWindowBytesAdjustment;
     private int sourceWindowFramesAdjustment;
 
-
     MessageConsumer acceptReply;
     long acceptReplyStreamId;
     String acceptName;
@@ -73,19 +71,6 @@ final class AcceptStreamHandler extends AbstractStreamHandler
         this.streamState = this::beforeBeginState;
         this.acceptRef = acceptStreamRef;
         // FIXME why not use and wait for a Begin frame ?
-    }
-
-    RouteFW resolveTarget(
-        long sourceRef,
-        String sourceName)
-    {
-        MessagePredicate filter = (t, b, o, l) ->
-        {
-            RouteFW route = context.routeRO.wrap(b, o, l);
-            return sourceRef == route.sourceRef() &&
-                sourceName.equals(route.source().asString());
-        };
-        return context.router.resolve(filter, this::wrapRoute);
     }
 
     private RouteFW wrapRoute(
@@ -127,7 +112,8 @@ final class AcceptStreamHandler extends AbstractStreamHandler
         BeginFW begin)
     {
         // ACCEPT STREAM
-        this.acceptName = begin.source().asString();
+        this.acceptName = begin.source()
+            .asString();
         this.acceptRef = begin.sourceRef();
         final long acceptCorrelationId = begin.correlationId();
         final long acceptStreamId = begin.streamId();
@@ -191,7 +177,7 @@ final class AcceptStreamHandler extends AbstractStreamHandler
         int size = limit - offset;
 
         // Fragmented writes might have already occurred
-        if(this.slotIndex != NO_SLOT)
+        if (this.slotIndex != NO_SLOT)
         {
             // Append incoming data to the buffer
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, this.slotOffset);
@@ -202,7 +188,7 @@ final class AcceptStreamHandler extends AbstractStreamHandler
             limit = this.slotOffset;                                  //
         }
 
-        if(context.socksNegotiationRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
+        if (context.socksNegotiationRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
         {
             // Wrap the frame and extract the incoming data
             final SocksNegotiationRequestFW socksNegotiation = context.socksNegotiationRequestRO.wrap(buffer, offset, limit);
@@ -301,7 +287,7 @@ final class AcceptStreamHandler extends AbstractStreamHandler
         int size = limit - offset;
 
         // Fragmented writes might have already occurred
-        if(this.slotOffset != 0)
+        if (this.slotOffset != 0)
         {
             // Append incoming data to the buffer
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, this.slotOffset);
@@ -312,7 +298,7 @@ final class AcceptStreamHandler extends AbstractStreamHandler
             limit = this.slotOffset;                                  //
         }
 
-        if(context.socksConnectionRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
+        if (context.socksConnectionRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
         {
             final SocksCommandRequestFW socksCommandRequestFW = context.socksConnectionRequestRO.wrap(buffer, offset, limit);
             //
@@ -331,8 +317,13 @@ final class AcceptStreamHandler extends AbstractStreamHandler
             final long connectStreamId = context.supplyStreamId.getAsLong();
             final long connectCorrelationId = context.supplyCorrelationId.getAsLong();
 
+            Correlation correlation = new Correlation();
+            correlation.connectStreamId(connectStreamId);
+            correlation.connectEndpoint(connect);
+            correlation.acceptName(acceptName);
+
             // TODO add the socksConnectionRequestRO relevant data into, if any, into the Correlation
-            context.correlations.put(connectCorrelationId, new Correlation()); // Use this map on the CONNECT STREAM
+            context.correlations.put(connectCorrelationId, correlation); // Use this map on the CONNECT STREAM
 
             final BeginFW connectBegin = context.beginRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
@@ -425,5 +416,22 @@ final class AcceptStreamHandler extends AbstractStreamHandler
         ResetFW reset)
     {
         doReset(acceptThrottle, acceptId);
+    }
+
+    RouteFW resolveTarget(
+        long sourceRef,
+        String sourceName)
+    {
+        MessagePredicate filter = (t, b, o, l) ->
+        {
+            RouteFW route = context.routeRO.wrap(b, o, l);
+            // TODO use the extension to retrieve a route in forward mode
+            // TODO and with the dstAddrPort matching the SocksConnectRequest
+
+            return sourceRef == route.sourceRef() &&
+                sourceName.equals(route.source()
+                    .asString());
+        };
+        return context.router.resolve(filter, this::wrapRoute);
     }
 }
