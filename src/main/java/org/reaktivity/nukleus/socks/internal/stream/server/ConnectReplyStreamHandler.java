@@ -19,6 +19,7 @@ import java.util.function.Consumer;
 
 import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
+import org.reaktivity.nukleus.socks.internal.metadata.State;
 import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamHandler;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
@@ -68,6 +69,7 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
         streamState.accept(msgTypeId, buffer, index, length);
     }
 
+    @State
     private void beforeBegin(
         int msgTypeId,
         DirectBuffer buffer,
@@ -85,6 +87,7 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
         }
     }
 
+    @State
     private void afterBeginOrData(
         int msgTypeId,
         DirectBuffer buffer,

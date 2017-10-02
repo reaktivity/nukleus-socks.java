@@ -261,7 +261,7 @@
             <version>${k3po.nukleus.ext.version}</version>
           </dependency>
         </dependencies>
-      </plugin
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
@@ -269,7 +269,7 @@
         <configuration>
           <argLine>@{argLine}</argLine>
         </configuration>
-      </plugin>>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
@@ -377,9 +377,7 @@
                 <pluginExecution>
                   <pluginExecutionFilter>
                     <groupId>org.jboss.byteman</groupId>
-                    <artifactId>
-                      byteman-rulecheck-maven-plugin
-                    </artifactId>
+                    <artifactId>byteman-rulecheck-maven-plugin</artifactId>
                     <versionRange>[3.0.6,)</versionRange>
                     <goals>
                       <goal>rulecheck</goal>
@@ -400,7 +398,6 @@
   <profiles>
     <profile>
       <id>release</id>
-
       <distributionManagement>
         <snapshotRepository>
           <id>ossrh</id>
@@ -411,7 +408,6 @@
           <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
       </distributionManagement>
-
       <build>
         <plugins>
           <plugin>

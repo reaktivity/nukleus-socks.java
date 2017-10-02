@@ -213,7 +213,8 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
                     InetAddress inetAddress = InetAddress.getByName(tokens[0]);
                     return this.destination(inetAddress instanceof Inet4Address ? (byte) 0x01 : (byte) 0x04,
                         inetAddress.getAddress(), port);
-                } catch (UnknownHostException e)
+                }
+                catch (UnknownHostException e)
                 {
                     throw new IllegalStateException("Unable to encode destinationAddress: " + destinationAddress, e);
                 }
