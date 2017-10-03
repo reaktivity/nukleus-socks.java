@@ -55,6 +55,7 @@
     <nukleus.version>0.11</nukleus.version>
 
     <nukleus.socks.spec.version>develop-SNAPSHOT</nukleus.socks.spec.version>
+    <nukleus.tcp.spec.version>0.17</nukleus.tcp.spec.version>
     <reaktor.version>0.22</reaktor.version>
 
     <jacoco.coverage.ratio>1.00</jacoco.coverage.ratio>
@@ -72,6 +73,12 @@
       <groupId>org.reaktivity</groupId>
       <artifactId>nukleus-socks.spec</artifactId>
       <version>${nukleus.socks.spec.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.reaktivity</groupId>
+      <artifactId>nukleus-tcp.spec</artifactId>
+      <version>${nukleus.tcp.spec.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -157,7 +164,7 @@
         <artifactId>nukleus-maven-plugin</artifactId>
         <version>${nukleus.plugin.version}</version>
         <configuration>
-          <scopeNames>core socks</scopeNames>
+          <scopeNames>core socks tcp</scopeNames>
           <packageName>org.reaktivity.nukleus.socks.internal.types</packageName>
         </configuration>
         <executions>
