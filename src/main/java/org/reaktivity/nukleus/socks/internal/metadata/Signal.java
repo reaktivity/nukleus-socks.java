@@ -13,11 +13,17 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package org.reaktivity.nukleus.socks.internal.stream;
+package org.reaktivity.nukleus.socks.internal.metadata;
 
-public interface AcceptTransitionListener
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+/**
+    Marker annotation for methods that attempt to Send messages conditioned by available WINDOW
+    State should not change
+    TODO implement a checker with https://checkerframework.org/ for signature
+*/
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Signal
 {
-    void transitionToConnectionReady();
-    void transitionToAborted();
-
 }

@@ -123,7 +123,7 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
 
         if (connectRef == 0L && correlation != null)
         {
-            final String acceptReplyName = correlation.acceptName();
+            final String acceptReplyName = correlation.acceptSourceName();
             System.out.println(acceptReplyName);
             // this.acceptReplyEndpoint = context.router.supplyTarget(acceptReplyName);
             final MessageConsumer newAcceptReply = context.router.supplyTarget(acceptReplyName);

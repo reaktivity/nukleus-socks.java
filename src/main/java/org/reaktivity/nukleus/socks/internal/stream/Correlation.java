@@ -15,18 +15,62 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream;
 
+import java.util.function.Consumer;
+
 import org.reaktivity.nukleus.function.MessageConsumer;
+import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 
 public class Correlation
 {
 
-    // TODO comment these fields
+    // Can be used to send RESET and WINDOW back to the SOURCE on the ACCEPT stream
+    private MessageConsumer acceptThrottle;
+
+    // ACCEPT stream identifier
+    private long acceptStreamId;
+
+    // ACCEPT SOURCE reference (similar to port)
+    private long acceptSourceRef;
+
+    // ACCEPT SOURCE name (similar to address)
+    private String acceptSourceName;
+
+    // Current handler of incoming BEGIN, DATA, END, ABORT frames on the ACCEPT stream
+    private MessageConsumer acceptHandlerState;
+
+    // Can be used to send BEGIN, DATA, END, ABORT frames to the SOURCE on the ACCEPT-REPLY stream
+    private MessageConsumer acceptReplyEndpoint;
+
+    // ACCEPT-REPLY stream identifier
+    private long acceptReplyStreamId;
+
+    // Used to identify the Correlation on the ACCEPT/ACCEPT-RELPY streams
     private long acceptCorrelationId;
-    private String acceptName;
-    private AcceptTransitionListener acceptTransitionListener;
-    private long connectStreamId;
-    private long connectRef;
+
+    // Can be used to send BEGIN, DATA, END, ABORT frames to the TARGET on the CONNECT stream
     private MessageConsumer connectEndpoint;
+
+    // CONNECT TARGET name (similar to address)
+    private String connectTargetName;
+
+    // CONNECT TARGET reference (similar to port)
+    private long connectTargetRef;
+
+    // Used to identify the Correlation on the CONNECT/CONNECT-RELPY streams
+    private long connectCorrelationId;
+
+    // CONNECT stream identifier
+    private long connectStreamId;
+
+    private AcceptTransitionListener acceptTransitionListener;
+
+    private RouteFW connectRoute;
+
+    private Consumer<Boolean> nextAcceptSignal;
+
+    private MessageConsumer connectReplyThrottle;
+
+    private long connectReplyStreamId;
 
     public AcceptTransitionListener acceptTransitionListener()
     {
@@ -43,19 +87,19 @@ public class Correlation
         return acceptCorrelationId;
     }
 
-    public String acceptName()
-    {
-        return acceptName;
-    }
-
     public void acceptCorrelationId(long correlationId)
     {
         this.acceptCorrelationId = correlationId;
     }
 
-    public void acceptName(String acceptName)
+    public String acceptSourceName()
     {
-        this.acceptName = acceptName;
+        return acceptSourceName;
+    }
+
+    public void acceptSourceName(String acceptSourceName)
+    {
+        this.acceptSourceName = acceptSourceName;
     }
 
     public long connectStreamId()
@@ -68,14 +112,14 @@ public class Correlation
         this.connectStreamId = connectStreamId;
     }
 
-    public long connectRef()
+    public long connectTargetRef()
     {
-        return connectRef;
+        return connectTargetRef;
     }
 
-    public void connectRef(long connectRef)
+    public void connectTargetRef(long connectTargetRef)
     {
-        this.connectRef = connectRef;
+        this.connectTargetRef = connectTargetRef;
     }
 
     public MessageConsumer connectEndpoint()
@@ -86,5 +130,125 @@ public class Correlation
     public void connectEndpoint(MessageConsumer connectEndpoint)
     {
         this.connectEndpoint = connectEndpoint;
+    }
+
+    public MessageConsumer acceptThrottle()
+    {
+        return acceptThrottle;
+    }
+
+    public void acceptThrottle(MessageConsumer acceptThrottle)
+    {
+        this.acceptThrottle = acceptThrottle;
+    }
+
+    public long acceptStreamId()
+    {
+        return acceptStreamId;
+    }
+
+    public void acceptStreamId(long acceptStreamId)
+    {
+        this.acceptStreamId = acceptStreamId;
+    }
+
+    public long acceptSourceRef()
+    {
+        return acceptSourceRef;
+    }
+
+    public void acceptSourceRef(long acceptSourceRef)
+    {
+        this.acceptSourceRef = acceptSourceRef;
+    }
+
+    public MessageConsumer acceptHandlerState()
+    {
+        return acceptHandlerState;
+    }
+
+    public void acceptHandlerState(MessageConsumer acceptHandlerState)
+    {
+        this.acceptHandlerState = acceptHandlerState;
+    }
+
+    public MessageConsumer acceptReplyEndpoint()
+    {
+        return acceptReplyEndpoint;
+    }
+
+    public void acceptReplyEndpoint(MessageConsumer acceptReplyEndpoint)
+    {
+        this.acceptReplyEndpoint = acceptReplyEndpoint;
+    }
+
+    public long acceptReplyStreamId()
+    {
+        return acceptReplyStreamId;
+    }
+
+    public void acceptReplyStreamId(long acceptReplyStreamId)
+    {
+        this.acceptReplyStreamId = acceptReplyStreamId;
+    }
+
+    public String connectTargetName()
+    {
+        return connectTargetName;
+    }
+
+    public void connectTargetName(String connectTargetName)
+    {
+        this.connectTargetName = connectTargetName;
+    }
+
+    public long connectCorrelationId()
+    {
+        return connectCorrelationId;
+    }
+
+    public void connectCorrelationId(long connectCorrelationId)
+    {
+        this.connectCorrelationId = connectCorrelationId;
+    }
+
+    public RouteFW connectRoute()
+    {
+        return connectRoute;
+    }
+
+    public void connectRoute(RouteFW connectRoute)
+    {
+        this.connectRoute = connectRoute;
+    }
+
+    public Consumer<Boolean> nextAcceptSignal()
+    {
+        return nextAcceptSignal;
+    }
+
+    public void nextAcceptSignal(Consumer<Boolean> nextAcceptSignal)
+    {
+        this.nextAcceptSignal = nextAcceptSignal;
+    }
+
+    public MessageConsumer connectReplyThrottle()
+    {
+        return connectReplyThrottle;
+    }
+
+    public void connectReplyThrottle(MessageConsumer connectReplyThrottle)
+    {
+        this.connectReplyThrottle = connectReplyThrottle;
+    }
+
+    public long connectReplyStreamId()
+    {
+        return connectReplyStreamId;
+    }
+
+    public void connectReplyStreamId(long connectReplyId)
+    {
+        this.connectReplyStreamId = connectReplyId;
     }
 }

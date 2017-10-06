@@ -15,13 +15,20 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.client;
 
+import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
+
 import org.agrona.DirectBuffer;
+import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
+import org.reaktivity.nukleus.socks.internal.metadata.Signal;
 import org.reaktivity.nukleus.socks.internal.metadata.State;
 import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamHandler;
 import org.reaktivity.nukleus.socks.internal.stream.AcceptTransitionListener;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
+import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandRequestFW;
+import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationRequestFW;
+import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
@@ -33,43 +40,28 @@ import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
 public final class AcceptStreamHandler extends AbstractStreamHandler implements AcceptTransitionListener
 {
-    // Can be used to send RESET and WINDOW back to the SOURCE on the ACCEPT stream
-    private final MessageConsumer acceptThrottle;
-
-    // ACCEPT stream identifier
-    private final long acceptStreamId;
-
-    // ACCEPT SOURCE endpoint metadata
-    private final long acceptSourceRef;
-    private final String acceptSourceName;
 
     // Current handler of incoming BEGIN, DATA, END, ABORT frames on the ACCEPT stream
     private MessageConsumer acceptHandlerState;
 
-    // Can be used to send BEGIN, DATA, END, ABORT frames to the SOURCE on the ACCEPT-REPLY stream
-    private MessageConsumer acceptReplyEndpoint;
-
-    // Can be used to send BEGIN, DATA, END, ABORT frames to the TARGET on the CONNECT stream
-    private MessageConsumer connectEndpoint;
-
-    // CONNECT stream identifier
-    private long connectStreamId;
-
-    // CONNECT TARGET endpoint metadata
-    private long connectTargetRef;
-
-    private final long acceptCorrelationId;  // TODO use or remove
-    private long acceptReplyStreamId;        // TODO use or remove
-
+    private final Correlation correlation;
 
     /* Start of Window */
-    private int acceptWindowBytes;
-    private int acceptWindowFrames;
 
     private int sourceWindowBytesAdjustment;
     private int sourceWindowFramesAdjustment;
+
+    private int connectWindowBytes;
+    private int connectWindowFrames;
+
     /* End of Window */
 
+    DataFW dataNegotiationRequestFW = null;
+    DataFW dataConnectRequestFW = null;
+
+    boolean isConnectReplyStateReady = false;
+
+    private int slotIndex = NO_SLOT;
 
     // One instance per Stream
     AcceptStreamHandler(
@@ -82,14 +74,28 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
     {
         super(context);
         // init state machine
-        this.acceptHandlerState = this::beforeBeginState;
+        acceptHandlerState = this::beforeBegin;
 
-        // save reusable data (eventually move to context, since it will not change at all)
-        this.acceptThrottle = acceptThrottle;
-        this.acceptStreamId = acceptStreamId;
-        this.acceptSourceRef = acceptSourceRef;
-        this.acceptSourceName = acceptSourceName;
-        this.acceptCorrelationId = acceptCorrelationId;
+        final RouteFW tmpConnectRoute = resolveTarget(acceptSourceRef, acceptSourceName);
+        final String tmpConnectTargetName = tmpConnectRoute.target()
+            .asString();
+        correlation = new Correlation();
+        correlation.acceptThrottle(acceptThrottle);
+        correlation.acceptStreamId(acceptStreamId);
+        correlation.acceptSourceRef(acceptSourceRef);
+        correlation.acceptSourceName(acceptSourceName);
+        correlation.acceptCorrelationId(acceptCorrelationId);
+        correlation.acceptReplyStreamId(context.supplyStreamId.getAsLong());
+        correlation.acceptReplyEndpoint(context.router.supplyTarget(acceptSourceName));
+        correlation.acceptTransitionListener(this);
+        correlation.connectRoute(tmpConnectRoute);
+        correlation.connectTargetName(tmpConnectRoute.target()
+            .asString());
+        correlation.connectEndpoint(context.router.supplyTarget(tmpConnectTargetName));
+        correlation.connectTargetRef(tmpConnectRoute.targetRef());
+        correlation.connectStreamId(context.supplyStreamId.getAsLong());
+        correlation.connectCorrelationId(context.supplyCorrelationId.getAsLong());
+        correlation.nextAcceptSignal(this::attemptNegotiationRequest);
     }
 
     @Override
@@ -103,7 +109,7 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
     }
 
     @State
-    private void beforeBeginState(
+    private void beforeBegin(
         int msgTypeId,
         DirectBuffer buffer,
         int index,
@@ -116,72 +122,51 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
         }
         else
         {
-            doReset(acceptThrottle, acceptStreamId);
+            doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
         }
     }
 
     private void handleBegin(
         BeginFW begin)
     {
-        acceptReplyEndpoint = context.router.supplyTarget(acceptSourceName);
-
-        // TODO confirm this is same BeginFW instance as the one used to create the current AcceptStreamHandler
-        final RouteFW connectRoute = resolveTarget(acceptSourceRef, acceptSourceName);
-        final String connectName = connectRoute.target().asString();
-        connectEndpoint = context.router.supplyTarget(connectName);
-        connectTargetRef = connectRoute.targetRef();
-        connectStreamId = context.supplyStreamId.getAsLong();
-        final long connectCorrelationId = context.supplyCorrelationId.getAsLong();
-
-        final Correlation correlation = new Correlation();
-        correlation.acceptCorrelationId(this.acceptCorrelationId);
-        correlation.acceptName(acceptSourceName);
-        correlation.connectStreamId(connectStreamId);
-        correlation.acceptTransitionListener(this);
-        correlation.connectRef(connectTargetRef);
-
-        context.correlations.put(connectCorrelationId, correlation);
+        // Store the correlation for reuse in the ConnectReplyStreamHandler
+        context.correlations.put(correlation.connectCorrelationId(), correlation);
+        // Lazy initialization of CONNECT throttling handler
+        context.router.setThrottle(
+            correlation.connectTargetName(),
+            correlation.connectStreamId(),
+            this::handleConnectThrottleBeforeHandshake);
+        // Initiate the stream to the TARGET
         final BeginFW connectBegin = context.beginRW
             .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-            .streamId(connectStreamId)
+            .streamId(correlation.connectStreamId())
             .source(NUKLEUS_SOCKS_NAME)
-            .sourceRef(connectTargetRef)
-            .correlationId(connectCorrelationId)
+            .sourceRef(correlation.connectTargetRef())
+            .correlationId(correlation.connectCorrelationId())
             .extension(e -> e.reset())
             .build();
-        connectEndpoint.accept(connectBegin.typeId(), connectBegin.buffer(), connectBegin.offset(), connectBegin.sizeof());
-
-        // FIXME confirm this is the way to handle theottling after sending a message on the CONNECT
-        context.router.setThrottle(connectName, connectStreamId, this::handleConnectThrottle);
-        this.acceptHandlerState = this::beforeConnectState;
-    }
-
-    @Override
-    public void transitionToConnectionReady()
-    {
-        // TODO checkState();
-        // this.doWindow(acceptThrottle, acceptStreamId, 1024, 1024); // TODO replace hardcoded values
-        this.acceptHandlerState = this::afterConnectState;
-    }
-
-    @Override
-    public void transitionToAborted()
-    {
-        // TODO
+        correlation
+            .connectEndpoint()
+            .accept(
+                connectBegin.typeId(),
+                connectBegin.buffer(),
+                connectBegin.offset(),
+                connectBegin.sizeof());
+        this.acceptHandlerState = this::beforeConnect;
     }
 
     @State
-    private void beforeConnectState(
+    private void beforeConnect(
         int msgTypeId,
         DirectBuffer buffer,
         int index,
         int length)
     {
-        doReset(acceptThrottle, acceptStreamId);
+        doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
     }
 
     @State
-    private void afterConnectState(
+    private void afterConnect(
         int msgTypeId,
         DirectBuffer buffer,
         int index,
@@ -195,56 +180,35 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
             break;
         case EndFW.TYPE_ID:
         case AbortFW.TYPE_ID:
-            doAbort(acceptReplyEndpoint, acceptReplyStreamId);
+            doAbort(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
+            doAbort(correlation.connectEndpoint(), correlation.connectStreamId());
             break;
         default:
-            doReset(acceptThrottle, acceptStreamId);
+            doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
             break;
         }
     }
 
     private void handleHighLevelData(DataFW data)
     {
+        OctetsFW payload = data.payload();
         DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-            .streamId(connectStreamId)
+            .streamId(correlation.connectStreamId())
             .payload(p -> p.set(
-                data.payload().buffer(),
-                data.payload().offset(),
-                data.payload().sizeof()))
+                payload.buffer(),
+                payload.offset(),
+                payload.sizeof()))
             .extension(e -> e.reset())
             .build();
-        connectEndpoint.accept(
-            dataForwardFW.typeId(),
-            dataForwardFW.buffer(),
-            dataForwardFW.offset(),
-            dataForwardFW.sizeof());
-
-        // this.doWindow(acceptThrottle, acceptStreamId, 1024, 1024); // TODO replace hardcoded values
+        correlation.connectEndpoint()
+            .accept(
+                dataForwardFW.typeId(),
+                dataForwardFW.buffer(),
+                dataForwardFW.offset(),
+                dataForwardFW.sizeof());
     }
 
-    private void handleAcceptReplyThrottle(
-        int msgTypeId,
-        DirectBuffer buffer,
-        int index,
-        int length)
-    {
-        switch (msgTypeId)
-        {
-        case WindowFW.TYPE_ID:
-            final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
-            handleWindow(window);
-            break;
-        case ResetFW.TYPE_ID:
-            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
-            handleReset(reset);
-            break;
-        default:
-            // ignore
-            break;
-        }
-    }
-
-    private void handleConnectThrottle(
+    private void handleConnectThrottleAfterHandshake(
         int msgTypeId,
         DirectBuffer buffer,
         int index,
@@ -258,7 +222,7 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
             break;
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
-            handleReset(reset);  // FIXME handle connect Reset
+            handleReset(reset);
             break;
         default:
             // ignore
@@ -266,16 +230,28 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
         }
     }
 
-    private void handleEnd(
-        EndFW end)
+    private void handleConnectThrottleBeforeHandshake(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
     {
-        // TODO
-    }
-
-    private void handleAbort(
-        AbortFW abort)
-    {
-        // TODO
+        switch (msgTypeId)
+        {
+        case WindowFW.TYPE_ID:
+            final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
+            connectWindowBytes += window.update();
+            connectWindowFrames += window.frames();
+            correlation.nextAcceptSignal().accept(isConnectReplyStateReady);
+            break;
+        case ResetFW.TYPE_ID:
+            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
+            handleReset(reset);
+            break;
+        default:
+            // ignore
+            break;
+        }
     }
 
     private void handleWindow(
@@ -287,24 +263,168 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
         final int sourceWindowBytesDelta = targetWindowBytesDelta + sourceWindowBytesAdjustment;
         final int sourceWindowFramesDelta = targetWindowFramesDelta + sourceWindowFramesAdjustment;
 
-        acceptWindowBytes += Math.max(sourceWindowBytesDelta, 0);
         sourceWindowBytesAdjustment = Math.min(sourceWindowBytesDelta, 0);
-
-        acceptWindowFrames += Math.max(sourceWindowFramesDelta, 0);
         sourceWindowFramesAdjustment = Math.min(sourceWindowFramesDelta, 0);
 
         if (sourceWindowBytesDelta > 0 || sourceWindowFramesDelta > 0)
         {
-            doWindow(acceptThrottle, acceptStreamId, Math.max(sourceWindowBytesDelta, 0), Math.max(sourceWindowFramesDelta, 0));
+            doWindow(correlation.acceptThrottle(), correlation.acceptStreamId(), Math.max(sourceWindowBytesDelta, 0),
+                Math.max(sourceWindowFramesDelta, 0));
         }
     }
 
     private void handleReset(
         ResetFW reset)
     {
-        doReset(acceptThrottle, acceptStreamId);
+        doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
     }
 
+    @Signal
+    public void attemptNegotiationRequest(boolean isConnectReplyBeginFrameReceived)
+    {
+        if (dataNegotiationRequestFW == null)
+        {
+            if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
+            {
+                // TODO diagnostics
+                doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+                return;
+            }
+            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(slotIndex);
+            SocksNegotiationRequestFW socksNegotiationRequestFW = context.socksNegotiationRequestRW
+                .wrap(acceptBuffer, DataFW.FIELD_OFFSET_PAYLOAD, acceptBuffer.capacity())
+                .version((byte) 0x05)
+                .nmethods((byte) 0x01)
+                .method(new byte[]{0x00})
+                .build();
+
+            dataNegotiationRequestFW = context.dataRW.wrap(acceptBuffer, 0, acceptBuffer.capacity())
+                .streamId(correlation.connectStreamId())
+                .payload(p -> p.set(
+                    socksNegotiationRequestFW.buffer(),
+                    socksNegotiationRequestFW.offset(),
+                    socksNegotiationRequestFW.sizeof()))
+                .extension(e -> e.reset())
+                .build();
+        }
+
+        if (connectWindowFrames > 0 &&
+            connectWindowBytes > dataNegotiationRequestFW.sizeof())
+        {
+            correlation.connectEndpoint()
+                .accept(
+                    dataNegotiationRequestFW.typeId(),
+                    dataNegotiationRequestFW.buffer(),
+                    dataNegotiationRequestFW.offset(),
+                    dataNegotiationRequestFW.sizeof());
+
+            connectWindowBytes -= dataNegotiationRequestFW.sizeof();
+            connectWindowFrames--;
+
+            context.bufferPool.release(slotIndex);
+            slotIndex = NO_SLOT;
+
+            correlation.nextAcceptSignal(this::attemptConnectionRequest);
+        }
+    }
+
+    @Signal
+    public void attemptConnectionRequest(boolean isNegotiationResponseReceived)
+    {
+        if (!(this.isConnectReplyStateReady = isNegotiationResponseReceived))
+        {
+            return;
+        }
+        if (dataConnectRequestFW == null)
+        {
+            if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
+            {
+                // TODO diagnostics
+                doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+                return;
+            }
+            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(slotIndex);
+            final RouteFW connectRoute = correlation.connectRoute();
+            final SocksRouteExFW routeEx = connectRoute.extension().get(context.routeExRO::wrap);
+            String destAddrPort = routeEx.destAddrPort().asString();
+
+            // Reply with Socks version 5 and "NO AUTHENTICATION REQUIRED"
+            SocksCommandRequestFW socksConnectRequestFW = context.socksConnectionRequestRW
+                .wrap(acceptBuffer, DataFW.FIELD_OFFSET_PAYLOAD, acceptBuffer.capacity())
+                .version((byte) 0x05)
+                .command((byte) 0x01) // CONNECT
+                .destination(destAddrPort)
+                .build();
+            dataConnectRequestFW = context.dataRW.wrap(acceptBuffer, 0, acceptBuffer.capacity())
+                .streamId(correlation.connectStreamId())
+                .payload(p -> p.set(
+                    socksConnectRequestFW.buffer(),
+                    socksConnectRequestFW.offset(),
+                    socksConnectRequestFW.sizeof()))
+                .extension(e -> e.reset())
+                .build();
+        }
+
+        if (connectWindowFrames > 0 &&
+            connectWindowBytes > dataConnectRequestFW.sizeof())
+        {
+            correlation.connectEndpoint().accept(
+                dataConnectRequestFW.typeId(),
+                dataConnectRequestFW.buffer(),
+                dataConnectRequestFW.offset(),
+                dataConnectRequestFW.sizeof());
+
+            connectWindowBytes -= dataConnectRequestFW.sizeof();
+            connectWindowFrames--;
+
+            context.bufferPool.release(slotIndex);
+            slotIndex = NO_SLOT;
+
+            correlation.nextAcceptSignal(this::noop);
+        }
+    }
+
+    /*
+     * Can be called if we receive WINDOW frames between:
+     *     - sending the ConnectRequest
+     *     - receiving the ConnectReply
+     */
+    @Signal
+    public void noop(boolean isConnectReplyStateReady)
+    {
+    }
+
+    @Override
+    public void transitionToConnectionReady()
+    {
+        this.acceptHandlerState = this::afterConnect;
+        context.router.setThrottle(
+            correlation.connectTargetName(),
+            correlation.connectStreamId(),
+            this::handleConnectThrottleAfterHandshake);
+        this.doWindow(
+            correlation.acceptThrottle(),
+            correlation.acceptStreamId(),
+            connectWindowBytes,
+            connectWindowFrames);
+    }
+
+    @Override
+    public void transitionToAborted()
+    {
+        this.acceptHandlerState = this::afterAbort;
+        doAbort(correlation.connectEndpoint(), correlation.connectStreamId());
+    }
+
+    @State
+    private void afterAbort(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
+    {
+        doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+    }
 
     private RouteFW resolveTarget(
         long sourceRef,
@@ -314,15 +434,16 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
             (msgTypeId, buffer, offset, limit) ->
             {
                 RouteFW route = context.routeRO.wrap(buffer, offset, limit);
-                final SocksRouteExFW routeEx = route.extension().get(context.routeExRO::wrap);
+                final SocksRouteExFW routeEx = route.extension()
+                    .get(context.routeExRO::wrap);
                 return sourceRef == route.sourceRef() &&
                     sourceName.equals(route.source()
-                        .asString()) && "FORWARD".equalsIgnoreCase(routeEx.mode().toString());
+                        .asString()) && "FORWARD".equalsIgnoreCase(routeEx.mode()
+                    .toString());
             },
             (msgTypeId, buffer, offset, length) ->
             {
                 return context.routeRO.wrap(buffer, offset, offset + length);
-            }
-        );
+            });
     }
 }

@@ -320,7 +320,7 @@ final class AcceptStreamHandler extends AbstractStreamHandler
             Correlation correlation = new Correlation();
             correlation.connectStreamId(connectStreamId);
             correlation.connectEndpoint(connect);
-            correlation.acceptName(acceptName);
+            correlation.acceptSourceName(acceptName);
 
             // TODO add the socksConnectionRequestRO relevant data into, if any, into the Correlation
             context.correlations.put(connectCorrelationId, correlation); // Use this map on the CONNECT STREAM
