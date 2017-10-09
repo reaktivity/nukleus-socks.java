@@ -134,6 +134,7 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
             // TODO use it to populate a SocksCommandResponse and sent it on the acceptReplyStream
             final TcpBeginExFW tcpBeginEx = begin.extension()
                 .get(context.tcpBeginExRO::wrap);
+
             System.out.println("localAddress: " + tcpBeginEx.localAddress()
                 .toString());
             System.out.println("localPort: " + tcpBeginEx.localPort());
@@ -142,8 +143,7 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
             byte socksAtyp;
             byte[] socksAddr;
             int socksPort = tcpBeginEx.localPort();
-            if (tcpBeginEx.localAddress()
-                .kind() == 1)
+            if (tcpBeginEx.localAddress().kind() == 1)
             {
                 socksAtyp = (byte) 0x01;
                 socksAddr = new byte[4];

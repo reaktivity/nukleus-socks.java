@@ -17,6 +17,8 @@ package org.reaktivity.nukleus.socks.internal.stream.client;
 
 import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
+import java.util.Optional;
+
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
@@ -51,8 +53,8 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
     private int sourceWindowBytesAdjustment;
     private int sourceWindowFramesAdjustment;
 
-    private int connectWindowBytes;
-    private int connectWindowFrames;
+    private int connectWindowBytes = 0;
+    private int connectWindowFrames = 0;
 
     /* End of Window */
 
@@ -218,7 +220,7 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
-            handleWindow(window); // FIXME handle connect Window
+            handleWindow(window);
             break;
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
@@ -395,7 +397,7 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
     }
 
     @Override
-    public void transitionToConnectionReady()
+    public void transitionToConnectionReady(Optional connectionInfo)
     {
         this.acceptHandlerState = this::afterConnect;
         context.router.setThrottle(

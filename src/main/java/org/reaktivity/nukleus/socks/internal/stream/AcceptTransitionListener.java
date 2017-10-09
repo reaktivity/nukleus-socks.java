@@ -15,9 +15,11 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream;
 
-public interface AcceptTransitionListener
+import java.util.Optional;
+
+public interface AcceptTransitionListener<T>
 {
-    void transitionToConnectionReady();
+    void transitionToConnectionReady(Optional<T> connectionInfo);
     void transitionToAborted();
 
 }

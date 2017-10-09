@@ -17,10 +17,14 @@ package org.reaktivity.nukleus.socks.internal.stream.server;
 
 import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
+import java.net.UnknownHostException;
+import java.util.Optional;
+
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.function.MessagePredicate;
+import org.reaktivity.nukleus.socks.internal.stream.AcceptTransitionListener;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
 import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamHandler;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
@@ -29,14 +33,16 @@ import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationReques
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationResponseFW;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
+import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.TcpBeginExFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-final class AcceptStreamHandler extends AbstractStreamHandler
+final class AcceptStreamHandler extends AbstractStreamHandler implements AcceptTransitionListener<TcpBeginExFW>
 {
     private final MessageConsumer acceptThrottle;
     private final long acceptId;
@@ -54,10 +60,18 @@ final class AcceptStreamHandler extends AbstractStreamHandler
     private int sourceWindowBytesAdjustment;
     private int sourceWindowFramesAdjustment;
 
+
+
+    private int acceptReplyWindowBytes = 0;
+    private int acceptReplyWindowFrames = 0;
+
     MessageConsumer acceptReply;
     long acceptReplyStreamId;
-    String acceptName;
+    String acceptSourceName;
     long acceptRef;
+
+    private DataFW pendingDataFW = null;
+    private MessageConsumer pendingNextState = null;
 
     AcceptStreamHandler(
         Context context,
@@ -112,13 +126,13 @@ final class AcceptStreamHandler extends AbstractStreamHandler
         BeginFW begin)
     {
         // ACCEPT STREAM
-        this.acceptName = begin.source()
+        this.acceptSourceName = begin.source()
             .asString();
         this.acceptRef = begin.sourceRef();
         final long acceptCorrelationId = begin.correlationId();
         final long acceptStreamId = begin.streamId();
 
-        this.acceptReply = context.router.supplyTarget(acceptName);
+        this.acceptReply = context.router.supplyTarget(acceptSourceName);
         this.acceptReplyStreamId = context.supplyStreamId.getAsLong();
         final long acceptReplyRef = 0; // Bi-directional reply
 
@@ -138,10 +152,10 @@ final class AcceptStreamHandler extends AbstractStreamHandler
             beginToAcceptReply.offset(),
             beginToAcceptReply.sizeof());
 
-        context.router.setThrottle(acceptName, acceptReplyStreamId, this::handleAcceptReplyThrottle);
+        context.router.setThrottle(acceptSourceName, acceptReplyStreamId, this::handleAcceptReplyThrottleBeforeHandshake);
 
-        // tell accept stream you can handle more data
-        doWindow(acceptThrottle, begin.streamId(), 1024, 1024); // TODO replace hardcoded values
+        // tell accept stream we can handle more data
+        doWindow(acceptThrottle, begin.streamId(), 65536, 65536); // TODO replace hardcoded values
         this.streamState = this::afterBeginState;
     }
 
@@ -215,7 +229,15 @@ final class AcceptStreamHandler extends AbstractStreamHandler
             }
 
             // Reply with Socks version 5 and "NO AUTHENTICATION REQUIRED"
-            doWindow(acceptThrottle, acceptReplyStreamId, 1024, 1024); // TODO replace hardcoded values
+            // No window update needed (socks max handshake size should be less than 512 bytes)
+
+
+
+
+
+
+            // TODO make sure we have enough window available for ACCEPT-REPLY before sending data
+
             SocksNegotiationResponseFW socksNegotiationResponseFW = context.socksNegotiationResponseRW
                 .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
                 .version((byte) 0x05)
@@ -229,12 +251,23 @@ final class AcceptStreamHandler extends AbstractStreamHandler
                     socksNegotiationResponseFW.sizeof()))
                 .extension(e -> e.reset())
                 .build();
-            acceptReply.accept(
-                dataReplyFW.typeId(),
-                dataReplyFW.buffer(),
-                dataReplyFW.offset(),
-                dataReplyFW.sizeof());
-            this.streamState = this::afterNegotiationState;
+
+            if (acceptReplyWindowBytes > dataReplyFW.sizeof() && acceptReplyWindowFrames > 0)
+            {
+                acceptReply.accept(
+                    dataReplyFW.typeId(),
+                    dataReplyFW.buffer(),
+                    dataReplyFW.offset(),
+                    dataReplyFW.sizeof());
+                this.streamState = this::afterNegotiationState;
+            }
+            else
+            {
+                pendingDataFW = dataReplyFW;
+                pendingNextState = this::afterNegotiationState;
+                // TODO pick-up when next WINDOW frame arrives from ACCEPT-REPLY
+                // TODO move in a state that aborts handshake if data is received on ACCEPT
+            }
 
             // Can safely release the buffer
             if (this.slotIndex != NO_SLOT)
@@ -301,15 +334,50 @@ final class AcceptStreamHandler extends AbstractStreamHandler
         if (context.socksConnectionRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
         {
             final SocksCommandRequestFW socksCommandRequestFW = context.socksConnectionRequestRO.wrap(buffer, offset, limit);
-            //
-            // TODO validate the CONNECT request: Protocol version, command, address type
-            //
-            // Create a Begin Frame
-            //
-            //
-            final RouteFW connectRoute = resolveTarget(acceptRef, acceptName);
-            final String connectName = connectRoute.target()
-                .asString();
+
+
+            if (socksCommandRequestFW.version() != 0x05)
+            {
+                throw new IllegalStateException(
+                    String.format("Unsupported SOCKS protocol version (expected 0x05, received 0x%02x",
+                        socksCommandRequestFW.version()));
+            }
+
+
+            if (socksCommandRequestFW.command() != 0x01)
+            {
+                throw new IllegalStateException(
+                    String.format("Unsupported SOCKS command (expected 0x01 - CONNECT, received 0x%02x",
+                        socksCommandRequestFW.version()));
+            }
+
+            StringBuilder dstAddrPortBuilder = new StringBuilder();
+            byte atype = socksCommandRequestFW.atype();
+            if (atype == 0x03)
+            {
+                dstAddrPortBuilder.append(socksCommandRequestFW.domain());
+            }
+            else if (atype == 0x01 || atype == 0x04)
+            {
+                try
+                {
+                    dstAddrPortBuilder.append(socksCommandRequestFW.ip().getHostAddress());
+                }
+                catch (UnknownHostException e)
+                {
+                    throw new IllegalStateException("Unsupported SOCKS connection address", e);
+                }
+            }
+            else
+            {
+                throw new IllegalStateException(
+                    String.format("Unsupported SOCKS address type (expected 0x01/0x03/0x04, received 0x%02x", atype));
+            }
+            dstAddrPortBuilder.append(":").append(socksCommandRequestFW.port());
+            String dstAddrPort = dstAddrPortBuilder.toString();
+
+            final RouteFW connectRoute = resolveTarget(acceptRef, acceptSourceName, dstAddrPort);
+            final String connectName = connectRoute.target().asString();
             final MessageConsumer connect = context.router.supplyTarget(connectName);
             final long connectRef = connectRoute.targetRef();
 
@@ -320,7 +388,8 @@ final class AcceptStreamHandler extends AbstractStreamHandler
             Correlation correlation = new Correlation();
             correlation.connectStreamId(connectStreamId);
             correlation.connectEndpoint(connect);
-            correlation.acceptSourceName(acceptName);
+            correlation.acceptSourceName(acceptSourceName);
+
 
             // TODO add the socksConnectionRequestRO relevant data into, if any, into the Correlation
             context.correlations.put(connectCorrelationId, correlation); // Use this map on the CONNECT STREAM
@@ -334,8 +403,33 @@ final class AcceptStreamHandler extends AbstractStreamHandler
                 .extension(e -> e.reset())
                 .build();
             connect.accept(connectBegin.typeId(), connectBegin.buffer(), connectBegin.offset(), connectBegin.sizeof());
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             context.router.setThrottle(connectName, connectStreamId,
-                this::handleAcceptReplyThrottle); // FIXME handleAcceptReplyThrottle ?
+                this::handleConnectThrottleAfterHandshake); // FIXME handleAcceptReplyThrottle ?
 
             this.streamState = this::afterNegotiationState;
 
@@ -358,7 +452,7 @@ final class AcceptStreamHandler extends AbstractStreamHandler
         }
     }
 
-    private void handleAcceptReplyThrottle(
+    private void handleAcceptReplyThrottleBeforeHandshake(
         int msgTypeId,
         DirectBuffer buffer,
         int index,
@@ -368,7 +462,29 @@ final class AcceptStreamHandler extends AbstractStreamHandler
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
-            handleWindow(window);
+            handleWindowBeforeHandshake(window);
+            break;
+        case ResetFW.TYPE_ID:
+            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
+            handleReset(reset);
+            break;
+        default:
+            // ignore
+            break;
+        }
+    }
+
+    private void handleConnectThrottleAfterHandshake(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
+    {
+        switch (msgTypeId)
+        {
+        case WindowFW.TYPE_ID:
+            final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
+            handleWindowBeforeHandshake(window);
             break;
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
@@ -391,24 +507,29 @@ final class AcceptStreamHandler extends AbstractStreamHandler
         // TODO: WsAbortEx
     }
 
-    private void handleWindow(
+    private void handleWindowBeforeHandshake(
         WindowFW window)
     {
-        final int targetWindowBytesDelta = window.update();
-        final int targetWindowFramesDelta = window.frames();
+        acceptReplyWindowBytes += window.update();
+        acceptReplyWindowFrames += window.frames();
 
-        final int sourceWindowBytesDelta = targetWindowBytesDelta + sourceWindowBytesAdjustment;
-        final int sourceWindowFramesDelta = targetWindowFramesDelta + sourceWindowFramesAdjustment;
-
-        acceptWindowBytes += Math.max(sourceWindowBytesDelta, 0);
-        sourceWindowBytesAdjustment = Math.min(sourceWindowBytesDelta, 0);
-
-        acceptWindowFrames += Math.max(sourceWindowFramesDelta, 0);
-        sourceWindowFramesAdjustment = Math.min(sourceWindowFramesDelta, 0);
-
-        if (sourceWindowBytesDelta > 0 || sourceWindowFramesDelta > 0)
+        if (pendingDataFW != null &&
+            acceptReplyWindowBytes > pendingDataFW.sizeof() &&
+            acceptReplyWindowFrames > 0)
         {
-            doWindow(acceptThrottle, acceptId, Math.max(sourceWindowBytesDelta, 0), Math.max(sourceWindowFramesDelta, 0));
+            acceptReply.accept(
+                pendingDataFW.typeId(),
+                pendingDataFW.buffer(),
+                pendingDataFW.offset(),
+                pendingDataFW.sizeof());
+
+            this.streamState = this.pendingNextState;
+
+            this.pendingDataFW = null;
+            this.pendingNextState = null;
+
+            acceptReplyWindowBytes -= pendingDataFW.sizeof();
+            acceptReplyWindowFrames--;
         }
     }
 
@@ -418,19 +539,35 @@ final class AcceptStreamHandler extends AbstractStreamHandler
         doReset(acceptThrottle, acceptId);
     }
 
+
+    @Override
+    public void transitionToConnectionReady(Optional<TcpBeginExFW> connectionInfo)
+    {
+
+    }
+
+    @Override
+    public void transitionToAborted()
+    {
+
+    }
+
     RouteFW resolveTarget(
         long sourceRef,
-        String sourceName)
+        String sourceName,
+        String dstAddrPort)
     {
         MessagePredicate filter = (t, b, o, l) ->
         {
             RouteFW route = context.routeRO.wrap(b, o, l);
-            // TODO use the extension to retrieve a route in forward mode
-            // TODO and with the dstAddrPort matching the SocksConnectRequest
+            final SocksRouteExFW routeEx = route.extension()
+                .get(context.routeExRO::wrap);
 
             return sourceRef == route.sourceRef() &&
-                sourceName.equals(route.source()
-                    .asString());
+                sourceName.equals(route.source().asString()) &&
+                "FORWARD".equalsIgnoreCase(routeEx.mode().toString()) &&
+                dstAddrPort.equals(routeEx.destAddrPort().asString());
+
         };
         return context.router.resolve(filter, this::wrapRoute);
     }
