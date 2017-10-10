@@ -79,8 +79,7 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
         acceptHandlerState = this::beforeBegin;
 
         final RouteFW tmpConnectRoute = resolveTarget(acceptSourceRef, acceptSourceName);
-        final String tmpConnectTargetName = tmpConnectRoute.target()
-            .asString();
+        final String tmpConnectTargetName = tmpConnectRoute.target().asString();
         correlation = new Correlation();
         correlation.acceptThrottle(acceptThrottle);
         correlation.acceptStreamId(acceptStreamId);

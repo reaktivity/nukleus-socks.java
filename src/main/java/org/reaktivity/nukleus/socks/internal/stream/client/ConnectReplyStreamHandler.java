@@ -17,6 +17,8 @@ package org.reaktivity.nukleus.socks.internal.stream.client;
 
 import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
+import java.util.Optional;
+
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
@@ -284,7 +286,7 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
 
             // State machine transitions
             streamState = this::afterConnectionResponse;
-            correlation.acceptTransitionListener().transitionToConnectionReady();
+            correlation.acceptTransitionListener().transitionToConnectionReady(Optional.empty());
 
             // Can safely release the buffer
             if (slotIndex != NO_SLOT)
@@ -370,7 +372,6 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
 
     private void handleAbort(AbortFW abort)
     {
-        System.out.println("Got AbortFW: " + abort + " on ConnectReplyStreamHandler");
         doAbort(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
         correlation.acceptTransitionListener().transitionToAborted();
     }

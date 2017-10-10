@@ -171,6 +171,48 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
         return ((buffer().getByte(portOffset) & 0xff) << 8) | (buffer().getByte(portOffset + 1) & 0xff);
     }
 
+    public String validateAndGetDstAddrPort()
+    {
+        if (this.version() != 0x05)
+        {
+            throw new IllegalStateException(
+                String.format("Unsupported SOCKS protocol version (expected 0x05, received 0x%02x",
+                    this.version()));
+        }
+
+        if (this.command() != 0x01)
+        {
+            throw new IllegalStateException(
+                String.format("Unsupported SOCKS command (expected 0x01 - CONNECT, received 0x%02x",
+                    this.version()));
+        }
+
+        StringBuilder dstAddrPortBuilder = new StringBuilder();
+        byte atype = this.atype();
+        if (atype == 0x03)
+        {
+            dstAddrPortBuilder.append(this.domain());
+        }
+        else if (atype == 0x01 || atype == 0x04)
+        {
+            try
+            {
+                dstAddrPortBuilder.append(this.ip().getHostAddress());
+            }
+            catch (UnknownHostException e)
+            {
+                throw new IllegalStateException("Unsupported SOCKS connection address", e);
+            }
+        }
+        else
+        {
+            throw new IllegalStateException(
+                String.format("Unsupported SOCKS address type (expected 0x01/0x03/0x04, received 0x%02x", atype));
+        }
+        dstAddrPortBuilder.append(":").append(this.port());
+        return dstAddrPortBuilder.toString();
+    }
+
     public static final class Builder extends Flyweight.Builder<SocksCommandRequestFW>
     {
         public Builder()

@@ -83,20 +83,18 @@ public final class ServerStreamFactory implements StreamFactory
         final MessageConsumer acceptThrottle)
     {
         final long acceptRef = begin.sourceRef();
-        final String acceptName = begin.source()
-            .asString();
+        final String acceptSourceName = begin.source().asString();
         final MessagePredicate filter = (t, b, o, l) ->
         {
             final RouteFW route = context.routeRO.wrap(b, o, l);
-            return acceptRef == route.sourceRef() && acceptName.equals(route.source()
-                .asString());
+            return acceptRef == route.sourceRef() && acceptSourceName.equals(route.source().asString());
         };
 
         final RouteFW route = context.router.resolve(filter, this::wrapRoute);
         if (route != null)
         {
-            final long acceptId = begin.streamId();
-            return new AcceptStreamHandler(context, acceptThrottle, acceptId, acceptRef)::handleStream;
+            return new AcceptStreamHandler(context, acceptThrottle, begin.streamId(), acceptRef, acceptSourceName,
+                begin.correlationId())::handleStream;
         }
         return null;
     }
