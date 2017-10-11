@@ -93,7 +93,7 @@ final class AcceptStreamHandler extends AbstractStreamHandler implements AcceptT
         correlation.connectStreamId(context.supplyStreamId.getAsLong());
         correlation.connectCorrelationId(context.supplyCorrelationId.getAsLong());
         correlation.acceptReplyEndpoint(context.router.supplyTarget(acceptSourceName));
-        correlation.nextAcceptSignal(this::attemptNegotiationResponse);
+        correlation.nextAcceptSignal(this::noop);
     }
 
     private RouteFW wrapRoute(
@@ -244,7 +244,7 @@ final class AcceptStreamHandler extends AbstractStreamHandler implements AcceptT
                     String.format("Unsupported SOCKS authentication method (expected 0x00, received 0x%02x",
                         socksNegotiation.methods()[0]));
             }
-
+            correlation.nextAcceptSignal(this::attemptNegotiationResponse);
             correlation.nextAcceptSignal().accept(true);
 
             // Can safely release the buffer
@@ -344,6 +344,13 @@ final class AcceptStreamHandler extends AbstractStreamHandler implements AcceptT
         int offset = payload.offset();
         int size = limit - offset;
 
+        System.out.print("Buffer: [");
+        for (int i = 0; i < size; i++)
+        {
+            System.out.print(String.format("%02x", buffer.getByte(offset + i)));
+        }
+        System.out.println("]");
+
         // Fragmented writes might have already occurred
         if (this.slotOffset != 0)
         {
@@ -351,7 +358,7 @@ final class AcceptStreamHandler extends AbstractStreamHandler implements AcceptT
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, this.slotOffset);
             acceptBuffer.putBytes(0, buffer, offset, size);
             this.slotOffset += size;                                  // New starting point is moved to the end of the buffer
-            buffer = context.bufferPool.buffer(this.slotIndex); // Try to decode from the beginning of the buffer
+            buffer = context.bufferPool.buffer(this.slotIndex);       // Try to decode from the beginning of the buffer
             offset = 0;                                               //
             limit = this.slotOffset;                                  //
         }
@@ -596,13 +603,11 @@ final class AcceptStreamHandler extends AbstractStreamHandler implements AcceptT
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
-            acceptReplyWindowBytes += window.update();
-            acceptReplyWindowFrames += window.frames();
             doWindow(
                 correlation.connectReplyThrottle(),
                 correlation.connectReplyStreamId(),
-                acceptReplyWindowBytes,
-                acceptReplyWindowBytes
+                window.update(),
+                window.frames()
             );
             break;
         case ResetFW.TYPE_ID:
@@ -648,13 +653,11 @@ final class AcceptStreamHandler extends AbstractStreamHandler implements AcceptT
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
-            connectWindowBytes += window.update();
-            connectWindowFrames += window.frames();
             doWindow(
                 correlation.acceptThrottle(),
                 correlation.acceptStreamId(),
-                connectWindowBytes,
-                connectWindowFrames
+                window.update(),
+                window.frames()
             );
             break;
         case ResetFW.TYPE_ID:
