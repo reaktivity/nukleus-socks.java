@@ -239,6 +239,9 @@
               </limits>
             </rule>
           </rules>
+          <excludes>
+            <exclude>org/reaktivity/nukleus/socks/internal/types/**/*</exclude>
+          </excludes>
         </configuration>
         <executions>
           <execution>

@@ -21,13 +21,13 @@ import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-public abstract class AbstractStreamHandler
+public abstract class AbstractStreamProcessor
 {
     public static final String NUKLEUS_SOCKS_NAME = "socks";
 
     protected final Context context;
 
-    public AbstractStreamHandler(Context context)
+    public AbstractStreamProcessor(Context context)
     {
         this.context = context;
     }
@@ -66,20 +66,6 @@ public abstract class AbstractStreamHandler
         throttle.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
     }
 
-    protected void doZeroWindow(
-        final MessageConsumer throttle,
-        final long throttleId)
-    {
-        final WindowFW window =
-            context.windowRW
-                .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-                .streamId(throttleId)
-                .update(0)
-                .frames(0)
-                .build();
-        throttle.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
-    }
-
     protected void doReset(
         final MessageConsumer throttle,
         final long throttleId)
@@ -90,6 +76,5 @@ public abstract class AbstractStreamHandler
                 .streamId(throttleId)
                 .build();
         throttle.accept(reset.typeId(), reset.buffer(), reset.offset(), reset.sizeof());
-        // TODO change state
     }
 }

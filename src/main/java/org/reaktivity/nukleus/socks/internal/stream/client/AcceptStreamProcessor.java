@@ -24,7 +24,7 @@ import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.metadata.Signal;
 import org.reaktivity.nukleus.socks.internal.metadata.State;
-import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamHandler;
+import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamProcessor;
 import org.reaktivity.nukleus.socks.internal.stream.AcceptTransitionListener;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
@@ -40,7 +40,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-public final class AcceptStreamHandler extends AbstractStreamHandler implements AcceptTransitionListener
+public final class AcceptStreamProcessor extends AbstractStreamProcessor implements AcceptTransitionListener
 {
 
     // Current handler of incoming BEGIN, DATA, END, ABORT frames on the ACCEPT stream
@@ -48,15 +48,11 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
 
     private final Correlation correlation;
 
-    /* Start of Window */
-
     private int sourceWindowBytesAdjustment;
     private int sourceWindowFramesAdjustment;
 
     private int connectWindowBytes = 0;
     private int connectWindowFrames = 0;
-
-    /* End of Window */
 
     DataFW dataNegotiationRequestFW = null;
     DataFW dataConnectRequestFW = null;
@@ -66,7 +62,7 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
     private int slotIndex = NO_SLOT;
 
     // One instance per Stream
-    AcceptStreamHandler(
+    AcceptStreamProcessor(
         Context context,
         MessageConsumer acceptThrottle,
         long acceptStreamId,
@@ -130,7 +126,7 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
     private void handleBegin(
         BeginFW begin)
     {
-        // Store the correlation for reuse in the ConnectReplyStreamHandler
+        // Store the correlation for reuse in the ConnectReplyStreamProcessor
         context.correlations.put(correlation.connectCorrelationId(), correlation);
         // Lazy initialization of CONNECT throttling handler
         context.router.setThrottle(
@@ -287,7 +283,6 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
         {
             if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
             {
-                // TODO diagnostics
                 doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
                 return;
             }
@@ -340,7 +335,6 @@ public final class AcceptStreamHandler extends AbstractStreamHandler implements 
         {
             if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
             {
-                // TODO diagnostics
                 doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
                 return;
             }

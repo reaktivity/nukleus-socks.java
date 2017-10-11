@@ -35,9 +35,6 @@ public class Correlation
     // ACCEPT SOURCE name (similar to address)
     private String acceptSourceName;
 
-    // Current handler of incoming BEGIN, DATA, END, ABORT frames on the ACCEPT stream
-    private MessageConsumer acceptHandlerState;
-
     // Can be used to send BEGIN, DATA, END, ABORT frames to the SOURCE on the ACCEPT-REPLY stream
     private MessageConsumer acceptReplyEndpoint;
 
@@ -160,16 +157,6 @@ public class Correlation
     public void acceptSourceRef(long acceptSourceRef)
     {
         this.acceptSourceRef = acceptSourceRef;
-    }
-
-    public MessageConsumer acceptHandlerState()
-    {
-        return acceptHandlerState;
-    }
-
-    public void acceptHandlerState(MessageConsumer acceptHandlerState)
-    {
-        this.acceptHandlerState = acceptHandlerState;
     }
 
     public MessageConsumer acceptReplyEndpoint()

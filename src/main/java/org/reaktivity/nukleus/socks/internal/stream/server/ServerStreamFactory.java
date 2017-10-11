@@ -93,7 +93,7 @@ public final class ServerStreamFactory implements StreamFactory
         final RouteFW route = context.router.resolve(filter, this::wrapRoute);
         if (route != null)
         {
-            return new AcceptStreamHandler(context, acceptThrottle, begin.streamId(), acceptRef, acceptSourceName,
+            return new AcceptStreamProcessor(context, acceptThrottle, begin.streamId(), acceptRef, acceptSourceName,
                 begin.correlationId())::handleStream;
         }
         return null;
@@ -104,7 +104,7 @@ public final class ServerStreamFactory implements StreamFactory
         final MessageConsumer connectReplyThrottle)
     {
         final long connectReplyId = begin.streamId();
-        return new ConnectReplyStreamHandler(context, connectReplyThrottle, connectReplyId)::handleStream;
+        return new ConnectReplyStreamProcessor(context, connectReplyThrottle, connectReplyId)::handleStream;
     }
 
     private RouteFW wrapRoute(

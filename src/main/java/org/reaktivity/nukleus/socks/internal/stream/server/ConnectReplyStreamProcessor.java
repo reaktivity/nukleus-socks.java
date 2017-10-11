@@ -20,7 +20,7 @@ import java.util.Optional;
 import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.metadata.State;
-import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamHandler;
+import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamProcessor;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
@@ -30,7 +30,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.TcpBeginExFW;
 
-final class ConnectReplyStreamHandler extends AbstractStreamHandler
+final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 {
     private final MessageConsumer connectReplyThrottle;
     private final long connectReplyId;
@@ -39,7 +39,7 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
 
     private Correlation correlation;
 
-    ConnectReplyStreamHandler(
+    ConnectReplyStreamProcessor(
         Context context,
         MessageConsumer connectReplyThrottle,
         long connectReplyId)
@@ -145,7 +145,6 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
 
     private void handleEnd(EndFW end)
     {
-        System.out.println("Got EndFW: " + end + " on ConnectReplyStreamHandler");
         EndFW endForwardFW = context.endRW
             .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(correlation.acceptReplyStreamId())

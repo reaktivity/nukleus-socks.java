@@ -23,7 +23,7 @@ import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.metadata.State;
-import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamHandler;
+import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamProcessor;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandResponseFW;
@@ -36,18 +36,13 @@ import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-final class ConnectReplyStreamHandler extends AbstractStreamHandler
+final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 {
 
     private MessageConsumer streamState;
 
-    /* Start of Window */
-    private int acceptReplyWindowBytes;
-    private int acceptReplyWindowFrames;
-
     private int acceptReplyWindowBytesAdjustment;
     private int acceptReplyWindowFramesAdjustment;
-    /* End of Window */
 
     private int slotIndex = NO_SLOT;
     private int slotOffset;
@@ -55,7 +50,7 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
     private final MessageConsumer connectReplyThrottle;
     private final long connectReplyStreamId;
 
-    ConnectReplyStreamHandler(
+    ConnectReplyStreamProcessor(
         Context context,
         MessageConsumer connectReplyThrottle,
         long connectReplyId)
@@ -87,10 +82,6 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
         {
             final BeginFW begin = context.beginRO.wrap(buffer, index, index + length);
             handleBegin(begin);
-            context.router.setThrottle(
-                correlation.acceptSourceName(),
-                correlation.acceptReplyStreamId(),
-                this::handleAcceptReplyThrottle);
         }
         else
         {
@@ -132,6 +123,10 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
         correlation = context.correlations.remove(correlationId);
         if (connectRef == 0L && correlation != null)
         {
+            context.router.setThrottle(
+                correlation.acceptSourceName(),
+                correlation.acceptReplyStreamId(),
+                this::handleAcceptReplyThrottle);
             final long acceptReplyRef = 0; // Bi-directional reply
             BeginFW beginToAcceptReply = context.beginRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
@@ -177,11 +172,11 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
             acceptBuffer.putBytes(0, buffer, offset, size);
             slotOffset += size;                                  // Next starting point is moved to the end of the buffer
             buffer = context.bufferPool.buffer(slotIndex);       // Try to decode from the beginning of the buffer
-            offset = 0;                                               //
+            offset = 0;                                          //
             limit = slotOffset;                                  //
         }
         // one negotiation request frame is in the buffer
-        if (context.socksNegotiationResponseRO.canWrap(buffer, offset, limit)) 
+        if (context.socksNegotiationResponseRO.canWrap(buffer, offset, limit))
         {
             // Wrap the frame and extract the incoming data
             final SocksNegotiationResponseFW socksNegotiationResponse =
@@ -200,7 +195,6 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
             }
             streamState = this::beforeConnectionResponse;
             correlation.nextAcceptSignal().accept(true);
-
             // Can safely release the buffer
             if (slotIndex != NO_SLOT)
             {
@@ -211,9 +205,11 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
         }
         else if (slotIndex == NO_SLOT)
         {
-            // Initialize the accumulation buffer
-            slotIndex = context.bufferPool.acquire(correlation.connectStreamId());
-            // FIXME might not get a slot, in this case should return an exception
+            if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
+            {
+                doReset(connectReplyThrottle, connectReplyStreamId);
+                return;
+            }
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(slotIndex);
             acceptBuffer.putBytes(0, buffer, offset, size);
             slotOffset = size;
@@ -357,7 +353,6 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
 
     private void handleEnd(EndFW end)
     {
-        System.out.println("Got EndFW: " + end + " on ConnectReplyStreamHandler");
         EndFW endForwardFW = context.endRW
             .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(correlation.acceptReplyStreamId())
@@ -405,11 +400,9 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
         final int sourceWindowFramesDelta = window.frames();
 
         final int targetWindowBytesDelta = sourceWindowBytesDelta + acceptReplyWindowBytesAdjustment;
-        acceptReplyWindowBytes += Math.max(targetWindowBytesDelta, 0);
         acceptReplyWindowBytesAdjustment = Math.min(targetWindowBytesDelta, 0);
 
         final int targetWindowFramesDelta = sourceWindowFramesDelta + acceptReplyWindowFramesAdjustment;
-        acceptReplyWindowFrames += Math.max(targetWindowFramesDelta, 0);
         acceptReplyWindowFramesAdjustment = Math.min(targetWindowFramesDelta, 0);
 
         if (targetWindowBytesDelta > 0 || targetWindowFramesDelta > 0)

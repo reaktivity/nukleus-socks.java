@@ -90,8 +90,8 @@ public class ClientStreamFactory implements StreamFactory
         final RouteFW route = context.router.resolve(filter, this::wrapRoute);
         if (route != null)
         {
-            // FIXME will wrap again the BeginFW in the AcceptStreamHandler
-            return new AcceptStreamHandler(
+            // FIXME will wrap again the BeginFW in the AcceptStreamProcessor
+            return new AcceptStreamProcessor(
                 context,
                 acceptThrottle,
                 begin.streamId(),
@@ -107,7 +107,7 @@ public class ClientStreamFactory implements StreamFactory
         final BeginFW begin,
         final MessageConsumer connectReplyThrottle)
     {
-        return new ConnectReplyStreamHandler(context, connectReplyThrottle, begin.streamId())::handleStream;
+        return new ConnectReplyStreamProcessor(context, connectReplyThrottle, begin.streamId())::handleStream;
     }
 
     private RouteFW wrapRoute(
