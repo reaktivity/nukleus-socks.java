@@ -227,19 +227,28 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
             int maxLimit)
         {
             super.wrap(buffer, offset, maxLimit);
+            int newLimit = limit() + BitUtil.SIZE_OF_BYTE;
+            checkLimit(newLimit, maxLimit());
             buffer().putByte(offset() + FIELD_OFFSET_RSV, (byte) 0x00);
+            limit(newLimit);
             return this;
         }
 
         public Builder version(byte version)
         {
+            int newLimit = limit() + BitUtil.SIZE_OF_BYTE;
+            checkLimit(newLimit, maxLimit());
             buffer().putByte(offset() + FIELD_OFFSET_VERSION, version);
+            limit(newLimit);
             return this;
         }
 
         public Builder command(byte command)
         {
+            int newLimit = limit() + BitUtil.SIZE_OF_BYTE;
+            checkLimit(newLimit, maxLimit());
             buffer().putByte(offset() + FIELD_OFFSET_COMMAND, command);
+            limit(newLimit);
             return this;
         }
 
@@ -270,16 +279,22 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
             byte[] addr,
             int port)
         {
+            int newLimit = limit() + BitUtil.SIZE_OF_BYTE;
+            checkLimit(newLimit, maxLimit());
             buffer().putByte(offset() + FIELD_OFFSET_ADDRTYP, atyp);
 
             int addrOffset = offset() + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP;
             if (atyp == 0x03)
             {
+                checkLimit(++newLimit, maxLimit());
                 buffer().putByte(addrOffset++, (byte) addr.length);
             }
+            newLimit += addr.length + 2;
+            checkLimit(newLimit, maxLimit());
             buffer().putBytes(addrOffset, addr);
             buffer().putByte(addrOffset + addr.length, (byte) ((port >> 8) & 0xFF));
             buffer().putByte(addrOffset + addr.length + 1, (byte) (port & 0xFF));
+            limit(newLimit);
             return this;
         }
     }

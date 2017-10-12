@@ -98,13 +98,19 @@ public class SocksNegotiationResponseFW extends Flyweight implements Fragmented
 
         public Builder version(byte version)
         {
+            int newLimit = limit() + BitUtil.SIZE_OF_BYTE;
+            checkLimit(newLimit, maxLimit());
             buffer().putByte(offset() + FIELD_OFFSET_VERSION, version);
+            limit(newLimit);
             return this;
         }
 
         public Builder method(byte method)
         {
+            int newLimit = limit() + BitUtil.SIZE_OF_BYTE;
+            checkLimit(newLimit, maxLimit());
             buffer().putByte(offset() + FIELD_OFFSET_METHOD, method);
+            limit(newLimit);
             return this;
         }
     }

@@ -108,7 +108,7 @@ public class ControlIT
         "${route}/server/controller",
         "${unroute}/server/controller"
     })
-    public void shouldUnroutReverseServer() throws Exception
+    public void shouldUnrouteReverseServer() throws Exception
     {
         k3po.finish();
     }
@@ -130,7 +130,7 @@ public class ControlIT
         "${route}/client/controller",
         "${unroute}/client/controller"
     })
-    public void shouldUnroutReverseClient() throws Exception
+    public void shouldUnrouteReverseClient() throws Exception
     {
         k3po.finish();
     }

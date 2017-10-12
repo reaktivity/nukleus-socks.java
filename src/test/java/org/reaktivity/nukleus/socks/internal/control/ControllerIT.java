@@ -63,7 +63,7 @@ public class ControllerIT
         k3po.start();
 
         reaktor.controller(SocksController.class)
-            .routeServer("source", 0L, "target", targetRef, "Forward", "example.com:8080")
+            .routeServer("source", 0L, "target", targetRef, "forward", "example.com:8080")
             .get();
 
         k3po.finish();
