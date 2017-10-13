@@ -18,6 +18,7 @@ package org.reaktivity.nukleus.socks.internal.streams.forward.server;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.rules.RuleChain.outerRule;
 
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
@@ -57,6 +58,48 @@ public class ConnectionIT
         "${client}/client.connect.send.data/client",
         "${server}/client.connect.send.data/server"})
     public void shouldAcceptAndSendDataBothWays() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Ignore
+    @Test
+    @ScriptProperty({
+        "mode 'FORWARD'"
+    })
+    @Specification({
+        "${route}/server/controller",
+        "${client}/client.does.not.connect.no.acceptable.methods/client",
+        "${server}/client.does.not.connect.no.acceptable.methods/server"})
+    public void shouldNotEstablishConnectionNoAcceptableMethods() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Ignore
+    @Test
+    @ScriptProperty({
+        "mode 'FORWARD'"
+    })
+    @Specification({
+        "${route}/server/controller",
+        "${client}/client.connect.fallback.to.no.authentication/client",
+        "${server}/client.connect.fallback.to.no.authentication/server"})
+    public void shouldEstablishConnectionFallbackToNoAuthentication() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Ignore
+    @Test
+    @ScriptProperty({
+        "mode 'FORWARD'"
+    })
+    @Specification({
+        "${route}/server/controller",
+        "${client}/client.connect.request.with.command.not.supported/client",
+        "${server}/client.connect.request.with.command.not.supported/server"})
+    public void shouldNotEstablishConnectionCommandNotSupported() throws Exception
     {
         k3po.finish();
     }
