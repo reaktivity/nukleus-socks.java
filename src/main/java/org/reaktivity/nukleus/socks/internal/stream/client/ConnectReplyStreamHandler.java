@@ -179,7 +179,7 @@ final class ConnectReplyStreamHandler extends AbstractStreamHandler
             limit = slotOffset;                                  //
         }
         // one negotiation request frame is in the buffer
-        if (context.socksNegotiationResponseRO.canWrap(buffer, offset, limit))
+        if (context.socksNegotiationResponseRO.canWrap(buffer, offset, limit)) 
         {
             // Wrap the frame and extract the incoming data
             final SocksNegotiationResponseFW socksNegotiationResponse =
