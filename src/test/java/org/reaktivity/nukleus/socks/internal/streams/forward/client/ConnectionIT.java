@@ -35,7 +35,7 @@ public class ConnectionIT
         .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
         .addScriptRoot("client", "org/reaktivity/specification/nukleus/socks/streams/forward")
         .addScriptRoot("server", "org/reaktivity/specification/socks/rfc1928/forward");
-    private final TestRule timeout = new DisableOnDebug(new Timeout(3, SECONDS));
+    private final TestRule timeout = new DisableOnDebug(new Timeout(10, SECONDS));
 
     private final ReaktorRule reaktor = new ReaktorRule()
         .directory("target/nukleus-itests")
@@ -80,7 +80,7 @@ public class ConnectionIT
         k3po.finish();
     }
 
-    @Ignore
+    @Ignore("Multiple authentication methods not supported in client")
     @Test
     @ScriptProperty({
         "mode 'FORWARD'",
