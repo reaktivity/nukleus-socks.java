@@ -19,9 +19,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 /**
-    Marker annotation for methods that override MessageConsumer.accept but are called
-    by method references and cannot by marked with @Override
-    TODO implement a checker with https://checkerframework.org/ for signature
+    Marker annotation for methods that override MessageConsumer.accept
+    defining the state of Stream Processors
 */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface State

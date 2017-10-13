@@ -20,7 +20,6 @@ import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 import java.util.Optional;
 
 import org.agrona.DirectBuffer;
-import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.metadata.Signal;
 import org.reaktivity.nukleus.socks.internal.metadata.State;
@@ -44,18 +43,12 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
 {
 
     // Current handler of incoming BEGIN, DATA, END, ABORT frames on the ACCEPT stream
-    private MessageConsumer acceptHandlerState;
+    private MessageConsumer acceptProcessorState;
 
     private final Correlation correlation;
 
-    private int sourceWindowBytesAdjustment;
-    private int sourceWindowFramesAdjustment;
-
     private int connectWindowBytes = 0;
     private int connectWindowFrames = 0;
-
-    DataFW dataNegotiationRequestFW = null;
-    DataFW dataConnectRequestFW = null;
 
     boolean isConnectReplyStateReady = false;
 
@@ -72,7 +65,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     {
         super(context);
         // init state machine
-        acceptHandlerState = this::beforeBegin;
+        acceptProcessorState = this::beforeBegin;
 
         final RouteFW tmpConnectRoute = resolveTarget(acceptSourceRef, acceptSourceName);
         final String tmpConnectTargetName = tmpConnectRoute.target().asString();
@@ -102,7 +95,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         int index,
         int length)
     {
-        acceptHandlerState.accept(msgTypeId, buffer, index, length);
+        acceptProcessorState.accept(msgTypeId, buffer, index, length);
     }
 
     @State
@@ -149,7 +142,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 connectBegin.buffer(),
                 connectBegin.offset(),
                 connectBegin.sizeof());
-        this.acceptHandlerState = this::beforeConnect;
+        this.acceptProcessorState = this::beforeConnect;
     }
 
     @State
@@ -215,7 +208,12 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
-            handleWindow(window);
+            doWindow(
+                correlation.acceptThrottle(),
+                correlation.acceptStreamId(),
+                window.update(),
+                window.frames()
+            );
             break;
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
@@ -251,58 +249,32 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         }
     }
 
-    private void handleWindow(
-        WindowFW window)
-    {
-        final int targetWindowBytesDelta = window.update();
-        final int targetWindowFramesDelta = window.frames();
-
-        final int sourceWindowBytesDelta = targetWindowBytesDelta + sourceWindowBytesAdjustment;
-        final int sourceWindowFramesDelta = targetWindowFramesDelta + sourceWindowFramesAdjustment;
-
-        sourceWindowBytesAdjustment = Math.min(sourceWindowBytesDelta, 0);
-        sourceWindowFramesAdjustment = Math.min(sourceWindowFramesDelta, 0);
-
-        if (sourceWindowBytesDelta > 0 || sourceWindowFramesDelta > 0)
-        {
-            doWindow(correlation.acceptThrottle(), correlation.acceptStreamId(), Math.max(sourceWindowBytesDelta, 0),
-                Math.max(sourceWindowFramesDelta, 0));
-        }
-    }
-
     private void handleReset(
         ResetFW reset)
     {
-        doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+        doReset(
+            correlation.acceptThrottle(),
+            correlation.acceptStreamId()
+        );
     }
 
     @Signal
     public void attemptNegotiationRequest(boolean isConnectReplyBeginFrameReceived)
     {
-        if (dataNegotiationRequestFW == null)
-        {
-            if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
-            {
-                doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
-                return;
-            }
-            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(slotIndex);
-            SocksNegotiationRequestFW socksNegotiationRequestFW = context.socksNegotiationRequestRW
-                .wrap(acceptBuffer, DataFW.FIELD_OFFSET_PAYLOAD, acceptBuffer.capacity())
-                .version((byte) 0x05)
-                .nmethods((byte) 0x01)
-                .method(new byte[]{0x00})
-                .build();
-
-            dataNegotiationRequestFW = context.dataRW.wrap(acceptBuffer, 0, acceptBuffer.capacity())
-                .streamId(correlation.connectStreamId())
-                .payload(p -> p.set(
-                    socksNegotiationRequestFW.buffer(),
-                    socksNegotiationRequestFW.offset(),
-                    socksNegotiationRequestFW.sizeof()))
-                .extension(e -> e.reset())
-                .build();
-        }
+        SocksNegotiationRequestFW socksNegotiationRequestFW = context.socksNegotiationRequestRW
+            .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
+            .version((byte) 0x05)
+            .nmethods((byte) 0x01)
+            .method(new byte[]{0x00})
+            .build();
+        DataFW dataNegotiationRequestFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+            .streamId(correlation.connectStreamId())
+            .payload(p -> p.set(
+                socksNegotiationRequestFW.buffer(),
+                socksNegotiationRequestFW.offset(),
+                socksNegotiationRequestFW.sizeof()))
+            .extension(e -> e.reset())
+            .build();
 
         if (connectWindowFrames > 0 &&
             connectWindowBytes > dataNegotiationRequestFW.sizeof())
@@ -316,10 +288,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
 
             connectWindowBytes -= dataNegotiationRequestFW.sizeof();
             connectWindowFrames--;
-
-            context.bufferPool.release(slotIndex);
-            slotIndex = NO_SLOT;
-
             correlation.nextAcceptSignal(this::attemptConnectionRequest);
         }
     }
@@ -331,35 +299,24 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         {
             return;
         }
-        if (dataConnectRequestFW == null)
-        {
-            if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
-            {
-                doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
-                return;
-            }
-            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(slotIndex);
-            final RouteFW connectRoute = correlation.connectRoute();
-            final SocksRouteExFW routeEx = connectRoute.extension().get(context.routeExRO::wrap);
-            String destAddrPort = routeEx.destAddrPort().asString();
-
-            // Reply with Socks version 5 and "NO AUTHENTICATION REQUIRED"
-            SocksCommandRequestFW socksConnectRequestFW = context.socksConnectionRequestRW
-                .wrap(acceptBuffer, DataFW.FIELD_OFFSET_PAYLOAD, acceptBuffer.capacity())
-                .version((byte) 0x05)
-                .command((byte) 0x01) // CONNECT
-                .destination(destAddrPort)
-                .build();
-            dataConnectRequestFW = context.dataRW.wrap(acceptBuffer, 0, acceptBuffer.capacity())
-                .streamId(correlation.connectStreamId())
-                .payload(p -> p.set(
-                    socksConnectRequestFW.buffer(),
-                    socksConnectRequestFW.offset(),
-                    socksConnectRequestFW.sizeof()))
-                .extension(e -> e.reset())
-                .build();
-        }
-
+        final RouteFW connectRoute = correlation.connectRoute();
+        final SocksRouteExFW routeEx = connectRoute.extension().get(context.routeExRO::wrap);
+        String destAddrPort = routeEx.destAddrPort().asString();
+        // Reply with Socks version 5 and "NO AUTHENTICATION REQUIRED"
+        SocksCommandRequestFW socksConnectRequestFW = context.socksConnectionRequestRW
+            .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
+            .version((byte) 0x05)
+            .command((byte) 0x01) // CONNECT
+            .destination(destAddrPort)
+            .build();
+        DataFW dataConnectRequestFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+            .streamId(correlation.connectStreamId())
+            .payload(p -> p.set(
+                socksConnectRequestFW.buffer(),
+                socksConnectRequestFW.offset(),
+                socksConnectRequestFW.sizeof()))
+            .extension(e -> e.reset())
+            .build();
         if (connectWindowFrames > 0 &&
             connectWindowBytes > dataConnectRequestFW.sizeof())
         {
@@ -368,13 +325,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 dataConnectRequestFW.buffer(),
                 dataConnectRequestFW.offset(),
                 dataConnectRequestFW.sizeof());
-
             connectWindowBytes -= dataConnectRequestFW.sizeof();
             connectWindowFrames--;
-
-            context.bufferPool.release(slotIndex);
-            slotIndex = NO_SLOT;
-
             correlation.nextAcceptSignal(this::noop);
         }
     }
@@ -392,7 +344,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     @Override
     public void transitionToConnectionReady(Optional connectionInfo)
     {
-        this.acceptHandlerState = this::afterConnect;
+        this.acceptProcessorState = this::afterConnect;
         context.router.setThrottle(
             correlation.connectTargetName(),
             correlation.connectStreamId(),
@@ -407,7 +359,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     @Override
     public void transitionToAborted()
     {
-        this.acceptHandlerState = this::afterAbort;
+        this.acceptProcessorState = this::afterAbort;
         doAbort(correlation.connectEndpoint(), correlation.connectStreamId());
     }
 

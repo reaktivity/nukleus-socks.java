@@ -59,8 +59,9 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
     private int connectWindowBytes = 0;
     private int connectWindowFrames = 0;
 
-    private DataFW dataNegotiationResponseFW = null;
-    private DataFW dataConnectionResponseFW = null;
+    private byte socksAtyp;
+    private byte[] socksAddr;
+    private int socksPort;
 
     final Correlation correlation;
 
@@ -166,7 +167,6 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             beginToAcceptReply.buffer(),
             beginToAcceptReply.offset(),
             beginToAcceptReply.sizeof());
-
         doWindow(
             correlation.acceptThrottle(),
             correlation.acceptStreamId(),
@@ -272,22 +272,19 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
     private void attemptNegotiationResponse(
         boolean isReadyState)
     {
-        if (dataNegotiationResponseFW == null)
-        {
-            SocksNegotiationResponseFW socksNegotiationResponseFW = context.socksNegotiationResponseRW
-                .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
-                .version((byte) 0x05)
-                .method((byte) 0x00)
-                .build();
-            dataNegotiationResponseFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-                .streamId(correlation.acceptReplyStreamId())
-                .payload(p -> p.set(
-                    socksNegotiationResponseFW.buffer(),
-                    socksNegotiationResponseFW.offset(),
-                    socksNegotiationResponseFW.sizeof()))
-                .extension(e -> e.reset())
-                .build();
-        }
+        SocksNegotiationResponseFW socksNegotiationResponseFW = context.socksNegotiationResponseRW
+            .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
+            .version((byte) 0x05)
+            .method((byte) 0x00)
+            .build();
+        DataFW dataNegotiationResponseFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+            .streamId(correlation.acceptReplyStreamId())
+            .payload(p -> p.set(
+                socksNegotiationResponseFW.buffer(),
+                socksNegotiationResponseFW.offset(),
+                socksNegotiationResponseFW.sizeof()))
+            .extension(e -> e.reset())
+            .build();
         if (acceptReplyWindowBytes > dataNegotiationResponseFW.sizeof() && acceptReplyWindowFrames > 0)
         {
             this.streamState = this::afterNegotiation;
@@ -445,9 +442,7 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
     public void transitionToConnectionReady(Optional<TcpBeginExFW> connectionInfo)
     {
         TcpBeginExFW tcpBeginEx = connectionInfo.get(); // Only reading so should be safe
-        byte socksAtyp;
-        byte[] socksAddr;
-        int socksPort = tcpBeginEx.localPort();
+        socksPort = tcpBeginEx.localPort();
         if (tcpBeginEx.localAddress().kind() == 1)
         {
             socksAtyp = (byte) 0x01;
@@ -465,25 +460,10 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                 directBuffer.getBytes(offset, socksAddr);
                 return null;
             });
-
-        SocksCommandResponseFW socksConnectResponseFW = context.socksConnectionResponseRW
-            .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
-            .version((byte) 0x05)
-            .reply((byte) 0x00) // CONNECT
-            .bind(socksAtyp, socksAddr, socksPort)
-            .build();
-        dataConnectionResponseFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-            .streamId(correlation.acceptReplyStreamId())
-            .payload(p -> p.set(
-                socksConnectResponseFW.buffer(),
-                socksConnectResponseFW.offset(),
-                socksConnectResponseFW.sizeof()))
-            .extension(e -> e.reset())
-            .build();
-
         attemptConnectionResponse(false);
     }
 
+    @Signal
     private void attemptConnectionResponse(
         boolean isReadyState)
     {
@@ -491,6 +471,20 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
         {
             correlation.nextAcceptSignal(this::attemptConnectionResponse);
         }
+        SocksCommandResponseFW socksConnectResponseFW = context.socksConnectionResponseRW
+            .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
+            .version((byte) 0x05)
+            .reply((byte) 0x00) // CONNECT
+            .bind(socksAtyp, socksAddr, socksPort)
+            .build();
+        DataFW dataConnectionResponseFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+            .streamId(correlation.acceptReplyStreamId())
+            .payload(p -> p.set(
+                socksConnectResponseFW.buffer(),
+                socksConnectResponseFW.offset(),
+                socksConnectResponseFW.sizeof()))
+            .extension(e -> e.reset())
+            .build();
         if (acceptReplyWindowBytes > dataConnectionResponseFW.sizeof() && acceptReplyWindowFrames > 0)
         {
             this.streamState = this::afterSourceConnect;
@@ -508,6 +502,22 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                 correlation.connectReplyStreamId(),
                 acceptReplyWindowBytes,
                 acceptReplyWindowFrames);
+            /*
+            TODO THROTTLING
+            Right now we have:
+                - sent to accept throttle 65536 bytes and 65536 frames
+                - received on accept ARB bytes and ARF frames
+                - accumulated connectWindowBytes, connectWindowFrames from connect
+            The current accept available window (CAW) is 65536 - ARB, 65536 - ARF
+                if (AAW > connectWindowBytes) -> need to buffer until windows get aligned
+                else just send to accept (connectWindowBytes - CAW)
+            doWindow(
+                correlation.acceptThrottle(),
+                correlation.acceptStreamId(),
+                connectWindowBytes,
+                connectWindowFrames
+            );
+            */
         }
     }
 

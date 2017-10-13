@@ -21,7 +21,6 @@ import java.lang.annotation.RetentionPolicy;
 /**
     Marker annotation for methods that attempt to Send messages conditioned by available WINDOW
     State should not change
-    TODO implement a checker with https://checkerframework.org/ for signature
 */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Signal
