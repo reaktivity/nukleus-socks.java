@@ -50,10 +50,7 @@ public class ConnectionIT
         .around(timeout);
 
     @Test
-    @ScriptProperty({
-        "mode 'FORWARD'",
-        "serverAccept 'nukleus://target/streams/socks#source'"
-    })
+    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
         "${route}/client/controller",
         "${client}/client.connect.send.data/client",
@@ -66,10 +63,7 @@ public class ConnectionIT
 
     @Ignore
     @Test
-    @ScriptProperty({
-        "mode 'FORWARD'",
-        "serverAccept 'nukleus://target/streams/socks#source'"
-    })
+    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
         "${route}/client/controller",
         "${client}/client.does.not.connect.no.acceptable.methods/client",
@@ -82,10 +76,7 @@ public class ConnectionIT
 
     @Ignore("Multiple authentication methods not supported in client")
     @Test
-    @ScriptProperty({
-        "mode 'FORWARD'",
-        "serverAccept 'nukleus://target/streams/socks#source'"
-    })
+    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
         "${route}/client/controller",
         "${client}/client.connect.fallback.to.no.authentication/client",
@@ -98,10 +89,7 @@ public class ConnectionIT
 
     @Ignore
     @Test
-    @ScriptProperty({
-        "mode 'FORWARD'",
-        "serverAccept 'nukleus://target/streams/socks#source'"
-    })
+    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
         "${route}/client/controller",
         "${client}/client.connect.request.with.command.not.supported/client",

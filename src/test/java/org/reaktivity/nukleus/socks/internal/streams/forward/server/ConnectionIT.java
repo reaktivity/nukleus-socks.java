@@ -24,7 +24,6 @@ import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
-import org.kaazing.k3po.junit.annotation.ScriptProperty;
 import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
 import org.reaktivity.reaktor.test.ReaktorRule;
@@ -50,9 +49,6 @@ public class ConnectionIT
         .around(timeout);
 
     @Test
-    @ScriptProperty({
-        "mode 'FORWARD'"
-    })
     @Specification({
         "${route}/server/controller",
         "${client}/client.connect.send.data/client",
@@ -64,9 +60,6 @@ public class ConnectionIT
 
     @Ignore
     @Test
-    @ScriptProperty({
-        "mode 'FORWARD'"
-    })
     @Specification({
         "${route}/server/controller",
         "${client}/client.does.not.connect.no.acceptable.methods/client",
@@ -77,9 +70,6 @@ public class ConnectionIT
     }
 
     @Test
-    @ScriptProperty({
-        "mode 'FORWARD'"
-    })
     @Specification({
         "${route}/server/controller",
         "${client}/client.connect.fallback.to.no.authentication/client",
@@ -91,9 +81,6 @@ public class ConnectionIT
 
     @Ignore
     @Test
-    @ScriptProperty({
-        "mode 'FORWARD'"
-    })
     @Specification({
         "${route}/server/controller",
         "${client}/client.connect.request.with.command.not.supported/client",

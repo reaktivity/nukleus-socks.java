@@ -25,7 +25,6 @@ import org.agrona.concurrent.UnsafeBuffer;
 import org.reaktivity.nukleus.Controller;
 import org.reaktivity.nukleus.ControllerSpi;
 import org.reaktivity.nukleus.socks.internal.types.Flyweight;
-import org.reaktivity.nukleus.socks.internal.types.SocksMode;
 import org.reaktivity.nukleus.socks.internal.types.control.Role;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
@@ -81,11 +80,9 @@ public final class SocksController implements Controller
         long sourceRef,
         String target,
         long targetRef,
-        String mode,
         String dstAddrPort)
     {
         long correlationId = controllerSpi.nextCorrelationId();
-
         RouteFW route = routeRW.wrap(writeBuffer, 0, writeBuffer.capacity())
             .correlationId(correlationId)
             .role(b -> b.set(Role.SERVER))
@@ -93,10 +90,14 @@ public final class SocksController implements Controller
             .sourceRef(sourceRef)
             .target(target)
             .targetRef(targetRef)
-            .extension(b -> b.set(visitRouteEx(mode, dstAddrPort)))
+            .extension(b -> b.set(visitRouteEx(dstAddrPort)))
             .build();
-
-        return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
+        return controllerSpi.doRoute(
+            route.typeId(),
+            route.buffer(),
+            route.offset(),
+            route.sizeof()
+        );
     }
 
     public CompletableFuture<Long> routeClient(
@@ -104,12 +105,10 @@ public final class SocksController implements Controller
         long sourceRef,
         String target,
         long targetRef,
-        String mode,
         String dstAddrPort
         )
     {
         long correlationId = controllerSpi.nextCorrelationId();
-
         RouteFW route = routeRW.wrap(writeBuffer, 0, writeBuffer.capacity())
             .correlationId(correlationId)
             .role(b -> b.set(Role.CLIENT))
@@ -117,10 +116,14 @@ public final class SocksController implements Controller
             .sourceRef(sourceRef)
             .target(target)
             .targetRef(targetRef)
-            .extension(b -> b.set(visitRouteEx(mode, dstAddrPort)))
+            .extension(b -> b.set(visitRouteEx(dstAddrPort)))
             .build();
-
-        return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
+        return controllerSpi.doRoute(
+            route.typeId(),
+            route.buffer(),
+            route.offset(),
+            route.sizeof()
+        );
     }
 
     public CompletableFuture<Void> unrouteServer(
@@ -128,12 +131,10 @@ public final class SocksController implements Controller
         long sourceRef,
         String target,
         long targetRef,
-        String mode,
         String dstAddrPort
         )
     {
         long correlationId = controllerSpi.nextCorrelationId();
-
         UnrouteFW unroute = unrouteRW.wrap(writeBuffer, 0, writeBuffer.capacity())
             .correlationId(correlationId)
             .role(b -> b.set(Role.SERVER))
@@ -141,11 +142,14 @@ public final class SocksController implements Controller
             .sourceRef(sourceRef)
             .target(target)
             .targetRef(targetRef)
-            .extension(b -> b.set(visitRouteEx(mode, dstAddrPort)))
+            .extension(b -> b.set(visitRouteEx(dstAddrPort)))
             .build();
-
-        return controllerSpi
-            .doUnroute(unroute.typeId(), unroute.buffer(), unroute.offset(), unroute.sizeof());
+        return controllerSpi.doUnroute(
+            unroute.typeId(),
+            unroute.buffer(),
+            unroute.offset(),
+            unroute.sizeof()
+        );
     }
 
     public CompletableFuture<Void> unrouteClient(
@@ -153,11 +157,9 @@ public final class SocksController implements Controller
         long sourceRef,
         String target,
         long targetRef,
-        String mode,
         String dstAddrPort)
     {
         long correlationId = controllerSpi.nextCorrelationId();
-
         UnrouteFW unroute = unrouteRW.wrap(writeBuffer, 0, writeBuffer.capacity())
             .correlationId(correlationId)
             .role(b -> b.set(Role.CLIENT))
@@ -165,19 +167,20 @@ public final class SocksController implements Controller
             .sourceRef(sourceRef)
             .target(target)
             .targetRef(targetRef)
-            .extension(b -> b.set(visitRouteEx(mode, dstAddrPort)))
+            .extension(b -> b.set(visitRouteEx(dstAddrPort)))
             .build();
-
-        return controllerSpi
-            .doUnroute(unroute.typeId(), unroute.buffer(), unroute.offset(), unroute.sizeof());
+        return controllerSpi.doUnroute(
+            unroute.typeId(),
+            unroute.buffer(),
+            unroute.offset(),
+            unroute.sizeof());
     }
 
     private Flyweight.Builder.Visitor visitRouteEx(
-        String mode, String dstAddrPort)
+        String dstAddrPort)
     {
         return (MutableDirectBuffer buffer, int offset, int limit) ->
             routeExRW.wrap(buffer, offset, limit)
-                .mode(builder -> builder.set(SocksMode.valueOf(mode.toUpperCase())))
                 .destAddrPort(dstAddrPort)
                 .build()
                 .sizeof();

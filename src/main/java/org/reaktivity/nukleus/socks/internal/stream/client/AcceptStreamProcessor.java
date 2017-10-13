@@ -429,12 +429,9 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             (msgTypeId, buffer, offset, limit) ->
             {
                 RouteFW route = context.routeRO.wrap(buffer, offset, limit);
-                final SocksRouteExFW routeEx = route.extension()
-                    .get(context.routeExRO::wrap);
                 return sourceRef == route.sourceRef() &&
                     sourceName.equals(route.source()
-                        .asString()) && "FORWARD".equalsIgnoreCase(routeEx.mode()
-                    .toString());
+                        .asString());
             },
             (msgTypeId, buffer, offset, length) ->
             {

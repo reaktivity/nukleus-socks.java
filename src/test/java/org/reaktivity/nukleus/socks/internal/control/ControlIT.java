@@ -23,7 +23,6 @@ import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
-import org.kaazing.k3po.junit.annotation.ScriptProperty;
 import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
 import org.reaktivity.reaktor.test.ReaktorRule;
@@ -45,94 +44,43 @@ public class ControlIT
         .nukleus("socks"::equals);
 
     @Rule
-    public final TestRule chain = outerRule(k3po).around(timeout)
-        .around(reaktor);
+    public final TestRule chain = outerRule(k3po).around(timeout).around(reaktor);
 
     @Test
-    @ScriptProperty(
-        "mode 'FORWARD'"
-
-    )
     @Specification({
         "${route}/server/controller"
     })
-    public void shouldRouteForwardServer() throws Exception
+    public void shouldRouteServer() throws Exception
     {
         k3po.finish();
     }
 
     @Test
-    @ScriptProperty("mode 'REVERSE'")
-    @Specification({
-        "${route}/server/controller"
-    })
-    public void shouldRouteReverseServer() throws Exception
-    {
-        k3po.finish();
-    }
-
-    @Test
-    @ScriptProperty("mode 'FORWARD'")
     @Specification({
         "${route}/client/controller"
     })
-    public void shouldRouteForwardClient() throws Exception
+    public void shouldRouteClient() throws Exception
     {
         k3po.finish();
     }
 
     @Test
-    @ScriptProperty("mode 'REVERSE'")
-    @Specification({
-        "${route}/client/controller"
-    })
-    public void shouldRouteReverseClient() throws Exception
-    {
-        k3po.finish();
-    }
-
-    @Test
-    @ScriptProperty("mode 'FORWARD'")
     @Specification({
         "${route}/server/controller",
         "${unroute}/server/controller"
     })
-    public void shouldUnrouteForwardServer() throws Exception
+    public void shouldUnrouteServer() throws Exception
     {
         k3po.finish();
     }
 
     @Test
-    @ScriptProperty("mode 'REVERSE'")
-    @Specification({
-        "${route}/server/controller",
-        "${unroute}/server/controller"
-    })
-    public void shouldUnrouteReverseServer() throws Exception
-    {
-        k3po.finish();
-    }
-
-    @Test
-    @ScriptProperty("mode 'FORWARD'")
     @Specification({
         "${route}/client/controller",
         "${unroute}/client/controller"
     })
-    public void shouldUnrouteForwardClient() throws Exception
+    public void shouldUnrouteClient() throws Exception
     {
         k3po.finish();
     }
-
-    @Test
-    @ScriptProperty("mode 'REVERSE'")
-    @Specification({
-        "${route}/client/controller",
-        "${unroute}/client/controller"
-    })
-    public void shouldUnrouteReverseClient() throws Exception
-    {
-        k3po.finish();
-    }
-
 }

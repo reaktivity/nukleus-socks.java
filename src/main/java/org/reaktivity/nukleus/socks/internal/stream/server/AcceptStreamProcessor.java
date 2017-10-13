@@ -672,12 +672,9 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             RouteFW route = context.routeRO.wrap(b, o, l);
             final SocksRouteExFW routeEx = route.extension()
                 .get(context.routeExRO::wrap);
-
             return sourceRef == route.sourceRef() &&
                 sourceName.equals(route.source().asString()) &&
-                "FORWARD".equalsIgnoreCase(routeEx.mode().toString()) &&
                 dstAddrPort.equals(routeEx.destAddrPort().asString());
-
         };
         return context.router.resolve(filter, this::wrapRoute);
     }

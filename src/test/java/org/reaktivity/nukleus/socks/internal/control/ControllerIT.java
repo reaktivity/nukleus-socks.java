@@ -25,7 +25,6 @@ import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
-import org.kaazing.k3po.junit.annotation.ScriptProperty;
 import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
 import org.reaktivity.nukleus.socks.internal.SocksController;
@@ -52,172 +51,82 @@ public class ControllerIT
         .around(reaktor);
 
     @Test
-    @ScriptProperty("mode 'FORWARD'")
     @Specification({
         "${route}/server/nukleus"
     })
-    public void shouldRouteForwardServer() throws Exception
+    public void shouldRouteServer() throws Exception
     {
         long targetRef = new Random().nextLong();
 
         k3po.start();
 
         reaktor.controller(SocksController.class)
-            .routeServer("source", 0L, "target", targetRef, "forward", "example.com:8080")
+            .routeServer("source", 0L, "target", targetRef, "example.com:8080")
             .get();
 
         k3po.finish();
     }
 
     @Test
-    @ScriptProperty("mode 'REVERSE'")
-    @Specification({
-        "${route}/server/nukleus"
-    })
-    public void shouldRouteReverseServer() throws Exception
-    {
-        long targetRef = new Random().nextLong();
-
-        k3po.start();
-
-        reaktor.controller(SocksController.class)
-            .routeServer("source", 0L, "target", targetRef, "Reverse", "example.com:8080")
-            .get();
-
-        k3po.finish();
-    }
-
-    @Test
-    @ScriptProperty("mode 'FORWARD'")
     @Specification({
         "${route}/client/nukleus"
     })
-    public void shouldRouteForwardClient() throws Exception
+    public void shouldRouteClient() throws Exception
     {
         long targetRef = new Random().nextLong();
 
         k3po.start();
 
         reaktor.controller(SocksController.class)
-            .routeClient("source", 0L, "target", targetRef, "Forward", "example.com:8080")
+            .routeClient("source", 0L, "target", targetRef, "example.com:8080")
             .get();
 
         k3po.finish();
     }
 
     @Test
-    @ScriptProperty("mode 'REVERSE'")
-    @Specification({
-        "${route}/client/nukleus"
-    })
-    public void shouldRouteReverseClient() throws Exception
-    {
-        long targetRef = new Random().nextLong();
-
-        k3po.start();
-
-        reaktor.controller(SocksController.class)
-            .routeClient("source", 0L, "target", targetRef, "Reverse", "example.com:8080")
-            .get();
-
-        k3po.finish();
-    }
-
-    @Test
-    @ScriptProperty("mode 'FORWARD'")
     @Specification({
         "${route}/server/nukleus",
         "${unroute}/server/nukleus"
     })
-    public void shouldUnrouteForwardServer() throws Exception
+    public void shouldUnrouteServer() throws Exception
     {
         long targetRef = new Random().nextLong();
 
         k3po.start();
 
         long sourceRef = reaktor.controller(SocksController.class)
-            .routeServer("source", 0L, "target", targetRef, "Forward", "example.com:8080")
+            .routeServer("source", 0L, "target", targetRef, "example.com:8080")
             .get();
 
         k3po.notifyBarrier("ROUTED_SERVER");
 
         reaktor.controller(SocksController.class)
-            .unrouteServer("source", sourceRef, "target", targetRef, "Forward", "example.com:8080")
+            .unrouteServer("source", sourceRef, "target", targetRef, "example.com:8080")
             .get();
 
         k3po.finish();
     }
 
     @Test
-    @ScriptProperty("mode 'REVERSE'")
-    @Specification({
-        "${route}/server/nukleus",
-        "${unroute}/server/nukleus"
-    })
-    public void shouldUnrouteReverseServer() throws Exception
-    {
-        long targetRef = new Random().nextLong();
-
-        k3po.start();
-
-        long sourceRef = reaktor.controller(SocksController.class)
-            .routeServer("source", 0L, "target", targetRef, "Reverse", "example.com:8080")
-            .get();
-
-        k3po.notifyBarrier("ROUTED_SERVER");
-
-        reaktor.controller(SocksController.class)
-            .unrouteServer("source", sourceRef, "target", targetRef, "Reverse", "example.com:8080")
-            .get();
-
-        k3po.finish();
-    }
-
-    @Test
-    @ScriptProperty("mode 'FORWARD'")
     @Specification({
         "${route}/client/nukleus",
         "${unroute}/client/nukleus"
     })
-    public void shouldUnrouteForwardClient() throws Exception
+    public void shouldUnrouteClient() throws Exception
     {
         long targetRef = new Random().nextLong();
 
         k3po.start();
 
         long sourceRef = reaktor.controller(SocksController.class)
-            .routeClient("source", 0L, "target", targetRef, "Forward", "example.com:8080")
+            .routeClient("source", 0L, "target", targetRef, "example.com:8080")
             .get();
 
         k3po.notifyBarrier("ROUTED_CLIENT");
 
         reaktor.controller(SocksController.class)
-            .unrouteClient("source", sourceRef, "target", targetRef, "Forward", "example.com:8080")
-            .get();
-
-        k3po.finish();
-    }
-
-    @Test
-    @ScriptProperty("mode 'REVERSE'")
-    @Specification({
-        "${route}/client/nukleus",
-        "${unroute}/client/nukleus"
-    })
-    public void shouldUnrouteReverseClient() throws Exception
-    {
-        long targetRef = new Random().nextLong();
-
-        k3po.start();
-
-        long sourceRef = reaktor.controller(SocksController.class)
-            .routeClient("source", 0L, "target", targetRef, "Reverse", "example.com:8080")
-            .get();
-
-        k3po.notifyBarrier("ROUTED_CLIENT");
-
-        reaktor.controller(SocksController.class)
-            .unrouteClient("source", sourceRef, "target", targetRef, "Reverse", "example.com:8080")
+            .unrouteClient("source", sourceRef, "target", targetRef, "example.com:8080")
             .get();
 
         k3po.finish();
