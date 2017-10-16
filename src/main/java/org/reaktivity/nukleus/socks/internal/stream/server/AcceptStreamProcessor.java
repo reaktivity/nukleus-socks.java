@@ -46,18 +46,25 @@ import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
 final class AcceptStreamProcessor extends AbstractStreamProcessor implements AcceptTransitionListener<TcpBeginExFW>
 {
+    public static final int MAX_WRITABLE_BYTES = 65536;
+    public static final int MAX_WRITABLE_FRAMES = 65536;
+
     private MessageConsumer streamState;
     private MessageConsumer acceptReplyThrottleState;
     private MessageConsumer connectThrottleState;
 
     private int slotIndex = NO_SLOT;
-    private int slotOffset;
+    private int slotReadOffset;
+    private int slotWriteOffset;
 
     private int acceptReplyWindowBytes = 0;
     private int acceptReplyWindowFrames = 0;
 
     private int connectWindowBytes = 0;
     private int connectWindowFrames = 0;
+
+    private int receivedBytes = 0;
+    private int receivedFrames = 0;
 
     private byte socksAtyp;
     private byte[] socksAddr;
@@ -170,8 +177,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
         doWindow(
             correlation.acceptThrottle(),
             correlation.acceptStreamId(),
-            65536,
-            65536
+            MAX_WRITABLE_BYTES,
+            MAX_WRITABLE_FRAMES
         );
         this.streamState = this::afterBegin;
     }
@@ -187,6 +194,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
         {
         case DataFW.TYPE_ID:
             final DataFW data = context.dataRO.wrap(buffer, index, index + length);
+            receivedBytes += length;
+            receivedFrames++;
             handleNegotiationData(data);
             break;
         case EndFW.TYPE_ID:
@@ -211,12 +220,12 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
         // Fragmented writes might have already occurred
         if (this.slotIndex != NO_SLOT)
         {
-            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, this.slotOffset);
+            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, this.slotWriteOffset);
             acceptBuffer.putBytes(0, buffer, offset, size);
-            this.slotOffset += size;                                  // New starting point is moved to the end of the buffer
+            this.slotWriteOffset += size;                                  // New starting point is moved to the end of the buffer
             buffer = context.bufferPool.buffer(this.slotIndex); // Try to decode from the beginning of the buffer
             offset = 0;                                               //
-            limit = this.slotOffset;                                  //
+            limit = this.slotWriteOffset;                                  //
         }
 
         if (context.socksNegotiationRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
@@ -251,7 +260,7 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             if (this.slotIndex != NO_SLOT)
             {
                 context.bufferPool.release(this.slotIndex);
-                this.slotOffset = 0;
+                this.slotWriteOffset = 0;
                 this.slotIndex = NO_SLOT;
             }
         }
@@ -264,7 +273,7 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             }
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex);
             acceptBuffer.putBytes(0, buffer, offset, size);
-            this.slotOffset = size;
+            this.slotWriteOffset = size;
         }
     }
 
@@ -316,6 +325,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
         {
         case DataFW.TYPE_ID:
             final DataFW data = context.dataRO.wrap(buffer, index, index + length);
+            receivedBytes += length;
+            receivedFrames++;
             handleConnectRequestData(data);
             break;
         case EndFW.TYPE_ID:
@@ -337,15 +348,15 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
         int offset = payload.offset();
         int size = limit - offset;
         // Fragmented writes might have already occurred
-        if (this.slotOffset != 0)
+        if (this.slotWriteOffset != 0)
         {
             // Append incoming data to the buffer
-            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, this.slotOffset);
+            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, this.slotWriteOffset);
             acceptBuffer.putBytes(0, buffer, offset, size);
-            this.slotOffset += size;                                  // New starting point is moved to the end of the buffer
+            this.slotWriteOffset += size;                                  // New starting point is moved to the end of the buffer
             buffer = context.bufferPool.buffer(this.slotIndex);       // Try to decode from the beginning of the buffer
             offset = 0;                                               //
-            limit = this.slotOffset;                                  //
+            limit = this.slotWriteOffset;                                  //
         }
         if (context.socksConnectionRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
         {
@@ -393,7 +404,7 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             if (this.slotIndex != NO_SLOT)
             {
                 context.bufferPool.release(this.slotIndex);
-                this.slotOffset = 0;
+                this.slotWriteOffset = 0;
                 this.slotIndex = NO_SLOT;
             }
         }
@@ -406,7 +417,7 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             }
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex);
             acceptBuffer.putBytes(0, buffer, offset, size);
-            this.slotOffset = size;
+            this.slotWriteOffset = size;
         }
     }
 
@@ -511,13 +522,146 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             The current accept available window (CAW) is 65536 - ARB, 65536 - ARF
                 if (AAW > connectWindowBytes) -> need to buffer until windows get aligned
                 else just send to accept (connectWindowBytes - CAW)
-            doWindow(
-                correlation.acceptThrottle(),
-                correlation.acceptStreamId(),
-                connectWindowBytes,
-                connectWindowFrames
-            );
+
             */
+            System.out.println("connectWindowBytes: " + connectWindowBytes + " connectWindowFrames: " + connectWindowFrames);
+            if (MAX_WRITABLE_BYTES - receivedBytes > connectWindowBytes ||
+                MAX_WRITABLE_FRAMES - receivedFrames > connectWindowFrames)
+            {
+                this.connectThrottleState = this::handleConnectThrottleBufferUnwind;
+                this.streamState = this::afterSourceConnectBufferUnwind;
+            }
+            else
+            {
+                doWindow(
+                    correlation.acceptThrottle(),
+                    correlation.acceptStreamId(),
+                    connectWindowBytes,
+                    connectWindowFrames
+                );
+            }
+        }
+    }
+
+    @State
+    private void afterSourceConnectBufferUnwind(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
+    {
+        switch (msgTypeId)
+        {
+        case DataFW.TYPE_ID:
+            final DataFW data = context.dataRO.wrap(buffer, index, index + length);
+            handleHighLevelDataBufferUnwind(data);
+            break;
+        case EndFW.TYPE_ID:
+        case AbortFW.TYPE_ID:
+            doAbort(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
+            break;
+        default:
+            doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+            break;
+        }
+    }
+
+    private void handleHighLevelDataBufferUnwind(DataFW data)
+    {
+        OctetsFW payload = data.payload();
+        /**
+         * Send out data if the connect window has not been consumed
+         * Can we receive WINDOW back ? If we do we will remain in this state which should be transitory.
+         * But we might receive WINDOW allowing more frames only
+         *
+         * Once we have started buffering all subsequent data frames will be buffered
+         * Will empty the buffer when receiving WINDOW frames from connect
+         *
+         * Once the buffer is empty, the remaining connectWindowBytes and connectWindowFrames
+         * will be sent as a WINDOW frame to the acccept throttle
+         */
+        if (this.slotWriteOffset != 0)
+        {
+            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, this.slotWriteOffset);
+            acceptBuffer.putBytes(
+                slotWriteOffset,
+                payload.buffer(),
+                payload.offset(),
+                payload.sizeof()
+             );
+            slotWriteOffset += payload.sizeof();
+            return;
+        }
+
+        DataFW dataTempFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+            .streamId(correlation.connectStreamId())
+            .payload(p -> p.set(
+                payload.buffer(),
+                payload.offset(),
+                payload.sizeof()))
+            .extension(e -> e.reset())
+            .build();
+        if (connectWindowBytes > dataTempFW.sizeof() && connectWindowFrames > 0)
+        {
+            // TODO happy case: forward frame and change states
+            DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                .streamId(correlation.connectStreamId())
+                .payload(p -> p.set(
+                    payload.buffer(),
+                    payload.offset(),
+                    payload.sizeof()))
+                .extension(e -> e.reset())
+                .build();
+            correlation.connectEndpoint()
+                .accept(
+                    dataForwardFW.typeId(),
+                    dataForwardFW.buffer(),
+                    dataForwardFW.offset(),
+                    dataForwardFW.sizeof());
+            connectWindowBytes -= payload.sizeof();
+            connectWindowFrames--;
+        }
+        else
+        {
+            // TODO cannot send the whole frame. Send what is available and buffer.
+            int bufferedSizeBytes = connectWindowBytes;
+            if (connectWindowFrames > 0)
+            {
+                DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                    .streamId(correlation.connectStreamId())
+                    .payload(p -> p.set(
+                        payload.buffer(),
+                        payload.offset(),
+                        connectWindowBytes))
+                    .extension(e -> e.reset())
+                    .build();
+                correlation.connectEndpoint()
+                    .accept(
+                        dataForwardFW.typeId(),
+                        dataForwardFW.buffer(),
+                        dataForwardFW.offset(),
+                        dataForwardFW.sizeof());
+                connectWindowBytes = 0;
+                connectWindowFrames--;
+            }
+            else
+            {
+                bufferedSizeBytes = payload.sizeof();
+            }
+            if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
+            {
+                doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+                return;
+            }
+            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex);
+            acceptBuffer.putBytes(
+                0,
+                payload.buffer(),
+                payload.offset() + bufferedSizeBytes,
+                payload.sizeof() - bufferedSizeBytes
+            );
+            slotWriteOffset = payload.sizeof() - bufferedSizeBytes;
+            slotReadOffset = 0;
         }
     }
 
@@ -626,6 +770,88 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
             connectWindowBytes += window.update();
             connectWindowFrames += window.frames();
+            break;
+        case ResetFW.TYPE_ID:
+            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
+            doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+            break;
+        default:
+            // ignore
+            break;
+        }
+    }
+
+    private void handleConnectThrottleBufferUnwind(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
+    {
+        switch (msgTypeId)
+        {
+        case WindowFW.TYPE_ID:
+            final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
+            connectWindowBytes += window.update();
+            connectWindowFrames += window.frames();
+            if (connectWindowFrames == 0)
+            {
+                return;
+            }
+            if (this.slotWriteOffset != 0)
+            {
+                MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, slotReadOffset);
+                DataFW dataEmptyFW = context.dataRW
+                    .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                    .streamId(correlation.connectStreamId())
+                    .payload(p -> p.set(
+                        acceptBuffer,
+                        0,
+                        0))
+                    .build();
+                if (connectWindowBytes < dataEmptyFW.sizeof())
+                {
+                    return; // not covering an empty data frame
+                }
+                int payloadSize = Math.min(
+                    connectWindowBytes - dataEmptyFW.sizeof(),
+                    (slotWriteOffset - slotReadOffset)
+                );
+                DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                    .streamId(correlation.connectStreamId())
+                    .payload(p -> p.set(
+                        acceptBuffer,
+                        0,
+                        payloadSize))
+                    .extension(e -> e.reset())
+                    .build();
+                correlation.connectEndpoint()
+                    .accept(
+                        dataForwardFW.typeId(),
+                        dataForwardFW.buffer(),
+                        dataForwardFW.offset(),
+                        dataForwardFW.sizeof());
+                connectWindowBytes -= dataForwardFW.sizeof();
+                connectWindowFrames--;
+                slotReadOffset += payloadSize;
+                if (slotReadOffset == slotWriteOffset)
+                {
+                    // all buffer could be sent, must switch Throttling states
+                    this.connectThrottleState = this::handleConnectThrottleAfterHandshake;
+                    this.streamState = this::afterSourceConnect;
+                    // send remaining window
+                    doWindow(
+                        correlation.acceptThrottle(),
+                        correlation.acceptStreamId(),
+                        connectWindowBytes,
+                        connectWindowFrames
+                    );
+                    // Release the buffer
+                    context.bufferPool.release(this.slotIndex);
+                    this.slotWriteOffset = 0;
+                    this.slotReadOffset = 0;
+                    this.slotIndex = NO_SLOT;
+                }
+            }
             break;
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);

@@ -61,6 +61,18 @@ public class ConnectionIT
         k3po.finish();
     }
 
+    @Test
+    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
+    @Specification({
+        "${route}/client/controller",
+        "${client}/client.connect.send.data.throttling/client",
+        "${server}/client.connect.send.data.throttling/server"
+    })
+    public void shouldAcceptAndSendDataBothWaysWithThrottling() throws Exception
+    {
+        k3po.finish();
+    }
+
     @Ignore
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")

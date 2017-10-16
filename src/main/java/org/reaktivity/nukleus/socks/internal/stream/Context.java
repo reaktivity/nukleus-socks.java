@@ -64,8 +64,7 @@ public class Context
     public final OctetsFW octetsRO = new OctetsFW();
 
     public final RouteManager router;
-    public final MutableDirectBuffer writeBuffer; // TODO consider using 2 buffers: S -> T and T -> S
-                                                  // TODO or confirm there cannot be a race condition
+    public final MutableDirectBuffer writeBuffer;
 
     public final BufferPool bufferPool;
     public final LongSupplier supplyStreamId;
