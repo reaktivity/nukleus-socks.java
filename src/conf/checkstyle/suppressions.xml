@@ -5,4 +5,5 @@
 <suppressions>
     <suppress checks="Javadoc.*" files=".+[\\/]internal[\\/].+" />
     <suppress checks="Javadoc.*" files=".+[\\/]src[\\/]test[\\/].+" />
+    <suppress checks="." files=".+[\\/]src[\\/]test[\\/].+" />
 </suppressions>

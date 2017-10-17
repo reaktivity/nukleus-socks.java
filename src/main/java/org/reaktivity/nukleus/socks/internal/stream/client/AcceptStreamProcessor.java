@@ -169,6 +169,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             handleHighLevelData(data);
             break;
         case EndFW.TYPE_ID:
+            doEnd(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
+            break;
         case AbortFW.TYPE_ID:
             doAbort(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
             doAbort(correlation.connectEndpoint(), correlation.connectStreamId());
@@ -190,6 +192,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 payload.sizeof()))
             .extension(e -> e.reset())
             .build();
+        System.out.println("Sending data: " + dataForwardFW + " to stream: " + correlation.connectEndpoint());
         correlation.connectEndpoint()
             .accept(
                 dataForwardFW.typeId(),
@@ -208,6 +211,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
+            System.out.println("ACCEPT/handleConnectThrottleAfterHandshake");
             doWindow(
                 correlation.acceptThrottle(),
                 correlation.acceptStreamId(),
@@ -349,6 +353,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             correlation.connectTargetName(),
             correlation.connectStreamId(),
             this::handleConnectThrottleAfterHandshake);
+        System.out.println("ACCEPT/transitionToConnectionReady");
         this.doWindow(
             correlation.acceptThrottle(),
             correlation.acceptStreamId(),

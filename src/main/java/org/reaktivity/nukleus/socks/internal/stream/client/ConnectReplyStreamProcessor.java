@@ -144,6 +144,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
                     beginToAcceptReply.sizeof());
 
             streamState = this::beforeNegotiationResponse;
+            System.out.println("CONNECT-REPLY/handleBegin");
             doWindow(
                 connectReplyThrottle,
                 connectReplyStreamId,
@@ -381,7 +382,13 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
-            processWindow(window);
+            System.out.println("CONNECT-REPLY/processWindow");
+            doWindow(
+                connectReplyThrottle,
+                connectReplyStreamId,
+                window.update(),
+                window.frames()
+            );
             break;
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
@@ -390,28 +397,6 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         default:
             // ignore
             break;
-        }
-    }
-
-    // FIXME can we expect negative size windows ?
-    private void processWindow(WindowFW window)
-    {
-        final int sourceWindowBytesDelta = window.update();
-        final int sourceWindowFramesDelta = window.frames();
-
-        final int targetWindowBytesDelta = sourceWindowBytesDelta + acceptReplyWindowBytesAdjustment;
-        acceptReplyWindowBytesAdjustment = Math.min(targetWindowBytesDelta, 0);
-
-        final int targetWindowFramesDelta = sourceWindowFramesDelta + acceptReplyWindowFramesAdjustment;
-        acceptReplyWindowFramesAdjustment = Math.min(targetWindowFramesDelta, 0);
-
-        if (targetWindowBytesDelta > 0 || targetWindowFramesDelta > 0)
-        {
-            doWindow(
-                connectReplyThrottle,
-                connectReplyStreamId,
-                Math.max(targetWindowBytesDelta, 0),
-                Math.max(targetWindowFramesDelta, 0));
         }
     }
 

@@ -18,6 +18,7 @@ package org.reaktivity.nukleus.socks.internal.stream;
 import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
@@ -48,7 +49,22 @@ public abstract class AbstractStreamProcessor
                 .streamId(streamId)
                 .extension(e -> e.reset())
                 .build();
+        System.out.println("Sending abort: " + abort+ " to stream: " + stream);
         stream.accept(abort.typeId(), abort.buffer(), abort.offset(), abort.sizeof());
+    }
+
+    protected void doEnd(
+        MessageConsumer stream,
+        long streamId)
+    {
+        final EndFW end =
+            context.endRW
+                .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                .streamId(streamId)
+                .extension(e -> e.reset())
+                .build();
+        System.out.println("Sending end: " + end + " to stream: " + stream);
+        stream.accept(end.typeId(), end.buffer(), end.offset(), end.sizeof());
     }
 
     protected void doWindow(
@@ -63,6 +79,7 @@ public abstract class AbstractStreamProcessor
             .update(writableBytes)
             .frames(writableFrames)
             .build();
+        System.out.println("\tSending window: " + window);
         throttle.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
     }
 
@@ -75,6 +92,8 @@ public abstract class AbstractStreamProcessor
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(throttleId)
                 .build();
+        System.out.println("Sending reset: " + reset + " to throttle: " + throttle);
+        new Exception("stacktrace").printStackTrace(System.out);
         throttle.accept(reset.typeId(), reset.buffer(), reset.offset(), reset.sizeof());
     }
 }

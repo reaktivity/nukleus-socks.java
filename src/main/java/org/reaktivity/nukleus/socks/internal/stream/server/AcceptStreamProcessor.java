@@ -44,7 +44,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.TcpBeginExFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-final class AcceptStreamProcessor extends AbstractStreamProcessor implements AcceptTransitionListener<TcpBeginExFW>
+public final class AcceptStreamProcessor extends AbstractStreamProcessor implements AcceptTransitionListener<TcpBeginExFW>
 {
     public static final int MAX_WRITABLE_BYTES = 65536;
     public static final int MAX_WRITABLE_FRAMES = 65536;
@@ -72,7 +72,7 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
 
     final Correlation correlation;
 
-    AcceptStreamProcessor(
+    public AcceptStreamProcessor(
         Context context,
         MessageConsumer acceptThrottle,
         long acceptStreamId,
@@ -161,6 +161,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
     private void handleBegin(
         BeginFW begin)
     {
+        System.out.println("ACCEPT: created stream " + begin.streamId());
+        System.out.println("ACCEPT: send back begin frame " + correlation.acceptReplyStreamId());
         BeginFW beginToAcceptReply = context.beginRW
             .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(correlation.acceptReplyStreamId())
@@ -174,6 +176,7 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             beginToAcceptReply.buffer(),
             beginToAcceptReply.offset(),
             beginToAcceptReply.sizeof());
+        System.out.println("ACCEPT/handleBegin");
         doWindow(
             correlation.acceptThrottle(),
             correlation.acceptStreamId(),
@@ -216,7 +219,6 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
         int limit = payload.limit();
         int offset = payload.offset();
         int size = limit - offset;
-
         // Fragmented writes might have already occurred
         if (this.slotIndex != NO_SLOT)
         {
@@ -227,7 +229,6 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             offset = 0;                                               //
             limit = this.slotWriteOffset;                                  //
         }
-
         if (context.socksNegotiationRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
         {
             final SocksNegotiationRequestFW socksNegotiation = context.socksNegotiationRequestRO.wrap(buffer, offset, limit);
@@ -237,7 +238,6 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                     String.format("Unsupported SOCKS protocol version (expected 0x05, received 0x%02x",
                         socksNegotiation.version()));
             }
-
             int nmethods = socksNegotiation.nmethods();
             byte i = 0;
             for (; i < nmethods; i++)
@@ -281,6 +281,7 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
     private void attemptNegotiationResponse(
         boolean isReadyState)
     {
+        System.out.println("ACCEPT/attemptNegotiationResponse");
         SocksNegotiationResponseFW socksNegotiationResponseFW = context.socksNegotiationResponseRW
             .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
             .version((byte) 0x05)
@@ -294,7 +295,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                 socksNegotiationResponseFW.sizeof()))
             .extension(e -> e.reset())
             .build();
-        if (acceptReplyWindowBytes > dataNegotiationResponseFW.sizeof() && acceptReplyWindowFrames > 0)
+        if (acceptReplyWindowBytes > dataNegotiationResponseFW.sizeof() &&
+            acceptReplyWindowFrames > 0)
         {
             this.streamState = this::afterNegotiation;
             correlation.nextAcceptSignal(this::noop);
@@ -431,24 +433,6 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
         doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
     }
 
-    private void handleEnd(
-        EndFW end)
-    {
-        // TODO IMPLEMENT ME
-    }
-
-    private void handleAbort(
-        AbortFW abort)
-    {
-        // TODO IMPLEMENT ME
-    }
-
-    private void handleReset(
-        ResetFW reset)
-    {
-        // TODO IMPLEMENT ME (or delete)
-    }
-
     @Override
     public void transitionToConnectionReady(Optional<TcpBeginExFW> connectionInfo)
     {
@@ -496,8 +480,11 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                 socksConnectResponseFW.sizeof()))
             .extension(e -> e.reset())
             .build();
-        if (acceptReplyWindowBytes > dataConnectionResponseFW.sizeof() && acceptReplyWindowFrames > 0)
+        if (acceptReplyWindowBytes > dataConnectionResponseFW.sizeof() &&
+            acceptReplyWindowFrames > 0)
         {
+            System.out.println("ACCEPT/attemptConnectionResponse: \n\tSending dataConnectionResponseFW: " +
+                dataConnectionResponseFW);
             this.streamState = this::afterSourceConnect;
             this.acceptReplyThrottleState = this::handleAcceptReplyThrottleAfterHandshake;
             this.connectThrottleState = this::handleConnectThrottleAfterHandshake;
@@ -508,23 +495,23 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                 dataConnectionResponseFW.offset(),
                 dataConnectionResponseFW.sizeof());
 
+            acceptReplyWindowBytes -= dataConnectionResponseFW.sizeof();
+            acceptReplyWindowFrames--;
+
+            System.out.println("ACCEPT/attemptConnectionResponse -> initialize CONNECT-REPLY throttle");
             doWindow(
                 correlation.connectReplyThrottle(),
                 correlation.connectReplyStreamId(),
                 acceptReplyWindowBytes,
-                acceptReplyWindowFrames);
-            /*
-            TODO THROTTLING
-            Right now we have:
-                - sent to accept throttle 65536 bytes and 65536 frames
-                - received on accept ARB bytes and ARF frames
-                - accumulated connectWindowBytes, connectWindowFrames from connect
-            The current accept available window (CAW) is 65536 - ARB, 65536 - ARF
-                if (AAW > connectWindowBytes) -> need to buffer until windows get aligned
-                else just send to accept (connectWindowBytes - CAW)
+                acceptReplyWindowFrames
+            );
 
-            */
-            System.out.println("connectWindowBytes: " + connectWindowBytes + " connectWindowFrames: " + connectWindowFrames);
+
+            // TODO should receive WINDOW from connect before switching to non-buffered mode
+            // TODO add test for having already rceived MAX_WRITABLE_BYTES from connect
+
+            System.out.println("ACCEPT/attemptConnectionResponse connectWindowBytes: " +
+                connectWindowBytes + " connectWindowFrames: " + connectWindowFrames);
             if (MAX_WRITABLE_BYTES - receivedBytes > connectWindowBytes ||
                 MAX_WRITABLE_FRAMES - receivedFrames > connectWindowFrames)
             {
@@ -533,11 +520,12 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             }
             else
             {
+                System.out.println("ACCEPT/attemptConnectionResponse");
                 doWindow(
                     correlation.acceptThrottle(),
                     correlation.acceptStreamId(),
-                    connectWindowBytes,
-                    connectWindowFrames
+                    connectWindowBytes - receivedBytes,
+                    connectWindowFrames - receivedFrames
                 );
             }
         }
@@ -554,6 +542,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
         {
         case DataFW.TYPE_ID:
             final DataFW data = context.dataRO.wrap(buffer, index, index + length);
+            receivedBytes += length;
+            receivedFrames++;
             handleHighLevelDataBufferUnwind(data);
             break;
         case EndFW.TYPE_ID:
@@ -569,17 +559,6 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
     private void handleHighLevelDataBufferUnwind(DataFW data)
     {
         OctetsFW payload = data.payload();
-        /**
-         * Send out data if the connect window has not been consumed
-         * Can we receive WINDOW back ? If we do we will remain in this state which should be transitory.
-         * But we might receive WINDOW allowing more frames only
-         *
-         * Once we have started buffering all subsequent data frames will be buffered
-         * Will empty the buffer when receiving WINDOW frames from connect
-         *
-         * Once the buffer is empty, the remaining connectWindowBytes and connectWindowFrames
-         * will be sent as a WINDOW frame to the acccept throttle
-         */
         if (this.slotWriteOffset != 0)
         {
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, this.slotWriteOffset);
@@ -592,7 +571,6 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             slotWriteOffset += payload.sizeof();
             return;
         }
-
         DataFW dataTempFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(correlation.connectStreamId())
             .payload(p -> p.set(
@@ -601,9 +579,9 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                 payload.sizeof()))
             .extension(e -> e.reset())
             .build();
-        if (connectWindowBytes > dataTempFW.sizeof() && connectWindowFrames > 0)
+        if (connectWindowBytes > dataTempFW.sizeof() &&
+            connectWindowFrames > 0)
         {
-            // TODO happy case: forward frame and change states
             DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(correlation.connectStreamId())
                 .payload(p -> p.set(
@@ -612,6 +590,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                     payload.sizeof()))
                 .extension(e -> e.reset())
                 .build();
+            System.out.println("ACCEPT/handleHighLevelDataBufferUnwind: Forwarding data frame: \n\t" + data +
+                "\n\t" + dataForwardFW);
             correlation.connectEndpoint()
                 .accept(
                     dataForwardFW.typeId(),
@@ -620,10 +600,17 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                     dataForwardFW.sizeof());
             connectWindowBytes -= payload.sizeof();
             connectWindowFrames--;
+            System.out.println("ACCEPT/handleHighLevelDataBufferUnwind connectWindowBytes: " +
+                connectWindowBytes + " connectWindowFrames: " + connectWindowFrames);
+            if (connectWindowBytes == 0)
+            {
+                System.out.println("ACCEPT/handleHighLevelDataBufferUnwind changing state, connect window emptied");
+                this.connectThrottleState = this::handleConnectThrottleAfterHandshake;
+                this.streamState = this::afterSourceConnect;
+            }
         }
         else
         {
-            // TODO cannot send the whole frame. Send what is available and buffer.
             int bufferedSizeBytes = connectWindowBytes;
             if (connectWindowFrames > 0)
             {
@@ -635,6 +622,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                         connectWindowBytes))
                     .extension(e -> e.reset())
                     .build();
+                System.out.println("ACCEPT/handleHighLevelDataBufferUnwind: Forwarding data frame: \n\t" + data +
+                    "\n\t" + dataForwardFW);
                 correlation.connectEndpoint()
                     .accept(
                         dataForwardFW.typeId(),
@@ -679,6 +668,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             handleHighLevelData(data);
             break;
         case EndFW.TYPE_ID:
+            doEnd(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
+            break;
         case AbortFW.TYPE_ID:
             doAbort(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
             break;
@@ -699,6 +690,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                 payload.sizeof()))
             .extension(e -> e.reset())
             .build();
+        System.out.println("ACCEPT/handleHighLevelData: Forwarding data frame: \n\t" + data + "\n\t" + dataForwardFW);
+        System.out.println("\tconnectWindowBytes: " + connectWindowBytes + " connectWindowFrames: " + connectWindowFrames);
         correlation.connectEndpoint()
             .accept(
                 dataForwardFW.typeId(),
@@ -741,6 +734,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
+            System.out.println("ACCEPT/handleAcceptReplyThrottleAfterHandshake forwarding window frame");
+            System.out.println("\tReceived window: " + window);
             doWindow(
                 correlation.connectReplyThrottle(),
                 correlation.connectReplyStreamId(),
@@ -770,6 +765,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
             connectWindowBytes += window.update();
             connectWindowFrames += window.frames();
+            System.out.println("ACCEPT: \n\t" + window);
+            System.out.println("\tconnectWindowBytes: " + connectWindowBytes + " connectWindowFrames: " + connectWindowFrames);
             break;
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
@@ -793,6 +790,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
             connectWindowBytes += window.update();
             connectWindowFrames += window.frames();
+            System.out.println("ACCEPT/handleConnectThrottleBufferUnwind: \n\t" + window);
+            System.out.println("\tconnectWindowBytes: " + connectWindowBytes + " connectWindowFrames: " + connectWindowFrames);
             if (connectWindowFrames == 0)
             {
                 return;
@@ -808,14 +807,17 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                         0,
                         0))
                     .build();
+                System.out.println("\tChecking if connect can be sent: " + dataEmptyFW.sizeof() + "bytes.");
                 if (connectWindowBytes < dataEmptyFW.sizeof())
                 {
+                    System.out.println("\treturning");
                     return; // not covering an empty data frame
                 }
                 int payloadSize = Math.min(
                     connectWindowBytes - dataEmptyFW.sizeof(),
                     (slotWriteOffset - slotReadOffset)
                 );
+                System.out.println("\tComputed payload size: " + payloadSize + "bytes.");
                 DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                     .streamId(correlation.connectStreamId())
                     .payload(p -> p.set(
@@ -824,6 +826,7 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                         payloadSize))
                     .extension(e -> e.reset())
                     .build();
+                System.out.println("\tForwarding buffered frame (based on window): \n\t" + window + "\n\t" + dataForwardFW);
                 correlation.connectEndpoint()
                     .accept(
                         dataForwardFW.typeId(),
@@ -839,6 +842,7 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                     this.connectThrottleState = this::handleConnectThrottleAfterHandshake;
                     this.streamState = this::afterSourceConnect;
                     // send remaining window
+                    System.out.println("ACCEPT/handleConnectThrottleBufferUnwind");
                     doWindow(
                         correlation.acceptThrottle(),
                         correlation.acceptStreamId(),
@@ -850,6 +854,26 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
                     this.slotWriteOffset = 0;
                     this.slotReadOffset = 0;
                     this.slotIndex = NO_SLOT;
+                }
+            }
+            else
+            {
+                System.out.println("\tNO Data frame received from accept yet!");
+                System.out.println("\treceivedBytes=" + receivedBytes + " receivedFrames=" + receivedFrames);
+                System.out.println("\tconnectWindowBytes=" + connectWindowBytes +
+                    " connectWindowFrames=" + connectWindowFrames);
+                if (MAX_WRITABLE_BYTES - receivedBytes < connectWindowBytes &&
+                    MAX_WRITABLE_FRAMES -receivedFrames < connectWindowFrames)
+                {
+                    this.connectThrottleState = this::handleConnectThrottleAfterHandshake;
+                    this.streamState = this::afterSourceConnect;
+                    System.out.println("ACCEPT/handleConnectThrottleBufferUnwind changing state and restoring acceptThrottle");
+                    doWindow(
+                        correlation.acceptThrottle(),
+                        correlation.acceptStreamId(),
+                        receivedBytes,
+                        receivedFrames
+                    );
                 }
             }
             break;
@@ -873,6 +897,8 @@ final class AcceptStreamProcessor extends AbstractStreamProcessor implements Acc
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
+            System.out.println("ACCEPT/handleConnectThrottleAfterHandshake");
+            System.out.println("\twindow: " + window);
             doWindow(
                 correlation.acceptThrottle(),
                 correlation.acceptStreamId(),
