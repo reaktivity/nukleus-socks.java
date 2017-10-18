@@ -26,6 +26,7 @@ import org.reaktivity.nukleus.socks.internal.metadata.State;
 import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamProcessor;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
+import org.reaktivity.nukleus.socks.internal.stream.types.Fragmented;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandResponseFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationResponseFW;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
@@ -176,36 +177,29 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             offset = 0;                                          //
             limit = slotOffset;                                  //
         }
+        Fragmented.ReadState fragmentationState = context.socksNegotiationResponseRO.canWrap(buffer, offset, limit);
         // one negotiation request frame is in the buffer
-        if (context.socksNegotiationResponseRO.canWrap(buffer, offset, limit))
+        if (fragmentationState == Fragmented.ReadState.FULL)
         {
             // Wrap the frame and extract the incoming data
             final SocksNegotiationResponseFW socksNegotiationResponse =
                 context.socksNegotiationResponseRO.wrap(buffer, offset, limit);
-            if (socksNegotiationResponse.version() != 0x05)
+            if (socksNegotiationResponse.version() != 0x05 ||
+                socksNegotiationResponse.method() != 0x00)
             {
-                throw new IllegalStateException(
-                    String.format("Unsupported SOCKS protocol version (expected 0x05, received 0x%02x",
-                        socksNegotiationResponse.version()));
-            }
-            if (socksNegotiationResponse.method() != 0x00)
-            {
-                throw new IllegalStateException(
-                    String.format("Unsupported SOCKS authentication method (expected 0x00, received %02x",
-                        socksNegotiationResponse.method()));
+                // TODO diagnostic
+                doReset(connectReplyThrottle, connectReplyStreamId);
             }
             streamState = this::beforeConnectionResponse;
             correlation.nextAcceptSignal().accept(true);
-            // Can safely release the buffer
-            if (slotIndex != NO_SLOT)
-            {
-                context.bufferPool.release(slotIndex);
-                slotOffset = 0;
-                slotIndex = NO_SLOT;
-            }
+        }
+        else if (fragmentationState == Fragmented.ReadState.BROKEN)
+        {
+            doReset(connectReplyThrottle, connectReplyStreamId);
         }
         else if (slotIndex == NO_SLOT)
         {
+            assert fragmentationState == Fragmented.ReadState.INCOMPLETE;
             if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
             {
                 doReset(connectReplyThrottle, connectReplyStreamId);
@@ -214,6 +208,14 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(slotIndex);
             acceptBuffer.putBytes(0, buffer, offset, size);
             slotOffset = size;
+        }
+        if (fragmentationState != Fragmented.ReadState.INCOMPLETE &&
+            this.slotIndex != NO_SLOT)
+        {
+            // Can safely release the buffer
+            context.bufferPool.release(this.slotIndex);
+            this.slotOffset = 0;
+            this.slotIndex = NO_SLOT;
         }
     }
 
@@ -262,39 +264,29 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             offset = 0;                                          //
             limit = slotOffset;                                  //
         }
+        Fragmented.ReadState fragmentationState = context.socksConnectionResponseRO.canWrap(buffer, offset, limit);
         // one negotiation request frame is in the buffer
-        if (context.socksConnectionResponseRO.canWrap(buffer, offset, limit))
+        if (fragmentationState == Fragmented.ReadState.FULL)
         {
             // Wrap the frame and extract the incoming data
             final SocksCommandResponseFW socksConnectionResponse = context.socksConnectionResponseRO.wrap(buffer, offset, limit);
-            if (socksConnectionResponse.version() != 0x05)
+            if (socksConnectionResponse.version() != 0x05 ||
+                socksConnectionResponse.reply() != 0x00)
             {
-                throw new IllegalStateException(
-                    String.format("Unsupported SOCKS protocol version (expected 0x05, received 0x%02x",
-                        socksConnectionResponse.version()));
+                // TODO diagnostic
+                doReset(connectReplyThrottle, connectReplyStreamId);
             }
-
-            if (socksConnectionResponse.reply() != 0x00)
-            {
-                throw new IllegalStateException(
-                    String.format("Unsupported SOCKS connection reply (expected 0x00, received 0x%02x",
-                        socksConnectionResponse.reply()));
-            }
-
             // State machine transitions
             streamState = this::afterConnectionResponse;
             correlation.acceptTransitionListener().transitionToConnectionReady(Optional.empty());
-
-            // Can safely release the buffer
-            if (slotIndex != NO_SLOT)
-            {
-                context.bufferPool.release(slotIndex);
-                slotOffset = 0;
-                slotIndex = NO_SLOT;
-            }
+        }
+        else if (fragmentationState == Fragmented.ReadState.BROKEN)
+        {
+            doReset(connectReplyThrottle, connectReplyStreamId);
         }
         else if (slotIndex == NO_SLOT)
         {
+            assert fragmentationState == Fragmented.ReadState.INCOMPLETE;
             if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
             {
                 doReset(connectReplyThrottle, connectReplyStreamId);
@@ -303,6 +295,14 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(slotIndex);
             acceptBuffer.putBytes(0, buffer, offset, size);
             slotOffset = size;
+        }
+        if (fragmentationState != Fragmented.ReadState.INCOMPLETE &&
+            this.slotIndex != NO_SLOT)
+        {
+            // Can safely release the buffer
+            context.bufferPool.release(this.slotIndex);
+            this.slotOffset = 0;
+            this.slotIndex = NO_SLOT;
         }
     }
 

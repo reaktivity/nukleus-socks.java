@@ -68,12 +68,10 @@ public class ConnectionIT
         k3po.finish();
     }
 
-    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
-        "${client}/client.does.not.connect.no.acceptable.methods/client",
-        "${server}/client.does.not.connect.no.acceptable.methods/server"})
+        "${client}/client.does.not.connect.no.acceptable.methods/client"})
     public void shouldNotEstablishConnectionNoAcceptableMethods() throws Exception
     {
         k3po.finish();
@@ -89,12 +87,10 @@ public class ConnectionIT
         k3po.finish();
     }
 
-    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
-        "${client}/client.connect.request.with.command.not.supported/client",
-        "${server}/client.connect.request.with.command.not.supported/server"})
+        "${client}/client.connect.request.with.command.not.supported/client"})
     public void shouldNotEstablishConnectionCommandNotSupported() throws Exception
     {
         k3po.finish();

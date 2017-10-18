@@ -29,6 +29,7 @@ import org.reaktivity.nukleus.socks.internal.stream.AcceptTransitionListener;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
 import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamProcessor;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
+import org.reaktivity.nukleus.socks.internal.stream.types.Fragmented;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandRequestFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandResponseFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationRequestFW;
@@ -225,18 +226,17 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, this.slotWriteOffset);
             acceptBuffer.putBytes(0, buffer, offset, size);
             this.slotWriteOffset += size;                                  // New starting point is moved to the end of the buffer
-            buffer = context.bufferPool.buffer(this.slotIndex); // Try to decode from the beginning of the buffer
-            offset = 0;                                               //
+            buffer = context.bufferPool.buffer(this.slotIndex);            // Try to decode from the beginning of the buffer
+            offset = 0;                                                    //
             limit = this.slotWriteOffset;                                  //
         }
-        if (context.socksNegotiationRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
+        Fragmented.ReadState fragmentationState = context.socksNegotiationRequestRO.canWrap(buffer, offset, limit);
+        if (fragmentationState == Fragmented.ReadState.FULL) // one negotiation request frame is in the buffer
         {
             final SocksNegotiationRequestFW socksNegotiation = context.socksNegotiationRequestRO.wrap(buffer, offset, limit);
             if (socksNegotiation.version() != 0x05)
             {
-                throw new IllegalStateException(
-                    String.format("Unsupported SOCKS protocol version (expected 0x05, received 0x%02x",
-                        socksNegotiation.version()));
+                doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
             }
             int nmethods = socksNegotiation.nmethods();
             byte i = 0;
@@ -249,23 +249,22 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             }
             if (i == nmethods)
             {
-                throw new IllegalStateException(
-                    String.format("Unsupported SOCKS authentication method (expected 0x00, received 0x%02x",
-                        socksNegotiation.methods()[0]));
+                correlation.nextAcceptSignal(this::attemptFailedNegotiationResponse);
+                correlation.nextAcceptSignal().accept(true);
             }
-            correlation.nextAcceptSignal(this::attemptNegotiationResponse);
-            correlation.nextAcceptSignal().accept(true);
-
-            // Can safely release the buffer
-            if (this.slotIndex != NO_SLOT)
+            else
             {
-                context.bufferPool.release(this.slotIndex);
-                this.slotWriteOffset = 0;
-                this.slotIndex = NO_SLOT;
+                correlation.nextAcceptSignal(this::attemptNegotiationResponse);
+                correlation.nextAcceptSignal().accept(true);
             }
+        }
+        else if (fragmentationState == Fragmented.ReadState.BROKEN)
+        {
+            doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
         }
         else if (this.slotIndex == NO_SLOT)
         {
+            assert fragmentationState == Fragmented.ReadState.INCOMPLETE;
             if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.acceptStreamId())))
             {
                 doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
@@ -274,6 +273,14 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex);
             acceptBuffer.putBytes(0, buffer, offset, size);
             this.slotWriteOffset = size;
+        }
+        if (fragmentationState != Fragmented.ReadState.INCOMPLETE &&
+            this.slotIndex != NO_SLOT)
+        {
+            // Can safely release the buffer
+            context.bufferPool.release(this.slotIndex);
+            this.slotWriteOffset = 0;
+            this.slotIndex = NO_SLOT;
         }
     }
 
@@ -308,6 +315,49 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             acceptReplyWindowBytes -= dataNegotiationResponseFW.sizeof();
             acceptReplyWindowFrames--;
         }
+    }
+
+    @Signal
+    private void attemptFailedNegotiationResponse(
+        boolean isReadyState)
+    {
+        System.out.println("ACCEPT/attemptFailedNegotiationResponse");
+        SocksNegotiationResponseFW socksNegotiationResponseFW = context.socksNegotiationResponseRW
+            .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
+            .version((byte) 0x05)
+            .method((byte) 0xFF)
+            .build();
+        DataFW dataNegotiationResponseFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+            .streamId(correlation.acceptReplyStreamId())
+            .payload(p -> p.set(
+                socksNegotiationResponseFW.buffer(),
+                socksNegotiationResponseFW.offset(),
+                socksNegotiationResponseFW.sizeof()))
+            .extension(e -> e.reset())
+            .build();
+        if (acceptReplyWindowBytes > dataNegotiationResponseFW.sizeof() &&
+            acceptReplyWindowFrames > 0)
+        {
+            this.streamState = this::afterFailedHandshake; // Reuse state that will trigger reset
+            correlation.nextAcceptSignal(this::noop);
+            correlation.acceptReplyEndpoint().accept(
+                dataNegotiationResponseFW.typeId(),
+                dataNegotiationResponseFW.buffer(),
+                dataNegotiationResponseFW.offset(),
+                dataNegotiationResponseFW.sizeof());
+            acceptReplyWindowBytes -= dataNegotiationResponseFW.sizeof();
+            acceptReplyWindowFrames--;
+        }
+    }
+
+    @State
+    private void afterFailedHandshake(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
+    {
+        // Only EndFrame should come back
     }
 
     @Signal
@@ -350,68 +400,79 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         int offset = payload.offset();
         int size = limit - offset;
         // Fragmented writes might have already occurred
-        if (this.slotWriteOffset != 0)
+        if (this.slotIndex != NO_SLOT)
         {
             // Append incoming data to the buffer
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, this.slotWriteOffset);
             acceptBuffer.putBytes(0, buffer, offset, size);
-            this.slotWriteOffset += size;                                  // New starting point is moved to the end of the buffer
+            this.slotWriteOffset += size;                             // New starting point is moved to the end of the buffer
             buffer = context.bufferPool.buffer(this.slotIndex);       // Try to decode from the beginning of the buffer
             offset = 0;                                               //
-            limit = this.slotWriteOffset;                                  //
+            limit = this.slotWriteOffset;                             //
         }
-        if (context.socksConnectionRequestRO.canWrap(buffer, offset, limit)) // one negotiation request frame is in the buffer
+        Fragmented.ReadState fragmentationState = context.socksConnectionRequestRO.canWrap(buffer, offset, limit);
+        if (fragmentationState == Fragmented.ReadState.FULL) // one negotiation request frame is in the buffer
         {
             final SocksCommandRequestFW socksCommandRequestFW = context.socksConnectionRequestRO.wrap(buffer, offset, limit);
-            final String dstAddrPort = socksCommandRequestFW.validateAndGetDstAddrPort();
-            final RouteFW connectRoute = resolveTarget(
-                correlation.acceptSourceRef(),
-                correlation.acceptSourceName(),
-                dstAddrPort
-            );
-            final String connectTargetName = connectRoute.target().asString();
-            final MessageConsumer connectEndpoint = context.router.supplyTarget(connectTargetName);
-            final long connectTargetRef = connectRoute.targetRef();
-            final long connectStreamId = context.supplyStreamId.getAsLong();
-            final long connectCorrelationId = context.supplyCorrelationId.getAsLong();
-            correlation.connectRoute(connectRoute);
-            correlation.connectEndpoint(connectEndpoint);
-            correlation.connectTargetRef(connectTargetRef);
-            correlation.connectTargetName(connectTargetName);
-            correlation.connectStreamId(connectStreamId);
-            correlation.connectCorrelationId(connectCorrelationId);
-            context.correlations.put(connectCorrelationId, correlation); // Use this map on the CONNECT STREAM
-            context.router.setThrottle(
-                connectTargetName,
-                connectStreamId,
-                this::handleConnectThrottle
-            );
-            final BeginFW connectBegin = context.beginRW
-                .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-                .streamId(connectStreamId)
-                .source("socks")
-                .sourceRef(connectTargetRef)
-                .correlationId(connectCorrelationId)
-                .extension(e -> e.reset())
-                .build();
-            connectEndpoint.accept(
-                connectBegin.typeId(),
-                connectBegin.buffer(),
-                connectBegin.offset(),
-                connectBegin.sizeof()
-            );
-            correlation.nextAcceptSignal(this::noop);
-            this.streamState = this::afterTargetConnectBegin;
-            // Can safely release the buffer
-            if (this.slotIndex != NO_SLOT)
+            if (socksCommandRequestFW.version() != 0x05)
             {
-                context.bufferPool.release(this.slotIndex);
-                this.slotWriteOffset = 0;
-                this.slotIndex = NO_SLOT;
+                doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
             }
+            if (socksCommandRequestFW.command() != 0x01)
+            {
+                correlation.nextAcceptSignal(this::attemptFailedConnectionResponse);
+                correlation.nextAcceptSignal().accept(true);
+            }
+            else
+            {
+                final String dstAddrPort = socksCommandRequestFW.getDstAddrPort();
+                final RouteFW connectRoute = resolveTarget(
+                    correlation.acceptSourceRef(),
+                    correlation.acceptSourceName(),
+                    dstAddrPort
+                                                          );
+                final String connectTargetName = connectRoute.target().asString();
+                final MessageConsumer connectEndpoint = context.router.supplyTarget(connectTargetName);
+                final long connectTargetRef = connectRoute.targetRef();
+                final long connectStreamId = context.supplyStreamId.getAsLong();
+                final long connectCorrelationId = context.supplyCorrelationId.getAsLong();
+                correlation.connectRoute(connectRoute);
+                correlation.connectEndpoint(connectEndpoint);
+                correlation.connectTargetRef(connectTargetRef);
+                correlation.connectTargetName(connectTargetName);
+                correlation.connectStreamId(connectStreamId);
+                correlation.connectCorrelationId(connectCorrelationId);
+                context.correlations.put(connectCorrelationId, correlation); // Use this map on the CONNECT STREAM
+                context.router.setThrottle(
+                    connectTargetName,
+                    connectStreamId,
+                    this::handleConnectThrottle
+                                          );
+                final BeginFW connectBegin = context.beginRW
+                    .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                    .streamId(connectStreamId)
+                    .source("socks")
+                    .sourceRef(connectTargetRef)
+                    .correlationId(connectCorrelationId)
+                    .extension(e -> e.reset())
+                    .build();
+                connectEndpoint.accept(
+                    connectBegin.typeId(),
+                    connectBegin.buffer(),
+                    connectBegin.offset(),
+                    connectBegin.sizeof()
+                                      );
+                correlation.nextAcceptSignal(this::noop);
+                this.streamState = this::afterTargetConnectBegin;
+            }
+        }
+        else if (fragmentationState == Fragmented.ReadState.BROKEN)
+        {
+            doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
         }
         else if (this.slotIndex == NO_SLOT)
         {
+            assert fragmentationState == Fragmented.ReadState.INCOMPLETE;
             if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.acceptStreamId())))
             {
                 doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
@@ -420,6 +481,14 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex);
             acceptBuffer.putBytes(0, buffer, offset, size);
             this.slotWriteOffset = size;
+        }
+        if (fragmentationState != Fragmented.ReadState.INCOMPLETE &&
+            this.slotIndex != NO_SLOT)
+        {
+            // Can safely release the buffer
+            context.bufferPool.release(this.slotIndex);
+            this.slotWriteOffset = 0;
+            this.slotIndex = NO_SLOT;
         }
     }
 
@@ -456,6 +525,47 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 return null;
             });
         attemptConnectionResponse(false);
+    }
+
+
+    @Signal
+    private void attemptFailedConnectionResponse(
+        boolean isReadyState)
+    {
+        if (!isReadyState)
+        {
+            correlation.nextAcceptSignal(this::attemptFailedConnectionResponse);
+        }
+        SocksCommandResponseFW socksConnectResponseFW = context.socksConnectionResponseRW
+            .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
+            .version((byte) 0x05)
+            .reply((byte) 0x07) // COMMAND NOT SUPPORTED
+            .bind((byte)0x01, new byte[]{0x00, 0x00, 0x00, 0x00}, 0x00)
+            .build();
+        DataFW dataConnectionResponseFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+            .streamId(correlation.acceptReplyStreamId())
+            .payload(p -> p.set(
+                socksConnectResponseFW.buffer(),
+                socksConnectResponseFW.offset(),
+                socksConnectResponseFW.sizeof()))
+            .extension(e -> e.reset())
+            .build();
+        if (acceptReplyWindowBytes > dataConnectionResponseFW.sizeof() &&
+            acceptReplyWindowFrames > 0)
+        {
+            System.out.println("ACCEPT/attemptFailedConnectionResponse: \n\tSending dataConnectionResponseFW: " +
+                dataConnectionResponseFW);
+            this.streamState = this::afterFailedHandshake;
+            correlation.nextAcceptSignal(this::noop);
+            correlation.acceptReplyEndpoint().accept(
+                dataConnectionResponseFW.typeId(),
+                dataConnectionResponseFW.buffer(),
+                dataConnectionResponseFW.offset(),
+                dataConnectionResponseFW.sizeof());
+            acceptReplyWindowBytes -= dataConnectionResponseFW.sizeof();
+            acceptReplyWindowFrames--;
+
+        }
     }
 
     @Signal
@@ -712,6 +822,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
             acceptReplyWindowBytes += window.update();
             acceptReplyWindowFrames += window.frames();
+            System.out.println("acceptReplyWindowBytes: " + acceptReplyWindowBytes + " acceptReplyWindowFrames: " + acceptReplyWindowFrames);
             correlation.nextAcceptSignal().accept(true);
             break;
         case ResetFW.TYPE_ID:
@@ -746,6 +857,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
             doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+            doAbort(correlation.connectEndpoint(), correlation.connectStreamId());
+            doReset(correlation.connectReplyThrottle(), correlation.connectReplyStreamId());
             break;
         default:
             // ignore
@@ -880,6 +993,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
             doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+            doAbort(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
+            doReset(correlation.connectReplyThrottle(), correlation.connectReplyStreamId());
             break;
         default:
             // ignore
@@ -909,6 +1024,9 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
             doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+            doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+            doAbort(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
+            doReset(correlation.connectReplyThrottle(), correlation.connectReplyStreamId());
             break;
         default:
             // ignore

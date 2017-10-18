@@ -66,6 +66,8 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
     private byte[] ipv4 = new byte[4];
     private byte[] ipv6 = new byte[16];
 
+    private BuildState buildState = BuildState.INITIAL;
+
     @Override
     public int limit()
     {
@@ -73,7 +75,7 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
     }
 
     @Override
-    public boolean canWrap(
+    public ReadState canWrap(
         DirectBuffer buffer,
         int offset,
         int maxLimit)
@@ -81,10 +83,24 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
         final int maxLength = maxLimit - offset;
         if (maxLength < FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP)
         {
-            return false;
+            return ReadState.INCOMPLETE;
         }
+        final int limit = decodeLimit(buffer, offset);
+        if (limit < 0)
+        {
+            return ReadState.BROKEN;
+        }
+        if (limit > maxLimit)
+        {
+            return ReadState.INCOMPLETE;
+        }
+        return ReadState.FULL;
+    }
 
-        return decodeLimit(buffer, offset) <= maxLimit;
+    @Override
+    public BuildState getBuildState()
+    {
+        return buildState;
     }
 
     private int decodeLimit(
@@ -107,10 +123,8 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
             addrLength = 16;
             break;
         default:
-            throw new IllegalStateException("Unable to decode Socks destination address type");
-
+            return -1;
         }
-
         return addrTypOffset + FIELD_SIZEBY_ADDRTYP + addrVariableSize + addrLength + FIELD_SIZEBY_DSTPORT;
     }
 
@@ -171,22 +185,8 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
         return ((buffer().getByte(portOffset) & 0xff) << 8) | (buffer().getByte(portOffset + 1) & 0xff);
     }
 
-    public String validateAndGetDstAddrPort()
+    public String getDstAddrPort()
     {
-        if (this.version() != 0x05)
-        {
-            throw new IllegalStateException(
-                String.format("Unsupported SOCKS protocol version (expected 0x05, received 0x%02x",
-                    this.version()));
-        }
-
-        if (this.command() != 0x01)
-        {
-            throw new IllegalStateException(
-                String.format("Unsupported SOCKS command (expected 0x01 - CONNECT, received 0x%02x",
-                    this.version()));
-        }
-
         StringBuilder dstAddrPortBuilder = new StringBuilder();
         byte atype = this.atype();
         if (atype == 0x03)
@@ -201,13 +201,12 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
             }
             catch (UnknownHostException e)
             {
-                throw new IllegalStateException("Unsupported SOCKS connection address", e);
+                return null;
             }
         }
         else
         {
-            throw new IllegalStateException(
-                String.format("Unsupported SOCKS address type (expected 0x01/0x03/0x04, received 0x%02x", atype));
+            return null;
         }
         dstAddrPortBuilder.append(":").append(this.port());
         return dstAddrPortBuilder.toString();
@@ -221,11 +220,23 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
         }
 
         @Override
+        public SocksCommandRequestFW build()
+        {
+            final SocksCommandRequestFW socksCommandRequestFW = super.build();
+            if (socksCommandRequestFW.buildState == BuildState.INITIAL)
+            {
+                socksCommandRequestFW.buildState = BuildState.FINAL;
+            }
+            return socksCommandRequestFW;
+        }
+
+        @Override
         public Builder wrap(
             MutableDirectBuffer buffer,
             int offset,
             int maxLimit)
         {
+            flyweight().buildState = BuildState.INITIAL;
             super.wrap(buffer, offset, maxLimit);
             int newLimit = limit() + BitUtil.SIZE_OF_BYTE;
             checkLimit(newLimit, maxLimit());
@@ -267,10 +278,10 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
                 }
                 catch (UnknownHostException e)
                 {
-                    throw new IllegalStateException("Unable to encode destinationAddress: " + destinationAddress, e);
+                    flyweight().buildState = BuildState.BROKEN;
+                    return this;
                 }
             }
-
             return this.destination((byte) 0x03, tokens[0].getBytes(StandardCharsets.UTF_8), port);
         }
 

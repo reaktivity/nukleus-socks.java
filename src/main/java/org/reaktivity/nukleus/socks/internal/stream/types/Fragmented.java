@@ -19,8 +19,24 @@ import org.agrona.DirectBuffer;
 
 public interface Fragmented
 {
-    boolean canWrap(
+    enum ReadState
+    {
+        FULL,
+        INCOMPLETE,
+        BROKEN
+    }
+
+    enum BuildState
+    {
+        INITIAL,
+        FINAL,
+        BROKEN
+    }
+
+    ReadState canWrap(
         DirectBuffer buffer,
         int offset,
         int maxLimit);
+
+    BuildState getBuildState();
 }

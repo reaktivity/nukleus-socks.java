@@ -15,8 +15,6 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.client;
 
-import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
-
 import java.util.Optional;
 
 import org.agrona.DirectBuffer;
@@ -27,6 +25,7 @@ import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamProcessor;
 import org.reaktivity.nukleus.socks.internal.stream.AcceptTransitionListener;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
+import org.reaktivity.nukleus.socks.internal.stream.types.Fragmented;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandRequestFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationRequestFW;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
@@ -51,8 +50,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     private int connectWindowFrames = 0;
 
     boolean isConnectReplyStateReady = false;
-
-    private int slotIndex = NO_SLOT;
 
     // One instance per Stream
     AcceptStreamProcessor(
@@ -313,6 +310,11 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             .command((byte) 0x01) // CONNECT
             .destination(destAddrPort)
             .build();
+        if (socksConnectRequestFW.getBuildState() == Fragmented.BuildState.BROKEN)
+        {
+            doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+            return;
+        }
         DataFW dataConnectRequestFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(correlation.connectStreamId())
             .payload(p -> p.set(

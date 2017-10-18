@@ -29,6 +29,10 @@ import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
 import org.reaktivity.reaktor.test.ReaktorRule;
 
+/*
+ * TODO Externalize bytes sent as Socks version/method/command in implementation
+ * Use a mocking tool to enforce client sending wrong values in order to test proper connection close
+ */
 public class ConnectionIT
 {
     private final K3poRule k3po = new K3poRule()
@@ -73,7 +77,7 @@ public class ConnectionIT
         k3po.finish();
     }
 
-    @Ignore
+    @Ignore("Sending other method than 0x00 not supported in client")
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
@@ -99,7 +103,7 @@ public class ConnectionIT
         k3po.finish();
     }
 
-    @Ignore
+    @Ignore("Sending other command than 0x01 not supported in client")
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({

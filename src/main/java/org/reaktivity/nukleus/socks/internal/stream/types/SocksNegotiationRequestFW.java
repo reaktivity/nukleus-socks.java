@@ -29,6 +29,8 @@ public class SocksNegotiationRequestFW extends Flyweight implements Fragmented
     private static final int FIELD_OFFSET_NMETHODS = FIELD_OFFSET_VERSION + FIELD_SIZEBY_VERSION;
     private static final int FIELD_SIZEBY_NMETHODS = BitUtil.SIZE_OF_BYTE;
 
+    private BuildState buildState = BuildState.INITIAL;
+
     @Override
     public int limit()
     {
@@ -36,18 +38,24 @@ public class SocksNegotiationRequestFW extends Flyweight implements Fragmented
     }
 
     @Override
-    public boolean canWrap(
+    public ReadState canWrap(
         DirectBuffer buffer,
         int offset,
         int maxLimit)
     {
         final int maxLength = maxLimit - offset;
-        if (maxLength < 2)
+        if (maxLength < 2 ||
+            decodeLimit(buffer, offset) > maxLimit)
         {
-            return false;
+            return ReadState.INCOMPLETE;
         }
+        return ReadState.FULL;
+    }
 
-        return decodeLimit(buffer, offset) <= maxLimit;
+    @Override
+    public BuildState getBuildState()
+    {
+        return buildState;
     }
 
     private int decodeLimit(
@@ -91,11 +99,19 @@ public class SocksNegotiationRequestFW extends Flyweight implements Fragmented
         }
 
         @Override
+        public SocksNegotiationRequestFW build()
+        {
+            flyweight().buildState = BuildState.FINAL;
+            return super.build();
+        }
+
+        @Override
         public Builder wrap(
             MutableDirectBuffer buffer,
             int offset,
             int maxLimit)
         {
+            flyweight().buildState = BuildState.INITIAL;
             super.wrap(buffer, offset, maxLimit);
             return this;
         }

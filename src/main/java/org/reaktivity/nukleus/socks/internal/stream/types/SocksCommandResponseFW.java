@@ -95,6 +95,8 @@ public class SocksCommandResponseFW extends Flyweight implements Fragmented
     private byte[] ipv4 = new byte[4];
     private byte[] ipv6 = new byte[16];
 
+    private BuildState buildState = BuildState.INITIAL;
+
     @Override
     public int limit()
     {
@@ -102,7 +104,7 @@ public class SocksCommandResponseFW extends Flyweight implements Fragmented
     }
 
     @Override
-    public boolean canWrap(
+    public ReadState canWrap(
         DirectBuffer buffer,
         int offset,
         int maxLimit)
@@ -110,10 +112,24 @@ public class SocksCommandResponseFW extends Flyweight implements Fragmented
         final int maxLength = maxLimit - offset;
         if (maxLength < FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP)
         {
-            return false;
+            return ReadState.INCOMPLETE;
         }
+        int limit = decodeLimit(buffer, offset);
+        if (limit < 0)
+        {
+            return ReadState.BROKEN;
+        }
+        if (limit > maxLimit)
+        {
+            return ReadState.INCOMPLETE;
+        }
+        return ReadState.FULL;
+    }
 
-        return decodeLimit(buffer, offset) <= maxLimit;
+    @Override
+    public BuildState getBuildState()
+    {
+        return buildState;
     }
 
     private int decodeLimit(
@@ -136,10 +152,8 @@ public class SocksCommandResponseFW extends Flyweight implements Fragmented
             addrLength = 16;
             break;
         default:
-            throw new IllegalStateException("Unable to decode Socks bind address type");
-
+            return -1;
         }
-
         return addrTypOffset + FIELD_SIZEBY_ADDRTYP + addrVariableSize + addrLength + FIELD_SIZEBY_BNDPORT;
     }
 
@@ -207,11 +221,20 @@ public class SocksCommandResponseFW extends Flyweight implements Fragmented
         }
 
         @Override
+        public SocksCommandResponseFW build()
+        {
+            SocksCommandResponseFW socksCommandResponseFW = super.build();
+            socksCommandResponseFW.buildState = BuildState.FINAL;
+            return socksCommandResponseFW;
+        }
+
+        @Override
         public Builder wrap(
             MutableDirectBuffer buffer,
             int offset,
             int maxLimit)
         {
+            flyweight().buildState = BuildState.INITIAL;
             super.wrap(buffer, offset, maxLimit);
             int newLimit = limit() + BitUtil.SIZE_OF_BYTE;
             checkLimit(newLimit, maxLimit());
