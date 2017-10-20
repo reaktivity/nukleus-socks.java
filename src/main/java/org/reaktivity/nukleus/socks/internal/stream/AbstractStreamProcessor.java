@@ -47,7 +47,6 @@ public abstract class AbstractStreamProcessor
             context.abortRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(streamId)
-                .extension(e -> e.reset())
                 .build();
         System.out.println("Sending abort: " + abort+ " to stream: " + stream);
         stream.accept(abort.typeId(), abort.buffer(), abort.offset(), abort.sizeof());
@@ -61,7 +60,6 @@ public abstract class AbstractStreamProcessor
             context.endRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(streamId)
-                .extension(e -> e.reset())
                 .build();
         System.out.println("Sending end: " + end + " to stream: " + stream);
         stream.accept(end.typeId(), end.buffer(), end.offset(), end.sizeof());

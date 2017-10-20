@@ -22,29 +22,30 @@ import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 
 public class Correlation
 {
-
-    // Can be used to send RESET and WINDOW back to the SOURCE on the ACCEPT stream
-    private MessageConsumer acceptThrottle;
+    // Can be used to send flow control frames back to the SOURCE on the ACCEPT stream
+    private final MessageConsumer acceptThrottle;
 
     // ACCEPT stream identifier
-    private long acceptStreamId;
+    private final long acceptStreamId;
 
     // ACCEPT SOURCE reference (similar to port)
-    private long acceptSourceRef;
+    private final long acceptSourceRef;
 
     // ACCEPT SOURCE name (similar to address)
-    private String acceptSourceName;
+    private final String acceptSourceName;
 
-    // Can be used to send BEGIN, DATA, END, ABORT frames to the SOURCE on the ACCEPT-REPLY stream
-    private MessageConsumer acceptReplyEndpoint;
+    // Can be used to send frames to the SOURCE on the ACCEPT-REPLY stream
+    private final MessageConsumer acceptReplyEndpoint;
 
     // ACCEPT-REPLY stream identifier
-    private long acceptReplyStreamId;
+    private final long acceptReplyStreamId;
 
     // Used to identify the Correlation on the ACCEPT/ACCEPT-RELPY streams
-    private long acceptCorrelationId;
+    private final long acceptCorrelationId;
 
-    // Can be used to send BEGIN, DATA, END, ABORT frames to the TARGET on the CONNECT stream
+    private final AcceptTransitionListener acceptTransitionListener;
+
+    // Can be used to send frames to the TARGET on the CONNECT stream
     private MessageConsumer connectEndpoint;
 
     // CONNECT TARGET name (similar to address)
@@ -59,24 +60,41 @@ public class Correlation
     // CONNECT stream identifier
     private long connectStreamId;
 
-    private AcceptTransitionListener acceptTransitionListener;
-
+    // Flyweight allowing to access extensions for connect route
     private RouteFW connectRoute;
 
-    private Consumer<Boolean> nextAcceptSignal;
-
+    // Can be used to send flow control frames back to the TARGET on the CONNECT-REPLY stream
     private MessageConsumer connectReplyThrottle;
 
+    // CONNECT-REPLY stream identifier
     private long connectReplyStreamId;
+
+    // Invoked from the ConnectReplyProcessor or AcceptProcessor. Sends data if window available.
+    private Consumer<Boolean> nextAcceptSignal;
+
+    public Correlation(
+        MessageConsumer acceptThrottle,
+        long acceptStreamId,
+        long acceptSourceRef,
+        String acceptSourceName,
+        MessageConsumer acceptReplyEndpoint,
+        long acceptReplyStreamId,
+        long acceptCorrelationId,
+        AcceptTransitionListener acceptTransitionListener)
+    {
+        this.acceptThrottle = acceptThrottle;
+        this.acceptStreamId = acceptStreamId;
+        this.acceptSourceRef = acceptSourceRef;
+        this.acceptSourceName = acceptSourceName;
+        this.acceptReplyEndpoint = acceptReplyEndpoint;
+        this.acceptReplyStreamId = acceptReplyStreamId;
+        this.acceptCorrelationId = acceptCorrelationId;
+        this.acceptTransitionListener = acceptTransitionListener;
+    }
 
     public AcceptTransitionListener acceptTransitionListener()
     {
         return acceptTransitionListener;
-    }
-
-    public void acceptTransitionListener(AcceptTransitionListener acceptTransitionListener)
-    {
-        this.acceptTransitionListener = acceptTransitionListener;
     }
 
     public long acceptCorrelationId()
@@ -84,19 +102,9 @@ public class Correlation
         return acceptCorrelationId;
     }
 
-    public void acceptCorrelationId(long correlationId)
-    {
-        this.acceptCorrelationId = correlationId;
-    }
-
     public String acceptSourceName()
     {
         return acceptSourceName;
-    }
-
-    public void acceptSourceName(String acceptSourceName)
-    {
-        this.acceptSourceName = acceptSourceName;
     }
 
     public long connectStreamId()
@@ -134,19 +142,9 @@ public class Correlation
         return acceptThrottle;
     }
 
-    public void acceptThrottle(MessageConsumer acceptThrottle)
-    {
-        this.acceptThrottle = acceptThrottle;
-    }
-
     public long acceptStreamId()
     {
         return acceptStreamId;
-    }
-
-    public void acceptStreamId(long acceptStreamId)
-    {
-        this.acceptStreamId = acceptStreamId;
     }
 
     public long acceptSourceRef()
@@ -154,29 +152,14 @@ public class Correlation
         return acceptSourceRef;
     }
 
-    public void acceptSourceRef(long acceptSourceRef)
-    {
-        this.acceptSourceRef = acceptSourceRef;
-    }
-
     public MessageConsumer acceptReplyEndpoint()
     {
         return acceptReplyEndpoint;
     }
 
-    public void acceptReplyEndpoint(MessageConsumer acceptReplyEndpoint)
-    {
-        this.acceptReplyEndpoint = acceptReplyEndpoint;
-    }
-
     public long acceptReplyStreamId()
     {
         return acceptReplyStreamId;
-    }
-
-    public void acceptReplyStreamId(long acceptReplyStreamId)
-    {
-        this.acceptReplyStreamId = acceptReplyStreamId;
     }
 
     public String connectTargetName()

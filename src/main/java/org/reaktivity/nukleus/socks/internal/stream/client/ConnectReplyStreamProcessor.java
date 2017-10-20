@@ -40,6 +40,9 @@ import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 {
 
+    public static final int MAX_WRITABLE_BYTES = 65535;
+    public static final int MAX_WRITABLE_FRAMES = 65535;
+
     private MessageConsumer streamState;
 
     private int acceptReplyWindowBytesAdjustment;
@@ -124,10 +127,14 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         correlation = context.correlations.remove(correlationId);
         if (connectRef == 0L && correlation != null)
         {
-            context.router.setThrottle(
-                correlation.acceptSourceName(),
-                correlation.acceptReplyStreamId(),
-                this::handleAcceptReplyThrottle);
+//            context.router.setThrottle(
+//                correlation.acceptSourceName(),
+//                correlation.acceptReplyStreamId(),
+//                this::handleAcceptReplyThrottle);
+
+            correlation.connectReplyThrottle(connectReplyThrottle);
+            correlation.connectReplyStreamId(connectReplyStreamId);
+
             final long acceptReplyRef = 0; // Bi-directional reply
             BeginFW beginToAcceptReply = context.beginRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
@@ -149,8 +156,8 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             doWindow(
                 connectReplyThrottle,
                 connectReplyStreamId,
-                65535,
-                65535
+                MAX_WRITABLE_BYTES,
+                MAX_WRITABLE_FRAMES
             );
         }
         else
@@ -335,6 +342,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 
     private void handleHighLevelData(DataFW data)
     {
+        System.out.println("CONNECT-REPLY/handleHighLevelData");
         OctetsFW payload = data.payload();
         DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(correlation.acceptReplyStreamId())
@@ -344,6 +352,8 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
                 payload.sizeof()))
             .extension(e -> e.reset())
             .build();
+        System.out.println("\t forwarding: " + data);
+        System.out.println("\t to: " + dataForwardFW);
         correlation.acceptReplyEndpoint()
             .accept(
                 dataForwardFW.typeId(),
