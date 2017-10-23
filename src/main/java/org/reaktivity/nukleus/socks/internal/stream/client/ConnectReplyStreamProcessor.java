@@ -26,7 +26,7 @@ import org.reaktivity.nukleus.socks.internal.metadata.State;
 import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamProcessor;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
-import org.reaktivity.nukleus.socks.internal.stream.types.Fragmented;
+import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedFlyweight;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandResponseFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationResponseFW;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
@@ -44,15 +44,18 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
     public static final int MAX_WRITABLE_FRAMES = 65535;
 
     private MessageConsumer streamState;
+    private MessageConsumer acceptReplyThrottleState;
 
-    private int acceptReplyWindowBytesAdjustment;
-    private int acceptReplyWindowFramesAdjustment;
-
-    private int slotIndex = NO_SLOT;
-    private int slotOffset;
     Correlation correlation;
     private final MessageConsumer connectReplyThrottle;
     private final long connectReplyStreamId;
+
+
+    private int acceptReplyBytes;
+    private int acceptReplyFrames;
+
+    private int receivedConnectReplyBytes;
+    private int receivedConnectReplyFrames;
 
     ConnectReplyStreamProcessor(
         Context context,
@@ -63,6 +66,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         this.streamState = this::beforeBegin;
         this.connectReplyThrottle = connectReplyThrottle;
         this.connectReplyStreamId = connectReplyId;
+        this.acceptReplyThrottleState = this::handleAcceptReplyThrottleBeforeHandshake;
     }
 
     @Override
@@ -104,6 +108,8 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         {
         case DataFW.TYPE_ID:
             final DataFW data = context.dataRO.wrap(buffer, index, index + length);
+            receivedConnectReplyBytes += data.payload().sizeof();
+            receivedConnectReplyFrames++;
             handleNegotiationResponse(data);
             break;
         case EndFW.TYPE_ID:
@@ -127,38 +133,29 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         correlation = context.correlations.remove(correlationId);
         if (connectRef == 0L && correlation != null)
         {
-//            context.router.setThrottle(
-//                correlation.acceptSourceName(),
-//                correlation.acceptReplyStreamId(),
-//                this::handleAcceptReplyThrottle);
-
             correlation.connectReplyThrottle(connectReplyThrottle);
             correlation.connectReplyStreamId(connectReplyStreamId);
-
-            final long acceptReplyRef = 0; // Bi-directional reply
-            BeginFW beginToAcceptReply = context.beginRW
-                .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-                .streamId(correlation.acceptReplyStreamId())
-                .source("socks")
-                .sourceRef(acceptReplyRef)
-                .correlationId(correlation.acceptCorrelationId())
-                .extension(e -> e.reset())
-                .build();
-            correlation.acceptReplyEndpoint()
-                .accept(
-                    beginToAcceptReply.typeId(),
-                    beginToAcceptReply.buffer(),
-                    beginToAcceptReply.offset(),
-                    beginToAcceptReply.sizeof());
-
+            MessageConsumer acceptReplyEndpoint = context.router.supplyTarget(correlation.acceptSourceName());
+            correlation.acceptReplyEndpoint(acceptReplyEndpoint);
+            context.router.setThrottle(
+                correlation.acceptSourceName(),
+                correlation.acceptReplyStreamId(),
+                this::handleAcceptReplyThrottle);
+            System.out.println("CONNECT-REPLY/handleBegin");
+            System.out.println("\tcontext: " + context);
+            System.out.println("\tcontext.router" + context.router);
+            System.out.println("\t" + correlation.acceptSourceName() + " : " + correlation.acceptReplyStreamId());
+            doBegin(correlation.acceptReplyEndpoint(),
+                correlation.acceptReplyStreamId(),
+                0L,
+                correlation.acceptCorrelationId());
             streamState = this::beforeNegotiationResponse;
             System.out.println("CONNECT-REPLY/handleBegin");
             doWindow(
                 connectReplyThrottle,
                 connectReplyStreamId,
                 MAX_WRITABLE_BYTES,
-                MAX_WRITABLE_FRAMES
-            );
+                MAX_WRITABLE_FRAMES);
         }
         else
         {
@@ -168,62 +165,28 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 
     private void handleNegotiationResponse(DataFW data)
     {
-        OctetsFW payload = data.payload();
-        DirectBuffer buffer = payload.buffer();
-        int limit = payload.limit();
-        int offset = payload.offset();
-        int size = limit - offset;
-        // Fragmented writes might have already occurred
-        if (slotIndex != NO_SLOT)
+        handleFragmentedData(
+            data,
+            context.socksNegotiationResponseRO,
+            this::handleNegotiationFlyweight,
+            correlation.acceptThrottle(),
+            correlation.acceptStreamId());
+    }
+
+    private void handleNegotiationFlyweight(
+        FragmentedFlyweight<SocksNegotiationResponseFW> flyweight,
+        DirectBuffer buffer,
+        int offset,
+        int limit)
+    {
+        final SocksNegotiationResponseFW socksNegotiationResponse = flyweight.wrap(buffer, offset, limit);
+        if (socksNegotiationResponse.version() != 0x05 ||
+            socksNegotiationResponse.method() != 0x00)
         {
-            // Append incoming data to the buffer
-            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(slotIndex, slotOffset);
-            acceptBuffer.putBytes(0, buffer, offset, size);
-            slotOffset += size;                                  // Next starting point is moved to the end of the buffer
-            buffer = context.bufferPool.buffer(slotIndex);       // Try to decode from the beginning of the buffer
-            offset = 0;                                          //
-            limit = slotOffset;                                  //
+            doReset(connectReplyThrottle, connectReplyStreamId); // TODO diagnostic
         }
-        Fragmented.ReadState fragmentationState = context.socksNegotiationResponseRO.canWrap(buffer, offset, limit);
-        // one negotiation request frame is in the buffer
-        if (fragmentationState == Fragmented.ReadState.FULL)
-        {
-            // Wrap the frame and extract the incoming data
-            final SocksNegotiationResponseFW socksNegotiationResponse =
-                context.socksNegotiationResponseRO.wrap(buffer, offset, limit);
-            if (socksNegotiationResponse.version() != 0x05 ||
-                socksNegotiationResponse.method() != 0x00)
-            {
-                // TODO diagnostic
-                doReset(connectReplyThrottle, connectReplyStreamId);
-            }
-            streamState = this::beforeConnectionResponse;
-            correlation.nextAcceptSignal().accept(true);
-        }
-        else if (fragmentationState == Fragmented.ReadState.BROKEN)
-        {
-            doReset(connectReplyThrottle, connectReplyStreamId);
-        }
-        else if (slotIndex == NO_SLOT)
-        {
-            assert fragmentationState == Fragmented.ReadState.INCOMPLETE;
-            if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
-            {
-                doReset(connectReplyThrottle, connectReplyStreamId);
-                return;
-            }
-            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(slotIndex);
-            acceptBuffer.putBytes(0, buffer, offset, size);
-            slotOffset = size;
-        }
-        if (fragmentationState != Fragmented.ReadState.INCOMPLETE &&
-            this.slotIndex != NO_SLOT)
-        {
-            // Can safely release the buffer
-            context.bufferPool.release(this.slotIndex);
-            this.slotOffset = 0;
-            this.slotIndex = NO_SLOT;
-        }
+        streamState = this::beforeConnectionResponse;
+        correlation.nextAcceptSignal().accept(true);
     }
 
     @State
@@ -237,6 +200,8 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         {
         case DataFW.TYPE_ID:
             final DataFW data = context.dataRO.wrap(buffer, index, index + length);
+            receivedConnectReplyBytes += data.payload().sizeof();
+            receivedConnectReplyFrames++;
             handleConnectionResponse(data);
             break;
         case EndFW.TYPE_ID:
@@ -255,63 +220,163 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 
     private void handleConnectionResponse(DataFW data)
     {
-        OctetsFW payload = data.payload();
-        DirectBuffer buffer = payload.buffer();
-        int limit = payload.limit();
-        int offset = payload.offset();
-        int size = limit - offset;
-        // Fragmented writes might have already occurred
-        if (slotIndex != NO_SLOT)
+        handleFragmentedData(
+            data,
+            context.socksConnectionResponseRO,
+            this::handleConnectionFlyweight,
+            correlation.acceptThrottle(),
+            correlation.acceptStreamId());
+    }
+
+    private void handleConnectionFlyweight(
+        FragmentedFlyweight<SocksCommandResponseFW> flyweight,
+        DirectBuffer buffer,
+        int offset,
+        int limit)
+    {
+        final SocksCommandResponseFW socksConnectionResponse = flyweight.wrap(buffer, offset, limit);
+        if (socksConnectionResponse.version() != 0x05 ||
+            socksConnectionResponse.reply() != 0x00)
         {
-            // Append incoming data to the buffer
-            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(slotIndex, slotOffset);
-            acceptBuffer.putBytes(0, buffer, offset, size);
-            slotOffset += size;                                  // Next starting point is moved to the end of the buffer
-            buffer = context.bufferPool.buffer(slotIndex);       // Try to decode from the beginning of the buffer
-            offset = 0;                                          //
-            limit = slotOffset;                                  //
+            doReset(connectReplyThrottle, connectReplyStreamId); // TODO diagnostic
         }
-        Fragmented.ReadState fragmentationState = context.socksConnectionResponseRO.canWrap(buffer, offset, limit);
-        // one negotiation request frame is in the buffer
-        if (fragmentationState == Fragmented.ReadState.FULL)
+        streamState = this::afterConnectionResponse;
+        correlation.acceptTransitionListener().transitionToConnectionReady(Optional.empty());
+
+        if (isAcceptReplyWindowGreaterThanConnectReplyWindow())
         {
-            // Wrap the frame and extract the incoming data
-            final SocksCommandResponseFW socksConnectionResponse = context.socksConnectionResponseRO.wrap(buffer, offset, limit);
-            if (socksConnectionResponse.version() != 0x05 ||
-                socksConnectionResponse.reply() != 0x00)
-            {
-                // TODO diagnostic
-                doReset(connectReplyThrottle, connectReplyStreamId);
-            }
-            // State machine transitions
-            streamState = this::afterConnectionResponse;
-            correlation.acceptTransitionListener().transitionToConnectionReady(Optional.empty());
+            // Forward to the ACCEPT throttle the available CONNECT window
+            // Subtract what ACCEPT has already sent during handshake
+            System.out.println("CONNECT/attemptConnectionResponse");
+            doWindow(
+                correlation.connectReplyThrottle(),
+                correlation.connectReplyStreamId(),
+                acceptReplyBytes - receivedConnectReplyBytes,
+                acceptReplyFrames - receivedConnectReplyFrames);
         }
-        else if (fragmentationState == Fragmented.ReadState.BROKEN)
+        else
         {
-            doReset(connectReplyThrottle, connectReplyStreamId);
-        }
-        else if (slotIndex == NO_SLOT)
-        {
-            assert fragmentationState == Fragmented.ReadState.INCOMPLETE;
-            if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
-            {
-                doReset(connectReplyThrottle, connectReplyStreamId);
-                return;
-            }
-            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(slotIndex);
-            acceptBuffer.putBytes(0, buffer, offset, size);
-            slotOffset = size;
-        }
-        if (fragmentationState != Fragmented.ReadState.INCOMPLETE &&
-            this.slotIndex != NO_SLOT)
-        {
-            // Can safely release the buffer
-            context.bufferPool.release(this.slotIndex);
-            this.slotOffset = 0;
-            this.slotIndex = NO_SLOT;
+            this.acceptReplyThrottleState = this::handleAcceptReplyThrottleBufferUnwind;
+            this.streamState = this::afterConnectionResponseBufferUnwind;
         }
     }
+
+    @State
+    private void afterConnectionResponseBufferUnwind(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
+    {
+        switch (msgTypeId)
+        {
+        case DataFW.TYPE_ID:
+            final DataFW data = context.dataRO.wrap(buffer, index, index + length);
+            handleHighLevelDataBufferUnwind(data);
+            break;
+        case EndFW.TYPE_ID:
+            final EndFW end = context.endRO.wrap(buffer, index, index + length);
+            handleEnd(end);
+            break;
+        case AbortFW.TYPE_ID:
+            final AbortFW abort = context.abortRO.wrap(buffer, index, index + length);
+            handleAbort(abort);
+            break;
+        default:
+            doReset(connectReplyThrottle, connectReplyStreamId);
+            break;
+        }
+    }
+
+    private void handleHighLevelDataBufferUnwind(DataFW data)
+    {
+        OctetsFW payload = data.payload();
+        if (this.slotWriteOffset != 0)
+        {
+            MutableDirectBuffer connectReplyBuffer = context.bufferPool.buffer(this.slotIndex, this.slotWriteOffset);
+            connectReplyBuffer.putBytes(
+                slotWriteOffset,
+                payload.buffer(),
+                payload.offset(),
+                payload.sizeof());
+            slotWriteOffset += payload.sizeof();
+            return;
+        }
+        if (acceptReplyBytes > payload.sizeof() &&
+            acceptReplyFrames > 0)
+        {
+            DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                .streamId(correlation.acceptReplyStreamId())
+                .payload(p -> p.set(
+                    payload.buffer(),
+                    payload.offset(),
+                    payload.sizeof()))
+                .extension(e -> e.reset())
+                .build();
+            System.out.println("CONNECT/handleHighLevelDataBufferUnwind: Forwarding data frame: \n\t" + data +
+                "\n\t" + dataForwardFW);
+            correlation.acceptReplyEndpoint()
+                .accept(
+                    dataForwardFW.typeId(),
+                    dataForwardFW.buffer(),
+                    dataForwardFW.offset(),
+                    dataForwardFW.sizeof());
+            acceptReplyBytes -= payload.sizeof();
+            acceptReplyFrames--;
+            System.out.println("CONNECT/handleHighLevelDataBufferUnwind connectWindowBytes: " +
+                acceptReplyBytes + " connectWindowFrames: " + acceptReplyFrames);
+            if (acceptReplyBytes == 0)
+            {
+                System.out.println("CONNECT/handleHighLevelDataBufferUnwind changing state, connect window emptied");
+                this.acceptReplyThrottleState = this::handleAcceptReplyThrottleAfterHandshake;
+                this.streamState = this::afterConnectionResponse;
+            }
+        }
+        else
+        {
+            int bufferedSizeBytes = acceptReplyBytes;
+            if (acceptReplyFrames > 0)
+            {
+                DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                    .streamId(correlation.acceptReplyStreamId())
+                    .payload(p -> p.set(
+                        payload.buffer(),
+                        payload.offset(),
+                        acceptReplyBytes))
+                    .extension(e -> e.reset())
+                    .build();
+                System.out.println("CONNECT/handleHighLevelDataBufferUnwind: Forwarding data frame: \n\t" + data +
+                    "\n\t" + dataForwardFW);
+                correlation.acceptReplyEndpoint()
+                    .accept(
+                        dataForwardFW.typeId(),
+                        dataForwardFW.buffer(),
+                        dataForwardFW.offset(),
+                        dataForwardFW.sizeof());
+                acceptReplyBytes = 0;
+                acceptReplyFrames--;
+            }
+            else
+            {
+                bufferedSizeBytes = payload.sizeof();
+            }
+            if (NO_SLOT == (slotIndex = context.bufferPool.acquire(correlation.connectStreamId())))
+            {
+                doReset(correlation.connectReplyThrottle(), correlation.connectReplyStreamId());
+                return;
+            }
+            MutableDirectBuffer connectReplyBuffer = context.bufferPool.buffer(this.slotIndex);
+            connectReplyBuffer.putBytes(
+                0,
+                payload.buffer(),
+                payload.offset() + bufferedSizeBytes,
+                payload.sizeof() - bufferedSizeBytes
+                                 );
+            slotWriteOffset = payload.sizeof() - bufferedSizeBytes;
+            slotReadOffset = 0;
+        }
+    }
+
 
     @State
     private void afterConnectionResponse(
@@ -324,6 +389,8 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         {
         case DataFW.TYPE_ID:
             final DataFW data = context.dataRO.wrap(buffer, index, index + length);
+            receivedConnectReplyBytes += data.payload().sizeof();
+            receivedConnectReplyFrames++;
             handleHighLevelData(data);
             break;
         case EndFW.TYPE_ID:
@@ -382,7 +449,16 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         correlation.acceptTransitionListener().transitionToAborted();
     }
 
-    private void handleAcceptReplyThrottle(
+    protected void handleAcceptReplyThrottle(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
+    {
+        acceptReplyThrottleState.accept(msgTypeId, buffer, index, length);
+    }
+
+    private void handleAcceptReplyThrottleBeforeHandshake(
         int msgTypeId,
         DirectBuffer buffer,
         int index,
@@ -392,13 +468,123 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
-            System.out.println("CONNECT-REPLY/processWindow");
+            System.out.println("CONNECT-REPLY/handleAcceptReplyThrottleBeforeHandshake");
+            System.out.println("\tCONNECT-REPLY: " + window);
+            acceptReplyBytes += window.update();
+            acceptReplyFrames += window.frames();
+            break;
+        case ResetFW.TYPE_ID:
+            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
+            handleReset(reset);
+            break;
+        default:
+            // ignore
+            break;
+        }
+    }
+
+    private void handleAcceptReplyThrottleBufferUnwind(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
+    {
+        switch (msgTypeId)
+        {
+        case WindowFW.TYPE_ID:
+            final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
+            acceptReplyBytes += window.update();
+            acceptReplyFrames += window.frames();
+            System.out.println("CONNECT-REPLY/handleAcceptReplyThrottleBufferUnwind: \n\t" + window);
+            System.out.println("\tacceptReplyBytes: " + acceptReplyBytes + " acceptReplyFrames: " + acceptReplyFrames);
+            if (acceptReplyFrames == 0)
+            {
+                return;
+            }
+            if (this.slotWriteOffset != 0)
+            {
+                MutableDirectBuffer connectReplyBuffer = context.bufferPool.buffer(this.slotIndex, slotReadOffset);
+                final int payloadSize = slotWriteOffset - slotReadOffset;
+                if (acceptReplyBytes < payloadSize)
+                {
+                    System.out.println("\treturning");
+                    return; // not covering an empty data frame
+                }
+                System.out.println("\tComputed payload size: " + payloadSize + "bytes.");
+                DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                    .streamId(correlation.acceptReplyStreamId())
+                    .payload(p -> p.set(
+                        connectReplyBuffer,
+                        0,
+                        payloadSize))
+                    .extension(e -> e.reset())
+                    .build();
+                System.out.println("\tForwarding buffered frame (based on window): \n\t" + window + "\n\t" + dataForwardFW);
+                correlation.acceptReplyEndpoint()
+                    .accept(
+                        dataForwardFW.typeId(),
+                        dataForwardFW.buffer(),
+                        dataForwardFW.offset(),
+                        dataForwardFW.sizeof());
+                acceptReplyBytes -= dataForwardFW.payload().sizeof();
+                acceptReplyFrames--;
+                slotReadOffset += payloadSize;
+                if (slotReadOffset == slotWriteOffset)
+                {
+                    // all buffer could be sent, must switch Throttling states
+                    this.acceptReplyThrottleState = this::handleAcceptReplyThrottleAfterHandshake;
+                    this.streamState = this::afterConnectionResponse;
+                    // Release the buffer
+                    context.bufferPool.release(this.slotIndex);
+                    this.slotWriteOffset = 0;
+                    this.slotReadOffset = 0;
+                    this.slotIndex = NO_SLOT;
+                }
+            }
+            else
+            {
+                System.out.println("\tNO Data frame received from accept yet!");
+                if (isAcceptReplyWindowGreaterThanConnectReplyWindow())
+                {
+                    this.acceptReplyThrottleState = this::handleAcceptReplyThrottleAfterHandshake;
+                    this.streamState = this::afterConnectionResponse;
+                    System.out.println("CONNECT/handleAcceptReplyThrottleBufferUnwind" +
+                        " changing state and restoring acceptThrottle");
+                    doWindow(
+                        correlation.acceptThrottle(),
+                        correlation.acceptStreamId(),
+                        receivedConnectReplyBytes,
+                        receivedConnectReplyFrames);
+                }
+            }
+            break;
+        case ResetFW.TYPE_ID:
+            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
+            doReset(correlation.connectReplyThrottle(), correlation.connectReplyStreamId());
+            break;
+        default:
+            // ignore
+            break;
+        }
+    }
+
+    private void handleAcceptReplyThrottleAfterHandshake(
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
+    {
+        switch (msgTypeId)
+        {
+        case WindowFW.TYPE_ID:
+            final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
+            System.out.println("CONNECT-REPLY/handleAcceptReplyThrottleAfterHandshake");
+            System.out.println("\tCONNECT-REPLY: " + window);
             doWindow(
-                connectReplyThrottle,
-                connectReplyStreamId,
+                correlation.connectReplyThrottle(),
+                correlation.connectReplyStreamId(),
                 window.update(),
-                window.frames()
-            );
+                window.frames());
             break;
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
@@ -413,5 +599,21 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
     private void handleReset(ResetFW reset)
     {
         doReset(connectReplyThrottle, connectReplyStreamId);
+    }
+
+    public boolean isAcceptReplyWindowGreaterThanConnectReplyWindow()
+    {
+        return
+            acceptReplyBytes  >= MAX_WRITABLE_BYTES - receivedConnectReplyBytes &&
+            acceptReplyFrames >= MAX_WRITABLE_FRAMES - receivedConnectReplyFrames;
+    }
+
+    public boolean isAcceptReplyWindowGreaterThan(
+        int update,
+        int frames)
+    {
+        return
+            acceptReplyBytes  >= update &&
+            acceptReplyFrames >= frames;
     }
 }

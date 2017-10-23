@@ -35,7 +35,7 @@ public class Correlation
     private final String acceptSourceName;
 
     // Can be used to send frames to the SOURCE on the ACCEPT-REPLY stream
-    private final MessageConsumer acceptReplyEndpoint;
+    private MessageConsumer acceptReplyEndpoint;
 
     // ACCEPT-REPLY stream identifier
     private final long acceptReplyStreamId;
@@ -72,12 +72,13 @@ public class Correlation
     // Invoked from the ConnectReplyProcessor or AcceptProcessor. Sends data if window available.
     private Consumer<Boolean> nextAcceptSignal;
 
+    private ConnectTransitionListener connectTransitionListener;
+
     public Correlation(
         MessageConsumer acceptThrottle,
         long acceptStreamId,
         long acceptSourceRef,
         String acceptSourceName,
-        MessageConsumer acceptReplyEndpoint,
         long acceptReplyStreamId,
         long acceptCorrelationId,
         AcceptTransitionListener acceptTransitionListener)
@@ -86,10 +87,14 @@ public class Correlation
         this.acceptStreamId = acceptStreamId;
         this.acceptSourceRef = acceptSourceRef;
         this.acceptSourceName = acceptSourceName;
-        this.acceptReplyEndpoint = acceptReplyEndpoint;
         this.acceptReplyStreamId = acceptReplyStreamId;
         this.acceptCorrelationId = acceptCorrelationId;
         this.acceptTransitionListener = acceptTransitionListener;
+    }
+
+    public void acceptReplyEndpoint(MessageConsumer acceptReplyEndpoint)
+    {
+        this.acceptReplyEndpoint = acceptReplyEndpoint;
     }
 
     public AcceptTransitionListener acceptTransitionListener()
@@ -220,5 +225,15 @@ public class Correlation
     public void connectReplyStreamId(long connectReplyId)
     {
         this.connectReplyStreamId = connectReplyId;
+    }
+
+    public ConnectTransitionListener connectTransitionListener()
+    {
+        return connectTransitionListener;
+    }
+
+    public void connectTransitionListener(ConnectTransitionListener connectTransitionListener)
+    {
+        this.connectTransitionListener = connectTransitionListener;
     }
 }

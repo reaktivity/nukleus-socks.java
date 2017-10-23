@@ -16,27 +16,38 @@
 package org.reaktivity.nukleus.socks.internal.stream.types;
 
 import org.agrona.DirectBuffer;
+import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 
-public interface Fragmented
+public abstract class FragmentedFlyweight<T extends FragmentedFlyweight> extends Flyweight
 {
-    enum ReadState
+    public enum ReadState
     {
         FULL,
         INCOMPLETE,
         BROKEN
     }
 
-    enum BuildState
+    public enum BuildState
     {
         INITIAL,
         FINAL,
         BROKEN
     }
 
-    ReadState canWrap(
+    public T wrap(
+        DirectBuffer buffer,
+        int offset,
+        int maxLimit)
+    {
+        super.wrap(buffer, offset, maxLimit);
+        checkLimit(limit(), maxLimit);
+        return (T) this;
+    }
+
+    public abstract ReadState canWrap(
         DirectBuffer buffer,
         int offset,
         int maxLimit);
 
-    BuildState getBuildState();
+    protected abstract BuildState getBuildState();
 }

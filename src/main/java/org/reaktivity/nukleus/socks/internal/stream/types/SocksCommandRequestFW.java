@@ -27,7 +27,7 @@ import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 import org.reaktivity.nukleus.socks.internal.types.StringFW;
 
-public class SocksCommandRequestFW extends Flyweight implements Fragmented
+public class SocksCommandRequestFW extends FragmentedFlyweight<SocksCommandRequestFW>
 {
 
     /*
@@ -126,17 +126,6 @@ public class SocksCommandRequestFW extends Flyweight implements Fragmented
             return -1;
         }
         return addrTypOffset + FIELD_SIZEBY_ADDRTYP + addrVariableSize + addrLength + FIELD_SIZEBY_DSTPORT;
-    }
-
-    @Override
-    public SocksCommandRequestFW wrap(
-        DirectBuffer buffer,
-        int offset,
-        int maxLimit)
-    {
-        super.wrap(buffer, offset, maxLimit);
-        checkLimit(limit(), maxLimit);
-        return this;
     }
 
     public byte version()
