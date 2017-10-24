@@ -259,7 +259,7 @@ public class AcceptStreamProcessorTest
         BeginFW connectBeginFrame = new BeginFW()
             .wrap(argumentBuffer.getValue(), argumentOffset.getValue(), argumentLength.getValue());
 
-        System.out.println(connectBeginFrame);
+        // System.out.println(connectBeginFrame);
 
         TcpBeginExFW tcpBeginExFW = new TcpBeginExFW.Builder()
             .wrap(tmpBuffer, 0, tmpBuffer.capacity())

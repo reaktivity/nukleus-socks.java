@@ -82,7 +82,7 @@ public abstract class AbstractStreamProcessor
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(streamId)
                 .build();
-        System.out.println("Sending abort: " + abort+ " to stream: " + stream);
+        // System.out.println("Sending abort: " + abort+ " to stream: " + stream);
         stream.accept(abort.typeId(), abort.buffer(), abort.offset(), abort.sizeof());
     }
 
@@ -95,7 +95,7 @@ public abstract class AbstractStreamProcessor
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(streamId)
                 .build();
-        System.out.println("Sending end: " + end + " to stream: " + stream);
+        // System.out.println("Sending end: " + end + " to stream: " + stream);
         stream.accept(end.typeId(), end.buffer(), end.offset(), end.sizeof());
     }
 
@@ -111,7 +111,7 @@ public abstract class AbstractStreamProcessor
             .update(writableBytes)
             .frames(writableFrames)
             .build();
-        System.out.println("\tSending window: " + window);
+        // System.out.println("\tSending window: " + window);
         throttle.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
     }
 
@@ -124,8 +124,6 @@ public abstract class AbstractStreamProcessor
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(throttleId)
                 .build();
-        System.out.println("Sending reset: " + reset + " to throttle: " + throttle);
-        new Exception("stacktrace").printStackTrace(System.out);
         throttle.accept(reset.typeId(), reset.buffer(), reset.offset(), reset.sizeof());
     }
 

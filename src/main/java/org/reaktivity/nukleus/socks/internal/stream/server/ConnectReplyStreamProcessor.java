@@ -79,7 +79,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 
     private void handleBegin(BeginFW begin)
     {
-        System.out.println("CONNECT_REPLY: created stream " + begin.streamId());
+        // System.out.println("CONNECT_REPLY: created stream " + begin.streamId());
         final long connectRef = begin.sourceRef();
         final long correlationId = begin.correlationId();
         correlation = context.correlations.remove(correlationId);
@@ -89,10 +89,10 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             correlation.connectReplyStreamId(connectReplyId);
             final TcpBeginExFW tcpBeginEx = begin.extension().get(context.tcpBeginExRO::wrap);
             Optional<TcpBeginExFW> connectionInfo = Optional.of(tcpBeginEx);
-            System.out.println("CONNECT_REPLY: connection ready " + tcpBeginEx +
-                " acceptStreamId: " + correlation.acceptStreamId() +
-                " acceptReplyStreamId: " + correlation.acceptReplyStreamId() +
-                " connectReplyStreamId: " + correlation.connectReplyStreamId());
+            // System.out.println("CONNECT_REPLY: connection ready " + tcpBeginEx +
+            //    " acceptStreamId: " + correlation.acceptStreamId() +
+            //    " acceptReplyStreamId: " + correlation.acceptReplyStreamId() +
+            //    " connectReplyStreamId: " + correlation.connectReplyStreamId());
             correlation.acceptTransitionListener().transitionToConnectionReady(connectionInfo);
             this.streamState = this::afterBeginOrData;
         }
@@ -140,7 +140,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
                 payload.sizeof()))
             .extension(e -> e.reset())
             .build();
-        System.out.println("CONNECT_REPLY: Forwarding data frame: \n\t" + data + "\n\t" + dataForwardFW);
+        // System.out.println("CONNECT_REPLY: Forwarding data frame: \n\t" + data + "\n\t" + dataForwardFW);
         correlation.acceptReplyEndpoint()
             .accept(
                 dataForwardFW.typeId(),
@@ -156,7 +156,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(correlation.acceptReplyStreamId())
             .build();
-        System.out.println("forwarding end frame: " + endForwardFW);
+        // System.out.println("forwarding end frame: " + endForwardFW);
         correlation.acceptReplyEndpoint()
             .accept(
                 endForwardFW.typeId(),

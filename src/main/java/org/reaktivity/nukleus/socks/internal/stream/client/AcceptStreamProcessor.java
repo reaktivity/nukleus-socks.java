@@ -125,10 +125,10 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
 //            correlation.acceptSourceName(),
 //            correlation.acceptReplyStreamId(),
 //            this::handleAcceptReplyThrottle);
-        System.out.println("ACCEPT/handleBegin");
-        System.out.println("\tcontext: " + context);
-        System.out.println("\tcontext.router" + context.router);
-        System.out.println("\t" + correlation.acceptSourceName() + " : " + correlation.acceptReplyStreamId());
+        // System.out.println("ACCEPT/handleBegin");
+        // System.out.println("\tcontext: " + context);
+        // System.out.println("\tcontext.router" + context.router);
+        // System.out.println("\t" + correlation.acceptSourceName() + " : " + correlation.acceptReplyStreamId());
 
         doBegin(correlation.connectEndpoint(),
             correlation.connectStreamId(),
@@ -174,7 +174,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
 
     private void handleHighLevelData(DataFW data)
     {
-        System.out.println("ACCEPT/handleHighLevelData");
+        // System.out.println("ACCEPT/handleHighLevelData");
         OctetsFW payload = data.payload();
         DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(correlation.connectStreamId())
@@ -184,8 +184,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 payload.sizeof()))
             .extension(e -> e.reset())
             .build();
-        System.out.println("\t forwarding: " + data);
-        System.out.println("\t to: " + dataForwardFW);
+        // System.out.println("\t forwarding: " + data);
+        // System.out.println("\t to: " + dataForwardFW);
         correlation.connectEndpoint()
             .accept(
                 dataForwardFW.typeId(),
@@ -204,8 +204,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
-            System.out.println("ACCEPT/handleConnectThrottleBeforeHandshake");
-            System.out.println("\treceived: " + window);
+            // System.out.println("ACCEPT/handleConnectThrottleBeforeHandshake");
+            // System.out.println("\treceived: " + window);
             connectWindowBytes += window.update();
             connectWindowFrames += window.frames();
             correlation.nextAcceptSignal().accept(isConnectReplyStateReady);
@@ -230,7 +230,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
-            System.out.println("ACCEPT/handleConnectThrottleAfterHandshake");
+            // System.out.println("ACCEPT/handleConnectThrottleAfterHandshake");
             doWindow(
                 correlation.acceptThrottle(),
                 correlation.acceptStreamId(),
@@ -351,8 +351,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             correlation.connectTargetName(),
             correlation.connectStreamId(),
             this::handleConnectThrottleAfterHandshake);
-        System.out.println("ACCEPT/transitionToConnectionReady");
-        System.out.println("\tSending to ACCEPT-THROTTLE");
+        // System.out.println("ACCEPT/transitionToConnectionReady");
+        // System.out.println("\tSending to ACCEPT-THROTTLE");
         this.doWindow(
             correlation.acceptThrottle(),
             correlation.acceptStreamId(),
