@@ -151,7 +151,6 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 
     private void handleEnd(EndFW end)
     {
-
         EndFW endForwardFW = context.endRW
             .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(correlation.acceptReplyStreamId())
@@ -168,6 +167,5 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
     private void handleAbort(AbortFW abort)
     {
         doAbort(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
-        correlation.acceptTransitionListener().transitionToAborted();
     }
 }

@@ -89,6 +89,18 @@ public class ConnectionIT
         k3po.finish();
     }
 
+    @Test
+    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
+    @Specification({
+        "${route}/client/controller",
+        "${client}/client.connect.send.data.throttling.window.1/client",
+        "${server}/client.connect.send.data.throttling.window.1/server"
+    })
+    public void shouldAcceptAndSendDataBothWaysWithThrottlingWindow1() throws Exception
+    {
+        k3po.finish();
+    }
+
     @Ignore("Sending other method than 0x00 not supported in client")
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")

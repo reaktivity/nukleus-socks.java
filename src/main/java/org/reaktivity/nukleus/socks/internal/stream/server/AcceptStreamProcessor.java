@@ -473,6 +473,54 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         }
     }
 
+
+    private void updateConnectionResponsePartial(int sentBytes)
+    {
+
+    }
+
+    private void updateConnectionResponseComplete(int sentBytes)
+    {
+        // System.out.println("ACCEPT/attemptConnectionResponse: \n\t" +
+        //    "Sending dataConnectionResponseFW: " +
+        //    dataConnectionResponseFW);
+        // Optimistic case, the frames can be forwarded back and forth
+        this.streamState = this::afterSourceConnect;
+        this.acceptReplyThrottleState = this::handleAcceptReplyThrottleAfterHandshake;
+        this.connectThrottleState = this::handleConnectThrottleAfterHandshake;
+
+        acceptReplyWindowBytes -= sentBytes;
+        acceptReplyWindowFrames--;
+
+        // Forward the remaining acceptReplyWindow to the CONNECT-REPLY throttle
+        // System.out.println("ACCEPT/attemptConnectionResponse -> initialize CONNECT-REPLY throttle");
+        doWindow(
+            correlation.connectReplyThrottle(),
+            correlation.connectReplyStreamId(),
+            acceptReplyWindowBytes,
+            acceptReplyWindowFrames
+                );
+        // If ACCEPT still has a window larger than what the connect has offer must buffer until synchronization
+        // System.out.println("ACCEPT/attemptConnectionResponse connectWindowBytes: " +
+        //    connectWindowBytes + " connectWindowFrames: " + connectWindowFrames);
+        if (isConnectWindowGreaterThanAcceptWindow())
+        {
+            // Forward to the ACCEPT throttle the available CONNECT window
+            // Subtract what ACCEPT has already sent during handshake
+            // System.out.println("ACCEPT/attemptConnectionResponse");
+            doWindow(
+                correlation.acceptThrottle(),
+                correlation.acceptStreamId(),
+                connectWindowBytes - receivedBytes,
+                connectWindowFrames - receivedFrames);
+        }
+        else
+        {
+            this.connectThrottleState = this::handleConnectThrottleBufferUnwind;
+            this.streamState = this::afterSourceConnectBufferUnwind;
+        }
+    }
+
     @Signal
     private void attemptConnectionResponse(
         boolean isReadyState)
@@ -498,51 +546,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         if (acceptReplyWindowBytes > dataConnectionResponseFW.sizeof() &&
             acceptReplyWindowFrames > 0)
         {
-            // System.out.println("ACCEPT/attemptConnectionResponse: \n\t" +
-            //    "Sending dataConnectionResponseFW: " +
-            //    dataConnectionResponseFW);
-            // Optimistic case, the frames can be forwarded back and forth
-            this.streamState = this::afterSourceConnect;
-            this.acceptReplyThrottleState = this::handleAcceptReplyThrottleAfterHandshake;
-            this.connectThrottleState = this::handleConnectThrottleAfterHandshake;
 
-            // Send the data frame with the connection response
-            correlation.acceptReplyEndpoint().accept(
-                dataConnectionResponseFW.typeId(),
-                dataConnectionResponseFW.buffer(),
-                dataConnectionResponseFW.offset(),
-                dataConnectionResponseFW.sizeof());
-
-            acceptReplyWindowBytes -= dataConnectionResponseFW.sizeof();
-            acceptReplyWindowFrames--;
-
-            // Forward the remaining acceptReplyWindow to the CONNECT-REPLY throttle
-            // System.out.println("ACCEPT/attemptConnectionResponse -> initialize CONNECT-REPLY throttle");
-            doWindow(
-                correlation.connectReplyThrottle(),
-                correlation.connectReplyStreamId(),
-                acceptReplyWindowBytes,
-                acceptReplyWindowFrames
-            );
-            // If ACCEPT still has a window larger than what the connect has offer must buffer until synchronization
-            // System.out.println("ACCEPT/attemptConnectionResponse connectWindowBytes: " +
-            //    connectWindowBytes + " connectWindowFrames: " + connectWindowFrames);
-            if (isConnectWindowGreaterThanAcceptWindow())
-            {
-                // Forward to the ACCEPT throttle the available CONNECT window
-                // Subtract what ACCEPT has already sent during handshake
-                // System.out.println("ACCEPT/attemptConnectionResponse");
-                doWindow(
-                    correlation.acceptThrottle(),
-                    correlation.acceptStreamId(),
-                    connectWindowBytes - receivedBytes,
-                    connectWindowFrames - receivedFrames);
-            }
-            else
-            {
-                this.connectThrottleState = this::handleConnectThrottleBufferUnwind;
-                this.streamState = this::afterSourceConnectBufferUnwind;
-            }
         }
     }
 
@@ -808,12 +812,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             if (this.slotWriteOffset != 0)
             {
                 MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, slotReadOffset);
-                final int payloadSize = slotWriteOffset - slotReadOffset;
-                if (connectWindowBytes < payloadSize)
-                {
-                    // System.out.println("\treturning");
-                    return; // not covering an empty data frame
-                }
+                final int payloadSize = Math.min(slotWriteOffset - slotReadOffset, connectWindowBytes);
                 // System.out.println("\tComputed payload size: " + payloadSize + "bytes.");
                 DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                     .streamId(correlation.connectStreamId())
@@ -835,14 +834,16 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 slotReadOffset += payloadSize;
                 if (slotReadOffset == slotWriteOffset)
                 {
-                    // all buffer could be sent, must switch Throttling states
-                    this.connectThrottleState = this::handleConnectThrottleAfterHandshake;
-                    this.streamState = this::afterSourceConnect;
                     // Release the buffer
                     context.bufferPool.release(this.slotIndex);
                     this.slotWriteOffset = 0;
                     this.slotReadOffset = 0;
                     this.slotIndex = NO_SLOT;
+                    if (isConnectWindowGreaterThanAcceptWindow())
+                    {
+                        this.connectThrottleState = this::handleConnectThrottleAfterHandshake;
+                        this.streamState = this::afterSourceConnect;
+                    }
                 }
             }
             else
@@ -907,12 +908,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             // ignore
             break;
         }
-    }
-
-    @Override
-    public void transitionToAborted()
-    {
-        // TODO implement me
     }
 
     RouteFW resolveTarget(

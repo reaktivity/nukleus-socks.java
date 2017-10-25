@@ -22,6 +22,10 @@ import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedFlyweight;
 import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedHandler;
+import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedSenderComplete;
+import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedSenderPartial;
+import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationRequestFW;
+import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
@@ -39,6 +43,8 @@ public abstract class AbstractStreamProcessor
     protected int slotIndex = NO_SLOT;
     protected int slotReadOffset;
     protected int slotWriteOffset;
+
+    protected int attemptOffset;
 
     public AbstractStreamProcessor(Context context)
     {
@@ -111,7 +117,7 @@ public abstract class AbstractStreamProcessor
             .update(writableBytes)
             .frames(writableFrames)
             .build();
-        // System.out.println("\tSending window: " + window);
+         System.out.println("\tSending window: " + window);
         throttle.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
     }
 
@@ -177,6 +183,52 @@ public abstract class AbstractStreamProcessor
             context.bufferPool.release(slotIndex);
             slotWriteOffset = 0;
             slotIndex = NO_SLOT;
+        }
+    }
+
+    protected void doFragmentedData(Flyweight flyweight,
+        final int targetWindowBytes,
+        final int targetWindowFrames,
+        MessageConsumer target,
+        long targetStreamId,
+        FragmentedSenderPartial senderPartial,
+        FragmentedSenderComplete senderComplete)
+    {
+        if (targetWindowFrames > 0 &&
+            targetWindowBytes > flyweight.sizeof() - attemptOffset)
+        {
+            DataFW dataFW = context.dataRW
+                .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                .streamId(targetStreamId)
+                .payload(p -> p.set(
+                    flyweight.buffer(),
+                    flyweight.offset() + attemptOffset,
+                    flyweight.sizeof() - attemptOffset))
+                .build();
+            target.accept(
+                dataFW.typeId(),
+                dataFW.buffer(),
+                dataFW.offset(),
+                dataFW.sizeof());
+            senderComplete.update(dataFW.payload().sizeof());
+        }
+        else if (targetWindowFrames > 0 &&
+            targetWindowBytes > 0)
+        {
+            DataFW dataFW = context.dataRW
+                .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+                .streamId(targetStreamId)
+                .payload(p -> p.set(
+                    flyweight.buffer(),
+                    flyweight.offset() + attemptOffset,
+                    targetWindowBytes))
+                .build();
+            target.accept(
+                dataFW.typeId(),
+                dataFW.buffer(),
+                dataFW.offset(),
+                dataFW.sizeof());
+            senderPartial.update(dataFW.payload().sizeof());
         }
     }
 }

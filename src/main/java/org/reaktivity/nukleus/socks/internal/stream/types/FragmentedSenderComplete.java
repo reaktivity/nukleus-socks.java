@@ -13,12 +13,9 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package org.reaktivity.nukleus.socks.internal.stream;
+package org.reaktivity.nukleus.socks.internal.stream.types;
 
-import java.util.Optional;
-
-public interface AcceptTransitionListener<T>
+public interface FragmentedSenderComplete
 {
-    void transitionToConnectionReady(Optional<T> connectionInfo);
-
+    void update(int sentBytes);
 }

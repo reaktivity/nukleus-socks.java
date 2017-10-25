@@ -81,6 +81,16 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
+        "${client}/client.connect.send.data.throttling.window.1/client",
+        "${server}/client.connect.send.data.throttling.window.1/server"})
+    public void shouldAcceptAndSendDataBothWaysWithThrottlingWindow1() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
         "${client}/client.does.not.connect.no.acceptable.methods/client"})
     public void shouldNotEstablishConnectionNoAcceptableMethods() throws Exception
     {
