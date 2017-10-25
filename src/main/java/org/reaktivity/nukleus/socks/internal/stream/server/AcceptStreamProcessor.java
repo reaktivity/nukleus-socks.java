@@ -150,9 +150,9 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     private void initializeNegotiation(
         BeginFW begin)
     {
-        // System.out.println("ACCEPT/initializeNegotiation");
-        // System.out.println("\tACCEPT: created stream " + begin.streamId());
-        // System.out.println("\tACCEPT: send back begin frame " + correlation.acceptReplyStreamId());
+         System.out.println("ACCEPT/initializeNegotiation");
+         System.out.println("\tACCEPT: created stream " + begin.streamId());
+         System.out.println("\tACCEPT: send back begin frame " + correlation.acceptReplyStreamId());
         doBegin(
             correlation.acceptReplyEndpoint(),
             correlation.acceptReplyStreamId(),
@@ -192,12 +192,25 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         }
     }
 
+    private void handleNegotiationData(
+        DataFW data)
+    {
+        handleFragmentedData(
+            data,
+            context.socksNegotiationRequestRO,
+            this::handleNegotiationFlyweight,
+            correlation.acceptThrottle(),
+            correlation.acceptStreamId());
+    }
+
     private void handleNegotiationFlyweight(
         FragmentedFlyweight<SocksNegotiationRequestFW> flyweight,
         DirectBuffer buffer,
         int offset,
         int limit)
     {
+        System.out.println("ACCEPT/handleNegotiationFlyweight");
+        new Exception().printStackTrace(System.out);
         final SocksNegotiationRequestFW socksNegotiation = flyweight.wrap(buffer, offset, limit);
         if (socksNegotiation.version() != 0x05)
         {
@@ -224,81 +237,90 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         }
     }
 
-    private void handleNegotiationData(
-        DataFW data)
+    private void updateNegotiationResponsePartial(int sentBytes)
     {
-        handleFragmentedData(
-            data,
-            context.socksNegotiationRequestRO,
-            this::handleNegotiationFlyweight,
-            correlation.acceptThrottle(),
-            correlation.acceptStreamId());
+        System.out.println("ACCEPT/updateNegotiationResponsePartial");
+        System.out.println("\t updating ...");
+        attemptOffset += acceptReplyWindowBytes;
+        acceptReplyWindowBytes -= sentBytes;
+        acceptReplyWindowFrames--;
+        System.out.println("\tattemptOffset: " + attemptOffset);
+        System.out.println("\tacceptReplyWindowBytes: " + acceptReplyWindowBytes);
+        System.out.println("\tacceptReplyWindowFrames: " + acceptReplyWindowFrames);
+    }
+
+    private void updateNegotiationResponseComplete(int sentBytes)
+    {
+        this.streamState = this::afterNegotiation;
+        correlation.nextAcceptSignal(this::noop);
+
+        System.out.println("ACCEPT/updateNegotiationResponseComplete");
+        System.out.println("\t updating ...");
+        acceptReplyWindowBytes -= sentBytes;
+        acceptReplyWindowFrames--;
+        attemptOffset = 0;
+        System.out.println("\tattemptOffset: " + attemptOffset);
+        System.out.println("\tacceptReplyWindowBytes: " + acceptReplyWindowBytes);
+        System.out.println("\tacceptReplyWindowFrames: " + acceptReplyWindowFrames);
     }
 
     @Signal
     private void attemptNegotiationResponse(
         boolean isReadyState)
     {
-        // System.out.println("ACCEPT/attemptNegotiationResponse");
+         System.out.println("ACCEPT/attemptNegotiationResponse");
+        System.out.println("\tacceptReplyWindowBytes: " + acceptReplyWindowBytes);
+        System.out.println("\tacceptReplyWindowFrames: " + acceptReplyWindowFrames);
         SocksNegotiationResponseFW socksNegotiationResponseFW = context.socksNegotiationResponseRW
             .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
             .version((byte) 0x05)
             .method((byte) 0x00)
             .build();
-        DataFW dataNegotiationResponseFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-            .streamId(correlation.acceptReplyStreamId())
-            .payload(p -> p.set(
-                socksNegotiationResponseFW.buffer(),
-                socksNegotiationResponseFW.offset(),
-                socksNegotiationResponseFW.sizeof()))
-            .extension(e -> e.reset())
-            .build();
-        if (acceptReplyWindowBytes > dataNegotiationResponseFW.sizeof() &&
-            acceptReplyWindowFrames > 0)
-        {
-            this.streamState = this::afterNegotiation;
-            correlation.nextAcceptSignal(this::noop);
-            correlation.acceptReplyEndpoint().accept(
-                dataNegotiationResponseFW.typeId(),
-                dataNegotiationResponseFW.buffer(),
-                dataNegotiationResponseFW.offset(),
-                dataNegotiationResponseFW.sizeof());
-            acceptReplyWindowBytes -= dataNegotiationResponseFW.payload().sizeof();
-            acceptReplyWindowFrames--;
-        }
+        doFragmentedData(socksNegotiationResponseFW,
+            acceptReplyWindowBytes,
+            acceptReplyWindowFrames,
+            correlation.acceptReplyEndpoint(),
+            correlation.acceptReplyStreamId(),
+            this::updateNegotiationResponsePartial,
+            this::updateNegotiationResponseComplete);
+    }
+
+    private void updateNegotiationFailedResponsePartial(int sentBytes)
+    {
+        attemptOffset += acceptReplyWindowBytes;
+        acceptReplyWindowBytes -= sentBytes;
+        acceptReplyWindowFrames--;
+    }
+
+    private void updateNegotiationFailedResponseComplete(int sentBytes)
+    {
+        // System.out.println("ACCEPT/attemptFailedConnectionResponse: \n\tSending dataConnectionResponseFW: " +
+        //    dataConnectionResponseFW);
+        this.streamState = this::afterFailedHandshake;
+        correlation.nextAcceptSignal(this::noop);
+
+        acceptReplyWindowBytes -= sentBytes;
+        acceptReplyWindowFrames--;
+        attemptOffset = 0;
     }
 
     @Signal
     private void attemptFailedNegotiationResponse(
         boolean isReadyState)
     {
-        // System.out.println("ACCEPT/attemptFailedNegotiationResponse");
+         System.out.println("ACCEPT/attemptFailedNegotiationResponse");
         SocksNegotiationResponseFW socksNegotiationResponseFW = context.socksNegotiationResponseRW
             .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
             .version((byte) 0x05)
             .method((byte) 0xFF)
             .build();
-        DataFW dataNegotiationResponseFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-            .streamId(correlation.acceptReplyStreamId())
-            .payload(p -> p.set(
-                socksNegotiationResponseFW.buffer(),
-                socksNegotiationResponseFW.offset(),
-                socksNegotiationResponseFW.sizeof()))
-            .extension(e -> e.reset())
-            .build();
-        if (acceptReplyWindowBytes > dataNegotiationResponseFW.sizeof() &&
-            acceptReplyWindowFrames > 0)
-        {
-            this.streamState = this::afterFailedHandshake; // Reuse state that will trigger reset
-            correlation.nextAcceptSignal(this::noop);
-            correlation.acceptReplyEndpoint().accept(
-                dataNegotiationResponseFW.typeId(),
-                dataNegotiationResponseFW.buffer(),
-                dataNegotiationResponseFW.offset(),
-                dataNegotiationResponseFW.sizeof());
-            acceptReplyWindowBytes -= dataNegotiationResponseFW.payload().sizeof();
-            acceptReplyWindowFrames--;
-        }
+        doFragmentedData(socksNegotiationResponseFW,
+            acceptReplyWindowBytes,
+            acceptReplyWindowFrames,
+            correlation.acceptReplyEndpoint(),
+            correlation.acceptReplyStreamId(),
+            this::updateNegotiationFailedResponsePartial,
+            this::updateNegotiationFailedResponseComplete);
     }
 
     @State
@@ -433,6 +455,24 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         attemptConnectionResponse(false);
     }
 
+    private void updateConnectionFailedResponsePartial(int sentBytes)
+    {
+        attemptOffset += acceptReplyWindowBytes;
+        acceptReplyWindowBytes -= sentBytes;
+        acceptReplyWindowFrames--;
+    }
+
+    private void updateConnectionFailedResponseComplete(int sentBytes)
+    {
+        // System.out.println("ACCEPT/attemptFailedConnectionResponse: \n\tSending dataConnectionResponseFW: " +
+        //    dataConnectionResponseFW);
+        this.streamState = this::afterFailedHandshake;
+        correlation.nextAcceptSignal(this::noop);
+
+        acceptReplyWindowBytes -= sentBytes;
+        acceptReplyWindowFrames--;
+        attemptOffset = 0;
+    }
 
     @Signal
     private void attemptFailedConnectionResponse(
@@ -448,49 +488,35 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             .reply((byte) 0x07) // COMMAND NOT SUPPORTED
             .bind((byte)0x01, new byte[]{0x00, 0x00, 0x00, 0x00}, 0x00)
             .build();
-        DataFW dataConnectionResponseFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-            .streamId(correlation.acceptReplyStreamId())
-            .payload(p -> p.set(
-                socksConnectResponseFW.buffer(),
-                socksConnectResponseFW.offset(),
-                socksConnectResponseFW.sizeof()))
-            .extension(e -> e.reset())
-            .build();
-        if (acceptReplyWindowBytes > dataConnectionResponseFW.sizeof() &&
-            acceptReplyWindowFrames > 0)
-        {
-            // System.out.println("ACCEPT/attemptFailedConnectionResponse: \n\tSending dataConnectionResponseFW: " +
-            //    dataConnectionResponseFW);
-            this.streamState = this::afterFailedHandshake;
-            correlation.nextAcceptSignal(this::noop);
-            correlation.acceptReplyEndpoint().accept(
-                dataConnectionResponseFW.typeId(),
-                dataConnectionResponseFW.buffer(),
-                dataConnectionResponseFW.offset(),
-                dataConnectionResponseFW.sizeof());
-            acceptReplyWindowBytes -= dataConnectionResponseFW.payload().sizeof();
-            acceptReplyWindowFrames--;
-        }
+        doFragmentedData(socksConnectResponseFW,
+            acceptReplyWindowBytes,
+            acceptReplyWindowFrames,
+            correlation.acceptReplyEndpoint(),
+            correlation.acceptReplyStreamId(),
+            this::updateConnectionFailedResponsePartial,
+            this::updateConnectionFailedResponseComplete);
     }
 
 
     private void updateConnectionResponsePartial(int sentBytes)
     {
-
+        attemptOffset += acceptReplyWindowBytes;
+        acceptReplyWindowBytes -= sentBytes;
+        acceptReplyWindowFrames--;
     }
 
     private void updateConnectionResponseComplete(int sentBytes)
     {
-        // System.out.println("ACCEPT/attemptConnectionResponse: \n\t" +
-        //    "Sending dataConnectionResponseFW: " +
-        //    dataConnectionResponseFW);
+        correlation.nextAcceptSignal(this::noop);
+
+        acceptReplyWindowBytes -= sentBytes;
+        acceptReplyWindowFrames--;
+        attemptOffset = 0;
+
         // Optimistic case, the frames can be forwarded back and forth
         this.streamState = this::afterSourceConnect;
         this.acceptReplyThrottleState = this::handleAcceptReplyThrottleAfterHandshake;
         this.connectThrottleState = this::handleConnectThrottleAfterHandshake;
-
-        acceptReplyWindowBytes -= sentBytes;
-        acceptReplyWindowFrames--;
 
         // Forward the remaining acceptReplyWindow to the CONNECT-REPLY throttle
         // System.out.println("ACCEPT/attemptConnectionResponse -> initialize CONNECT-REPLY throttle");
@@ -498,8 +524,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             correlation.connectReplyThrottle(),
             correlation.connectReplyStreamId(),
             acceptReplyWindowBytes,
-            acceptReplyWindowFrames
-                );
+            acceptReplyWindowFrames);
         // If ACCEPT still has a window larger than what the connect has offer must buffer until synchronization
         // System.out.println("ACCEPT/attemptConnectionResponse connectWindowBytes: " +
         //    connectWindowBytes + " connectWindowFrames: " + connectWindowFrames);
@@ -535,19 +560,13 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             .reply((byte) 0x00) // CONNECT
             .bind(socksAtyp, socksAddr, socksPort)
             .build();
-        DataFW dataConnectionResponseFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-            .streamId(correlation.acceptReplyStreamId())
-            .payload(p -> p.set(
-                socksConnectResponseFW.buffer(),
-                socksConnectResponseFW.offset(),
-                socksConnectResponseFW.sizeof()))
-            .extension(e -> e.reset())
-            .build();
-        if (acceptReplyWindowBytes > dataConnectionResponseFW.sizeof() &&
-            acceptReplyWindowFrames > 0)
-        {
-
-        }
+        doFragmentedData(socksConnectResponseFW,
+            acceptReplyWindowBytes,
+            acceptReplyWindowFrames,
+            correlation.acceptReplyEndpoint(),
+            correlation.acceptReplyStreamId(),
+            this::updateConnectionResponsePartial,
+            this::updateConnectionResponseComplete);
     }
 
     @State
@@ -715,14 +734,15 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         int index,
         int length)
     {
+        System.out.println("ACCEPT/handleAcceptReplyThrottleBeforeHandshake");
         switch (msgTypeId)
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
             acceptReplyWindowBytes += window.update();
             acceptReplyWindowFrames += window.frames();
-            // System.out.println("acceptReplyWindowBytes: " + acceptReplyWindowBytes +
-            //    " acceptReplyWindowFrames: " + acceptReplyWindowFrames);
+             System.out.println("\tacceptReplyWindowBytes: " + acceptReplyWindowBytes);
+             System.out.println("\tacceptReplyWindowFrames: " + acceptReplyWindowFrames);
             correlation.nextAcceptSignal().accept(true);
             break;
         case ResetFW.TYPE_ID:
@@ -803,8 +823,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
             connectWindowBytes += window.update();
             connectWindowFrames += window.frames();
-            // System.out.println("ACCEPT/handleConnectThrottleBufferUnwind: \n\t" + window);
-            // System.out.println("\tconnectWindowBytes: " + connectWindowBytes + " connectWindowFrames: " + connectWindowFrames);
+             System.out.println("ACCEPT/handleConnectThrottleBufferUnwind: \n\t" + window);
+             System.out.println("\tconnectWindowBytes: " + connectWindowBytes + " connectWindowFrames: " + connectWindowFrames);
             if (connectWindowFrames == 0)
             {
                 return;
@@ -829,7 +849,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                         dataForwardFW.buffer(),
                         dataForwardFW.offset(),
                         dataForwardFW.sizeof());
-                connectWindowBytes -= dataForwardFW.sizeof();
+                connectWindowBytes -= dataForwardFW.payload().sizeof();
                 connectWindowFrames--;
                 slotReadOffset += payloadSize;
                 if (slotReadOffset == slotWriteOffset)
@@ -939,7 +959,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     public boolean isConnectWindowGreaterThanAcceptWindow()
     {
         return
-            MAX_WRITABLE_BYTES - receivedBytes <= connectWindowBytes &&
-            MAX_WRITABLE_FRAMES - receivedFrames <= connectWindowFrames;
+            connectWindowBytes > MAX_WRITABLE_BYTES - receivedBytes;
     }
 }

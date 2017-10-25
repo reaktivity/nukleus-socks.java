@@ -313,7 +313,6 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             return;
         }
 
-
         if (acceptReplyBytes > payload.sizeof() &&
             acceptReplyFrames > 0)
         {
@@ -387,13 +386,11 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
                 0,
                 payload.buffer(),
                 payload.offset() + bufferedSizeBytes,
-                payload.sizeof() - bufferedSizeBytes
-                                 );
+                payload.sizeof() - bufferedSizeBytes);
             slotWriteOffset = payload.sizeof() - bufferedSizeBytes;
             slotReadOffset = 0;
         }
     }
-
 
     @State
     private void afterConnectionResponse(
@@ -629,19 +626,9 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         System.out.println("\treceivedConnectReplyBytes:" + receivedConnectReplyBytes);
         System.out.println("\treceivedConnectReplyFrames:" + receivedConnectReplyFrames);
         boolean res =
-            acceptReplyBytes  >= MAX_WRITABLE_BYTES - receivedConnectReplyBytes/* &&
-            acceptReplyFrames >= MAX_WRITABLE_FRAMES - receivedConnectReplyFrames*/;
+            acceptReplyBytes  >= MAX_WRITABLE_BYTES - receivedConnectReplyBytes;
 
         System.out.println("\tisAcceptReplyWindowGreaterThanConnectReplyWindow: " + res);
         return res;
-    }
-
-    public boolean isAcceptReplyWindowGreaterThan(
-        int update,
-        int frames)
-    {
-        return
-            acceptReplyBytes  >= update &&
-            acceptReplyFrames >= frames;
     }
 }

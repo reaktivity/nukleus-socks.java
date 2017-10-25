@@ -24,7 +24,6 @@ import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedFlyweight;
 import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedHandler;
 import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedSenderComplete;
 import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedSenderPartial;
-import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationRequestFW;
 import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
@@ -186,7 +185,8 @@ public abstract class AbstractStreamProcessor
         }
     }
 
-    protected void doFragmentedData(Flyweight flyweight,
+    protected void doFragmentedData(
+        Flyweight flyweight,
         final int targetWindowBytes,
         final int targetWindowFrames,
         MessageConsumer target,
@@ -194,8 +194,13 @@ public abstract class AbstractStreamProcessor
         FragmentedSenderPartial senderPartial,
         FragmentedSenderComplete senderComplete)
     {
+        System.out.println("\t>>>>doFragmentedData");
+        System.out.println("\t\ttargetWindowFrames: " + targetWindowFrames);
+        System.out.println("\t\ttargetWindowBytes: " + targetWindowBytes);
+        System.out.println("\t\tflyweight.sizeof: " + flyweight.sizeof());
+
         if (targetWindowFrames > 0 &&
-            targetWindowBytes > flyweight.sizeof() - attemptOffset)
+            targetWindowBytes >= flyweight.sizeof() - attemptOffset)
         {
             DataFW dataFW = context.dataRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
@@ -210,7 +215,7 @@ public abstract class AbstractStreamProcessor
                 dataFW.buffer(),
                 dataFW.offset(),
                 dataFW.sizeof());
-            senderComplete.update(dataFW.payload().sizeof());
+            senderComplete.update(flyweight.sizeof() - attemptOffset);
         }
         else if (targetWindowFrames > 0 &&
             targetWindowBytes > 0)
@@ -228,7 +233,7 @@ public abstract class AbstractStreamProcessor
                 dataFW.buffer(),
                 dataFW.offset(),
                 dataFW.sizeof());
-            senderPartial.update(dataFW.payload().sizeof());
+            senderPartial.update(targetWindowBytes);
         }
     }
 }
