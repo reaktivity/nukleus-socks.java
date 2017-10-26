@@ -159,15 +159,14 @@ public class AcceptStreamProcessorTest
         WindowFW windowFWFromAcceptReply = new WindowFW.Builder()
             .wrap(tmpBuffer, 0, tmpBuffer.capacity())
             .streamId(acceptStreamProcessor.correlation.acceptReplyStreamId())
-            .update(AcceptStreamProcessor.MAX_WRITABLE_BYTES)
-            .frames(AcceptStreamProcessor.MAX_WRITABLE_FRAMES)
+            .credit(AcceptStreamProcessor.MAX_WRITABLE_BYTES)
+            .padding(0)
             .build();
         acceptStreamProcessor.handleAcceptReplyThrottle(
             windowFWFromAcceptReply.typeId(),
             windowFWFromAcceptReply.buffer(),
             windowFWFromAcceptReply.offset(),
-            windowFWFromAcceptReply.sizeof()
-                                                       );
+            windowFWFromAcceptReply.sizeof());
 
         ArgumentCaptor<Integer> argumentType = ArgumentCaptor.forClass(Integer.class);
         ArgumentCaptor<DirectBuffer> argumentBuffer = ArgumentCaptor.forClass(DirectBuffer.class);
@@ -184,8 +183,8 @@ public class AcceptStreamProcessorTest
             argumentBuffer.getValue(),
             argumentOffset.getValue(),
             argumentLength.getValue());
-        assertEquals(AcceptStreamProcessor.MAX_WRITABLE_BYTES, windowFW.update());
-        assertEquals(AcceptStreamProcessor.MAX_WRITABLE_FRAMES, windowFW.frames());
+        assertEquals(AcceptStreamProcessor.MAX_WRITABLE_BYTES, windowFW.credit());
+        assertEquals(0, windowFW.padding());
 
         SocksNegotiationRequestFW socksNegotiationRequestFW = new SocksNegotiationRequestFW.Builder()
             .wrap(tmpBuffer, DataFW.FIELD_OFFSET_PAYLOAD, tmpBuffer.capacity())
@@ -295,8 +294,8 @@ public class AcceptStreamProcessorTest
         WindowFW windowFWFromConnect = new WindowFW.Builder()
             .wrap(tmpBuffer, 0, tmpBuffer.capacity())
             .streamId(acceptStreamProcessor.correlation.connectStreamId())
-            .update(AcceptStreamProcessor.MAX_WRITABLE_BYTES)
-            .frames(AcceptStreamProcessor.MAX_WRITABLE_FRAMES)
+            .credit(AcceptStreamProcessor.MAX_WRITABLE_BYTES)
+            .padding(0)
             .build();
         acceptStreamProcessor.handleConnectThrottle(
             windowFWFromConnect.typeId(),

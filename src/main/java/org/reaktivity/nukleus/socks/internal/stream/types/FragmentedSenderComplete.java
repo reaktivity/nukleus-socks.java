@@ -17,5 +17,5 @@ package org.reaktivity.nukleus.socks.internal.stream.types;
 
 public interface FragmentedSenderComplete
 {
-    void update(int sentBytes);
+    void update(int sentBytesWithPadding);
 }

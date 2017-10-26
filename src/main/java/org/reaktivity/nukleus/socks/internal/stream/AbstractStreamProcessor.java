@@ -56,7 +56,6 @@ public abstract class AbstractStreamProcessor
         int index,
         int length);
 
-
     protected void doBegin(
         MessageConsumer streamConsumer,
         long streamId,
@@ -107,16 +106,16 @@ public abstract class AbstractStreamProcessor
     protected void doWindow(
         final MessageConsumer throttle,
         final long throttleId,
-        final int writableBytes,
-        final int writableFrames)
+        final int credit,
+        final int padding)
     {
         final WindowFW window = context.windowRW
             .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(throttleId)
-            .update(writableBytes)
-            .frames(writableFrames)
+            .credit(credit)
+            .padding(padding)
             .build();
-         System.out.println("\tSending window: " + window);
+        System.out.println("\tSending window: " + window);
         throttle.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
     }
 
@@ -187,20 +186,20 @@ public abstract class AbstractStreamProcessor
 
     protected void doFragmentedData(
         Flyweight flyweight,
-        final int targetWindowBytes,
-        final int targetWindowFrames,
+        final int targetCredit,
+        final int targetPadding,
         MessageConsumer target,
         long targetStreamId,
         FragmentedSenderPartial senderPartial,
         FragmentedSenderComplete senderComplete)
     {
         System.out.println("\t>>>>doFragmentedData");
-        System.out.println("\t\ttargetWindowFrames: " + targetWindowFrames);
-        System.out.println("\t\ttargetWindowBytes: " + targetWindowBytes);
+        System.out.println("\t\ttargetCredit: " + targetCredit);
+        System.out.println("\t\ttargetPadding: " + targetPadding);
         System.out.println("\t\tflyweight.sizeof: " + flyweight.sizeof());
-
-        if (targetWindowFrames > 0 &&
-            targetWindowBytes >= flyweight.sizeof() - attemptOffset)
+        System.out.println("\t\tattemptOffset: " + attemptOffset);
+        final int targetBytes = targetCredit - targetPadding;
+        if (targetBytes >= flyweight.sizeof() - attemptOffset)
         {
             DataFW dataFW = context.dataRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
@@ -215,25 +214,79 @@ public abstract class AbstractStreamProcessor
                 dataFW.buffer(),
                 dataFW.offset(),
                 dataFW.sizeof());
-            senderComplete.update(flyweight.sizeof() - attemptOffset);
+            senderComplete.update(flyweight.sizeof() - attemptOffset + targetPadding);
+            attemptOffset = 0;
         }
-        else if (targetWindowFrames > 0 &&
-            targetWindowBytes > 0)
+        else if (targetBytes > 0)
         {
+            System.out.println("\tSending partial flyweight");
+            System.out.println("\tattemptOffset: " + attemptOffset);
+            System.out.println("\ttargetCredit: " + targetCredit);
             DataFW dataFW = context.dataRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(targetStreamId)
                 .payload(p -> p.set(
                     flyweight.buffer(),
                     flyweight.offset() + attemptOffset,
-                    targetWindowBytes))
+                    targetBytes))
                 .build();
             target.accept(
                 dataFW.typeId(),
                 dataFW.buffer(),
                 dataFW.offset(),
                 dataFW.sizeof());
-            senderPartial.update(targetWindowBytes);
+            senderPartial.update(targetCredit);
+            attemptOffset += targetBytes;
         }
+    }
+
+    protected void doForwardData(
+        OctetsFW payload,
+        long streamId,
+        MessageConsumer streamEndpoint)
+    {
+        doForwardData(
+            payload,
+            payload.sizeof(),
+            streamId,
+            streamEndpoint);
+    }
+
+    protected void doForwardData(
+        OctetsFW payload,
+        int payloadLength,
+        long streamId,
+        MessageConsumer streamEndpoint)
+    {
+        doForwardData(
+            payload.buffer(),
+            payload.offset(),
+            payloadLength,
+            streamId,
+            streamEndpoint);
+    }
+
+    protected void doForwardData(
+        DirectBuffer payloadBuffer,
+        int payloadOffset,
+        int payloadLength,
+        long streamId,
+        MessageConsumer streamEndpoint)
+    {
+        DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
+            .streamId(streamId)
+            .payload(p -> p.set(
+                payloadBuffer,
+                payloadOffset,
+                payloadLength))
+            .extension(e -> e.reset())
+            .build();
+        System.out.println("Forwarding data frame: ");
+        System.out.println("\t" + dataForwardFW);
+        streamEndpoint.accept(
+            dataForwardFW.typeId(),
+            dataForwardFW.buffer(),
+            dataForwardFW.offset(),
+            dataForwardFW.sizeof());
     }
 }

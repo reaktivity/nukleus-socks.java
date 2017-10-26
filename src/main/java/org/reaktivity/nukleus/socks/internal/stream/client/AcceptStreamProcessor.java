@@ -45,8 +45,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
 
     private final Correlation correlation;
 
-    private int connectWindowBytes;
-    private int connectWindowFrames;
+    private int connectWindowCredit;
+    private int connectWindowPadding;
 
     boolean isConnectReplyStateReady = false;
 
@@ -119,10 +119,10 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             correlation.connectTargetName(),
             correlation.connectStreamId(),
             this::handleConnectThrottleBeforeHandshake);
-         System.out.println("ACCEPT/handleBegin");
-         System.out.println("\tcontext: " + context);
-         System.out.println("\tcontext.router" + context.router);
-         System.out.println("\t" + correlation.acceptSourceName() + " : " + correlation.acceptReplyStreamId());
+        System.out.println("ACCEPT/handleBegin");
+        System.out.println("\tcontext: " + context);
+        System.out.println("\tcontext.router" + context.router);
+        System.out.println("\t" + correlation.acceptSourceName() + " : " + correlation.acceptReplyStreamId());
         doBegin(correlation.connectEndpoint(),
             correlation.connectStreamId(),
             correlation.connectTargetRef(),
@@ -167,7 +167,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
 
     private void handleHighLevelData(DataFW data)
     {
-         System.out.println("ACCEPT/handleHighLevelData");
+        System.out.println("ACCEPT/handleHighLevelData");
         OctetsFW payload = data.payload();
         DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(correlation.connectStreamId())
@@ -177,8 +177,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 payload.sizeof()))
             .extension(e -> e.reset())
             .build();
-         System.out.println("\t forwarding: " + data);
-         System.out.println("\t to: " + dataForwardFW);
+        System.out.println("\t forwarding: " + data);
+        System.out.println("\t to: " + dataForwardFW);
         correlation.connectEndpoint()
             .accept(
                 dataForwardFW.typeId(),
@@ -197,10 +197,12 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
-             System.out.println("ACCEPT/handleConnectThrottleBeforeHandshake");
-             System.out.println("\treceived: " + window);
-            connectWindowBytes += window.update();
-            connectWindowFrames += window.frames();
+            System.out.println("ACCEPT/handleConnectThrottleBeforeHandshake");
+            System.out.println("\treceived: " + window);
+            System.out.println("\tconnectWindowCredit: " + connectWindowCredit);
+            System.out.println("\tconnectWindowPadding: " + connectWindowPadding);
+            connectWindowCredit += window.credit();
+            connectWindowPadding = window.padding();
             correlation.nextAcceptSignal().accept(isConnectReplyStateReady);
             break;
         case ResetFW.TYPE_ID:
@@ -223,13 +225,13 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         {
         case WindowFW.TYPE_ID:
             final WindowFW window = context.windowRO.wrap(buffer, index, index + length);
-             System.out.println("ACCEPT/handleConnectThrottleAfterHandshake");
+            System.out.println("ACCEPT/handleConnectThrottleAfterHandshake");
             doWindow(
                 correlation.acceptThrottle(),
                 correlation.acceptStreamId(),
-                window.update(),
-                window.frames()
-            );
+                window.credit(),
+                window.padding()
+                    );
             break;
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
@@ -247,21 +249,30 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         doReset(
             correlation.acceptThrottle(),
             correlation.acceptStreamId()
-        );
+               );
     }
 
-    private void updateNegotiationPartial(int sentBytes)
+    private void updateNegotiationPartial(int sentBytesWithPadding)
     {
-        attemptOffset += connectWindowBytes;
-        connectWindowBytes -= sentBytes;
-        connectWindowFrames--;
+        System.out.println("ACCEPT/updateNegotiationPartial");
+
+        connectWindowCredit -= sentBytesWithPadding;
+        System.out.println("\t\tattemptOffset: " + attemptOffset);
+        System.out.println("\t\tconnectWindowCredit: " + connectWindowCredit);
+        System.out.println("\t\tconnectWindowPadding: " + connectWindowPadding);
+        System.out.println("\t\tsentBytesWithPadding: " + sentBytesWithPadding);
     }
 
-    private void updateNegotiationComplete(int sentBytes)
+    private void updateNegotiationComplete(int sentBytesWithPadding)
     {
-        connectWindowBytes -= sentBytes;
-        connectWindowFrames--;
-        attemptOffset = 0;
+        System.out.println("ACCEPT/updateNegotiationComplete");
+        connectWindowCredit -= sentBytesWithPadding;
+
+        System.out.println("\t\tattemptOffset: " + attemptOffset);
+        System.out.println("\t\tconnectWindowCredit: " + connectWindowCredit);
+        System.out.println("\t\tconnectWindowPadding: " + connectWindowPadding);
+        System.out.println("\t\tsentBytesWithPadding: " + sentBytesWithPadding);
+
         correlation.nextAcceptSignal(this::attemptConnectionRequest);
     }
 
@@ -275,27 +286,31 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             .method(new byte[]{0x00})
             .build();
         doFragmentedData(socksNegotiationRequestFW,
-            connectWindowBytes,
-            connectWindowFrames,
+            connectWindowCredit,
+            connectWindowPadding,
             correlation.connectEndpoint(),
             correlation.connectStreamId(),
             this::updateNegotiationPartial,
             this::updateNegotiationComplete);
     }
 
-    private void updateConnectionPartial(int sentBytes)
+    private void updateConnectionPartial(int sentBytesWithPadding)
     {
-        attemptOffset += connectWindowBytes;
-        connectWindowBytes -= sentBytes;
-        connectWindowFrames--;
+        System.out.println("ACCEPT/updateConnectionPartial");
+        connectWindowCredit -= sentBytesWithPadding;
+        System.out.println("\t\tattemptOffset: " + attemptOffset);
+        System.out.println("\t\tconnectWindowCredit: " + connectWindowCredit);
+        System.out.println("\t\tsentBytesWithPadding: " + sentBytesWithPadding);
     }
 
-    private void updateConnectionComplete(int sentBytes)
+    private void updateConnectionComplete(int sentBytesWithPadding)
     {
-        connectWindowBytes -= sentBytes;
-        connectWindowFrames--;
-        attemptOffset = 0;
+        connectWindowCredit -= sentBytesWithPadding;
         correlation.nextAcceptSignal(this::noop);
+
+        System.out.println("\t\tattemptOffset: " + attemptOffset);
+        System.out.println("\t\tconnectWindowCredit: " + connectWindowCredit);
+        System.out.println("\t\tsentBytesWithPadding: " + sentBytesWithPadding);
     }
 
     @Signal
@@ -316,8 +331,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             .destination(destAddrPort)
             .build();
         doFragmentedData(socksConnectRequestFW,
-            connectWindowBytes,
-            connectWindowFrames,
+            connectWindowCredit,
+            connectWindowPadding,
             correlation.connectEndpoint(),
             correlation.connectStreamId(),
             this::updateConnectionPartial,
@@ -337,13 +352,13 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             correlation.connectTargetName(),
             correlation.connectStreamId(),
             this::handleConnectThrottleAfterHandshake);
-         System.out.println("ACCEPT/transitionToConnectionReady");
-         System.out.println("\tSending to ACCEPT-THROTTLE");
+        System.out.println("ACCEPT/transitionToConnectionReady");
+        System.out.println("\tSending to ACCEPT-THROTTLE");
         this.doWindow(
             correlation.acceptThrottle(),
             correlation.acceptStreamId(),
-            connectWindowBytes,
-            connectWindowFrames);
+            connectWindowCredit,
+            connectWindowPadding);
     }
 
     @State
