@@ -27,12 +27,14 @@ import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
 import org.reaktivity.reaktor.test.ReaktorRule;
 
-public class ConnectionIT
+public class ThrottlingIT
 {
+
     private final K3poRule k3po = new K3poRule()
         .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
         .addScriptRoot("client", "org/reaktivity/specification/socks/rfc1928/forward")
         .addScriptRoot("server", "org/reaktivity/specification/nukleus/socks/streams/forward");
+
     private final TestRule timeout = new DisableOnDebug(new Timeout(10, SECONDS));
 
     private final ReaktorRule reaktor = new ReaktorRule()
@@ -50,9 +52,9 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
-        "${client}/client.connect.send.data/client",
-        "${server}/client.connect.send.data/server"})
-    public void shouldSendDataBothWays() throws Exception
+        "${client}/client.connect.send.data.throttling.server.smaller/client",
+        "${server}/client.connect.send.data.throttling.server.smaller/server"})
+    public void shouldSendDataBothWaysWithThrottlingServerSmaller() throws Exception
     {
         k3po.finish();
     }
@@ -60,8 +62,9 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
-        "${client}/client.does.not.connect.no.acceptable.methods/client"})
-    public void shouldNotEstablishConnectionNoAcceptableMethods() throws Exception
+        "${client}/client.connect.send.data.throttling.client.smaller/client",
+        "${server}/client.connect.send.data.throttling.client.smaller/server"})
+    public void shouldSendDataBothWaysWithThrottlingClientSmaller() throws Exception
     {
         k3po.finish();
     }
@@ -69,9 +72,9 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
-        "${client}/client.connect.fallback.to.no.authentication/client",
-        "${server}/client.connect.fallback.to.no.authentication/server"})
-    public void shouldEstablishConnectionFallbackToNoAuthentication() throws Exception
+        "${client}/client.connect.send.data.throttling.window.1/client",
+        "${server}/client.connect.send.data.throttling.window.1/server"})
+    public void shouldSendDataBothWaysWithThrottlingWindow1() throws Exception
     {
         k3po.finish();
     }
@@ -79,8 +82,40 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
-        "${client}/client.connect.request.with.command.not.supported/client"})
-    public void shouldNotEstablishConnectionCommandNotSupported() throws Exception
+        "${client}/client.connect.send.data.throttling.window.8.padding.7/client",
+        "${server}/client.connect.send.data.throttling.window.8.padding.7/server"})
+    public void shouldSendDataBothWaysWithThrottlingWindow8Padding7() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/client.connect.send.data.throttling.window.100.padding.17/client",
+        "${server}/client.connect.send.data.throttling.window.100.padding.17/server"})
+    public void shouldSendDataBothWaysWithThrottlingWindow100Padding17() throws Exception
+    {
+        k3po.finish();
+    }
+
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/client.connect.send.data.throttling.window.100.padding.17/client",
+        "${server}/client.connect.send.data.throttling.window.8.padding.7/server"})
+    public void shouldSendDataBothWaysWithThrottlingDifferentWindowLargerClient() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/client.connect.send.data.throttling.window.100.padding.17/client",
+        "${server}/client.connect.send.data.throttling.window.8.padding.7/server"})
+    public void shouldSendDataBothWaysWithThrottlingDifferentWindowLargerServer() throws Exception
     {
         k3po.finish();
     }

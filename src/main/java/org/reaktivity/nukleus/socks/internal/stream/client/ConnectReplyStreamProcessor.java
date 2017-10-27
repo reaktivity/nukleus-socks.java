@@ -40,7 +40,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 {
 
-    public static final int MAX_WRITABLE_BYTES = 65536;
+    public static final int MAX_WRITABLE_BYTES = Integer.parseInt(System.getProperty("socks.initial.window", "65536"));
 
     private MessageConsumer streamState;
     private MessageConsumer acceptReplyThrottleState;
@@ -247,7 +247,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             doWindow(
                 correlation.connectReplyThrottle(),
                 correlation.connectReplyStreamId(),
-                acceptReplyCredit - receivedConnectReplyBytes,
+                acceptReplyCredit - receivedConnectReplyBytes - MAX_WRITABLE_BYTES,
                 acceptReplyPadding);
         }
         else
@@ -302,7 +302,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             System.out.println("\tslotReadOffset: " + slotReadOffset);
             MutableDirectBuffer connectReplyBuffer = context.bufferPool.buffer(this.slotIndex, this.slotWriteOffset);
             connectReplyBuffer.putBytes(
-                slotWriteOffset,
+                0,
                 payload.buffer(),
                 payload.offset(),
                 payload.sizeof());

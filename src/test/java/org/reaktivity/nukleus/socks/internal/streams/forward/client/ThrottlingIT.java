@@ -18,7 +18,6 @@ package org.reaktivity.nukleus.socks.internal.streams.forward.client;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.rules.RuleChain.outerRule;
 
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
@@ -33,7 +32,7 @@ import org.reaktivity.reaktor.test.ReaktorRule;
  * TODO Externalize bytes sent as Socks version/method/command in implementation
  * Use a mocking tool to enforce client sending wrong values in order to test proper connection close
  */
-public class ConnectionIT
+public class ThrottlingIT
 {
     private final K3poRule k3po = new K3poRule()
         .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
@@ -57,51 +56,81 @@ public class ConnectionIT
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
         "${route}/client/controller",
-        "${client}/client.connect.send.data/client",
-        "${server}/client.connect.send.data/server"
+        "${client}/client.connect.send.data.throttling.server.smaller/client",
+        "${server}/client.connect.send.data.throttling.server.smaller/server"
     })
-    public void shouldSendDataBothWays() throws Exception
+    public void shouldSendDataBothWaysWithThrottlingServerSmaller() throws Exception
     {
         k3po.finish();
     }
 
-    @Ignore("Sending other method than 0x00 not supported in client")
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
         "${route}/client/controller",
-        "${client}/client.does.not.connect.no.acceptable.methods/client",
-        "${server}/client.does.not.connect.no.acceptable.methods/server"
+        "${client}/client.connect.send.data.throttling.client.smaller/client",
+        "${server}/client.connect.send.data.throttling.client.smaller/server"
     })
-    public void shouldNotEstablishConnectionNoAcceptableMethods() throws Exception
+    public void shouldSendDataBothWaysWithThrottlingClientSmaller() throws Exception
     {
         k3po.finish();
     }
 
-    @Ignore("Multiple authentication methods not supported in client")
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
         "${route}/client/controller",
-        "${client}/client.connect.fallback.to.no.authentication/client",
-        "${server}/client.connect.fallback.to.no.authentication/server"
+        "${client}/client.connect.send.data.throttling.window.1/client",
+        "${server}/client.connect.send.data.throttling.window.1/server"
     })
-    public void shouldEstablishConnectionFallbackToNoAuthentication() throws Exception
+    public void shouldSendDataBothWaysWithThrottlingWindow1() throws Exception
     {
         k3po.finish();
     }
 
-    @Ignore("Sending other command than 0x01 not supported in client")
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
         "${route}/client/controller",
-        "${client}/client.connect.request.with.command.not.supported/client",
-        "${server}/client.connect.request.with.command.not.supported/server"
+        "${client}/client.connect.send.data.throttling.window.8.padding.7/client",
+        "${server}/client.connect.send.data.throttling.window.8.padding.7/server"
     })
-    public void shouldNotEstablishConnectionCommandNotSupported() throws Exception
+    public void shouldSendDataBothWaysWithThrottlingWindow8Padding7() throws Exception
     {
         k3po.finish();
     }
 
+    @Test
+    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
+    @Specification({
+        "${route}/client/controller",
+        "${client}/client.connect.send.data.throttling.window.100.padding.17/client",
+        "${server}/client.connect.send.data.throttling.window.100.padding.17/server"
+    })
+    public void shouldSendDataBothWaysWithThrottlingWindow100Padding17() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
+    @Specification({
+        "${route}/client/controller",
+        "${client}/client.connect.send.data.throttling.window.100.padding.17/client",
+        "${server}/client.connect.send.data.throttling.window.8.padding.7/server"})
+    public void shouldSendDataBothWaysWithThrottlingDifferentWindowLargerClient() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
+    @Specification({
+        "${route}/client/controller",
+        "${client}/client.connect.send.data.throttling.window.100.padding.17/client",
+        "${server}/client.connect.send.data.throttling.window.8.padding.7/server"})
+    public void shouldSendDataBothWaysWithThrottlingDifferentWindowLargerServer() throws Exception
+    {
+        k3po.finish();
+    }
 }
