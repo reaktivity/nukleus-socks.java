@@ -397,22 +397,9 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
     {
         System.out.println("CONNECT-REPLY/handleHighLevelData");
         OctetsFW payload = data.payload();
-        DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-            .streamId(correlation.acceptReplyStreamId())
-            .payload(p -> p.set(
-                payload.buffer(),
-                payload.offset(),
-                payload.sizeof()))
-            .extension(e -> e.reset())
-            .build();
-        System.out.println("\t forwarding: " + data);
-        System.out.println("\t to: " + dataForwardFW);
-        correlation.acceptReplyEndpoint()
-            .accept(
-                dataForwardFW.typeId(),
-                dataForwardFW.buffer(),
-                dataForwardFW.offset(),
-                dataForwardFW.sizeof());
+        doForwardData(payload,
+            correlation.acceptReplyStreamId(),
+            correlation.acceptReplyEndpoint());
     }
 
     private void handleEnd(EndFW end)

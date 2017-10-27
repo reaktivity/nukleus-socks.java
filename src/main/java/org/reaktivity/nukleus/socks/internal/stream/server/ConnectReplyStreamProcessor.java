@@ -89,10 +89,10 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             correlation.connectReplyStreamId(connectReplyId);
             final TcpBeginExFW tcpBeginEx = begin.extension().get(context.tcpBeginExRO::wrap);
             Optional<TcpBeginExFW> connectionInfo = Optional.of(tcpBeginEx);
-            // System.out.println("CONNECT_REPLY: connection ready " + tcpBeginEx +
-            //    " acceptStreamId: " + correlation.acceptStreamId() +
-            //    " acceptReplyStreamId: " + correlation.acceptReplyStreamId() +
-            //    " connectReplyStreamId: " + correlation.connectReplyStreamId());
+            System.out.println("CONNECT_REPLY: connection ready " + tcpBeginEx);
+            System.out.println("\tacceptStreamId: " + correlation.acceptStreamId());
+            System.out.println("\tacceptReplyStreamId: " + correlation.acceptReplyStreamId());
+            System.out.println("\tconnectReplyStreamId: " + correlation.connectReplyStreamId());
             correlation.acceptTransitionListener().transitionToConnectionReady(connectionInfo);
             this.streamState = this::afterBeginOrData;
         }
@@ -132,21 +132,10 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
     private void handleHighLevelData(DataFW data)
     {
         OctetsFW payload = data.payload();
-        DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-            .streamId(correlation.acceptReplyStreamId())
-            .payload(p -> p.set(
-                payload.buffer(),
-                payload.offset(),
-                payload.sizeof()))
-            .extension(e -> e.reset())
-            .build();
-        // System.out.println("CONNECT_REPLY: Forwarding data frame: \n\t" + data + "\n\t" + dataForwardFW);
-        correlation.acceptReplyEndpoint()
-            .accept(
-                dataForwardFW.typeId(),
-                dataForwardFW.buffer(),
-                dataForwardFW.offset(),
-                dataForwardFW.sizeof());
+        doForwardData(
+            payload,
+            correlation.acceptReplyStreamId(),
+            correlation.acceptReplyEndpoint());
     }
 
     private void handleEnd(EndFW end)

@@ -29,7 +29,6 @@ import org.reaktivity.reaktor.test.ReaktorRule;
 
 public class ThrottlingUnbufferIT
 {
-
     static
     {
         System.setProperty("socks.initial.window", "200");

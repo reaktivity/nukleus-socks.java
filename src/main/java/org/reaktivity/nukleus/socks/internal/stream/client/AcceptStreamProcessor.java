@@ -169,22 +169,10 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     {
         System.out.println("ACCEPT/handleHighLevelData");
         OctetsFW payload = data.payload();
-        DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
-            .streamId(correlation.connectStreamId())
-            .payload(p -> p.set(
-                payload.buffer(),
-                payload.offset(),
-                payload.sizeof()))
-            .extension(e -> e.reset())
-            .build();
-        System.out.println("\t forwarding: " + data);
-        System.out.println("\t to: " + dataForwardFW);
-        correlation.connectEndpoint()
-            .accept(
-                dataForwardFW.typeId(),
-                dataForwardFW.buffer(),
-                dataForwardFW.offset(),
-                dataForwardFW.sizeof());
+        doForwardData(
+            payload,
+            correlation.connectStreamId(),
+            correlation.connectEndpoint());
     }
 
     private void handleConnectThrottleBeforeHandshake(
@@ -230,8 +218,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 correlation.acceptThrottle(),
                 correlation.acceptStreamId(),
                 window.credit(),
-                window.padding()
-                    );
+                window.padding());
             break;
         case ResetFW.TYPE_ID:
             final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
@@ -248,15 +235,14 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     {
         doReset(
             correlation.acceptThrottle(),
-            correlation.acceptStreamId()
-               );
+            correlation.acceptStreamId());
     }
 
     private void updateNegotiationPartial(int sentBytesWithPadding)
     {
-        System.out.println("ACCEPT/updateNegotiationPartial");
-
         connectWindowCredit -= sentBytesWithPadding;
+
+        System.out.println("ACCEPT/updateNegotiationPartial");
         System.out.println("\t\tattemptOffset: " + attemptOffset);
         System.out.println("\t\tconnectWindowCredit: " + connectWindowCredit);
         System.out.println("\t\tconnectWindowPadding: " + connectWindowPadding);
@@ -265,15 +251,14 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
 
     private void updateNegotiationComplete(int sentBytesWithPadding)
     {
-        System.out.println("ACCEPT/updateNegotiationComplete");
         connectWindowCredit -= sentBytesWithPadding;
+        correlation.nextAcceptSignal(this::attemptConnectionRequest);
 
+        System.out.println("ACCEPT/updateNegotiationComplete");
         System.out.println("\t\tattemptOffset: " + attemptOffset);
         System.out.println("\t\tconnectWindowCredit: " + connectWindowCredit);
         System.out.println("\t\tconnectWindowPadding: " + connectWindowPadding);
         System.out.println("\t\tsentBytesWithPadding: " + sentBytesWithPadding);
-
-        correlation.nextAcceptSignal(this::attemptConnectionRequest);
     }
 
     @Signal
@@ -296,8 +281,9 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
 
     private void updateConnectionPartial(int sentBytesWithPadding)
     {
-        System.out.println("ACCEPT/updateConnectionPartial");
         connectWindowCredit -= sentBytesWithPadding;
+
+        System.out.println("ACCEPT/updateConnectionPartial");
         System.out.println("\t\tattemptOffset: " + attemptOffset);
         System.out.println("\t\tconnectWindowCredit: " + connectWindowCredit);
         System.out.println("\t\tsentBytesWithPadding: " + sentBytesWithPadding);
@@ -359,16 +345,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             correlation.acceptStreamId(),
             connectWindowCredit,
             connectWindowPadding);
-    }
-
-    @State
-    private void afterAbort(
-        int msgTypeId,
-        DirectBuffer buffer,
-        int index,
-        int length)
-    {
-        doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
     }
 
     private RouteFW resolveTarget(
