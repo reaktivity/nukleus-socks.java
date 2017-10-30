@@ -21,6 +21,10 @@ import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedFlyweight;
+import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedForwarderBufferData;
+import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedForwarderBufferEmpty;
+import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedForwarderComplete;
+import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedForwarderPartial;
 import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedHandler;
 import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedSenderComplete;
 import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedSenderPartial;
@@ -35,8 +39,6 @@ import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
 public abstract class AbstractStreamProcessor
 {
-    public static final String NUKLEUS_SOCKS_NAME = "socks";
-
     protected final Context context;
 
     protected int slotIndex = NO_SLOT;
@@ -86,7 +88,6 @@ public abstract class AbstractStreamProcessor
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(streamId)
                 .build();
-        // System.out.println("Sending abort: " + abort+ " to stream: " + stream);
         stream.accept(abort.typeId(), abort.buffer(), abort.offset(), abort.sizeof());
     }
 
@@ -99,7 +100,6 @@ public abstract class AbstractStreamProcessor
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(streamId)
                 .build();
-        // System.out.println("Sending end: " + end + " to stream: " + stream);
         stream.accept(end.typeId(), end.buffer(), end.offset(), end.sizeof());
     }
 
@@ -115,7 +115,6 @@ public abstract class AbstractStreamProcessor
             .credit(credit)
             .padding(padding)
             .build();
-        System.out.println("\tSending window: " + window);
         throttle.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
     }
 
@@ -193,11 +192,6 @@ public abstract class AbstractStreamProcessor
         FragmentedSenderPartial senderPartial,
         FragmentedSenderComplete senderComplete)
     {
-        System.out.println("\t>>>>doFragmentedData");
-        System.out.println("\t\ttargetCredit: " + targetCredit);
-        System.out.println("\t\ttargetPadding: " + targetPadding);
-        System.out.println("\t\tflyweight.sizeof: " + flyweight.sizeof());
-        System.out.println("\t\tattemptOffset: " + attemptOffset);
         final int targetBytes = targetCredit - targetPadding;
         if (targetBytes >= flyweight.sizeof() - attemptOffset)
         {
@@ -219,9 +213,6 @@ public abstract class AbstractStreamProcessor
         }
         else if (targetBytes > 0)
         {
-            System.out.println("\tSending partial flyweight");
-            System.out.println("\tattemptOffset: " + attemptOffset);
-            System.out.println("\ttargetCredit: " + targetCredit);
             DataFW dataFW = context.dataRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(targetStreamId)
@@ -281,12 +272,84 @@ public abstract class AbstractStreamProcessor
                 payloadLength))
             .extension(e -> e.reset())
             .build();
-        System.out.println("Forwarding data frame: ");
-        System.out.println("\t" + dataForwardFW);
         streamEndpoint.accept(
             dataForwardFW.typeId(),
             dataForwardFW.buffer(),
             dataForwardFW.offset(),
             dataForwardFW.sizeof());
+    }
+
+    protected void handleHighLevelDataBufferUnwind(
+        DataFW data,
+        int currentTargetCredit,
+        long targetStreamId,
+        MessageConsumer sourceThrottle,
+        long sourceStreamId,
+        FragmentedForwarderPartial forwarderPartial,
+        FragmentedForwarderComplete forwarderComplete)
+    {
+        OctetsFW payload = data.payload();
+        if (this.slotWriteOffset != 0)
+        {
+            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, this.slotWriteOffset);
+            acceptBuffer.putBytes(
+                0,
+                payload.buffer(),
+                payload.offset(),
+                payload.sizeof());
+            slotWriteOffset += payload.sizeof();
+            return;
+        }
+
+        if (currentTargetCredit >= payload.sizeof())
+        {
+            forwarderComplete.updateSentFullData(payload);
+        }
+        else
+        {
+            if (currentTargetCredit > 0)
+            {
+                forwarderPartial.updateSentPartialData(payload, currentTargetCredit);
+            }
+            // Buffer the remaining payload. First initialize the buffer
+            if (NO_SLOT == (slotIndex = context.bufferPool.acquire(targetStreamId)))
+            {
+                doReset(sourceThrottle, sourceStreamId);
+                return;
+            }
+            MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex);
+            acceptBuffer.putBytes(
+                0,
+                payload.buffer(),
+                payload.offset() + currentTargetCredit,
+                payload.sizeof() - currentTargetCredit);
+            slotWriteOffset = payload.sizeof() - currentTargetCredit;
+            slotReadOffset = 0;
+        }
+    }
+
+    protected void handleThrottlingAndDataBufferUnwind(
+        int currentTargetCredit,
+        FragmentedForwarderBufferData forwarderBufferData,
+        FragmentedForwarderBufferEmpty forwarderBufferEmpty)
+    {
+        if (this.slotWriteOffset == 0)
+        {
+            forwarderBufferEmpty.updateEmptyBuffer(true);
+            return;
+        }
+        MutableDirectBuffer acceptBuffer = context.bufferPool.buffer(this.slotIndex, slotReadOffset);
+        final int payloadSize = Math.min(slotWriteOffset - slotReadOffset, currentTargetCredit);
+        forwarderBufferData.updateSendDataFromBuffer(acceptBuffer, payloadSize);
+        slotReadOffset += payloadSize;
+        if (slotReadOffset == slotWriteOffset)
+        {
+            // Release the buffer
+            context.bufferPool.release(this.slotIndex);
+            this.slotWriteOffset = 0;
+            this.slotReadOffset = 0;
+            this.slotIndex = NO_SLOT;
+            forwarderBufferEmpty.updateEmptyBuffer(false);
+        }
     }
 }

@@ -90,7 +90,7 @@ public final class ServerStreamFactory implements StreamFactory
             return acceptRef == route.sourceRef() && acceptSourceName.equals(route.source().asString());
         };
 
-        final RouteFW route = context.router.resolve(filter, this::wrapRoute);
+        final RouteFW route = context.router.resolve(0L, filter, this::wrapRoute);
         if (route != null)
         {
             return new AcceptStreamProcessor(context, acceptThrottle, begin.streamId(), acceptRef, acceptSourceName,

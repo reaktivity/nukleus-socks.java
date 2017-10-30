@@ -15,13 +15,9 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.types;
 
-import org.agrona.DirectBuffer;
+import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 
-public interface FragmentedHandler
+public interface FragmentedForwarderComplete
 {
-    void handle(
-        FragmentedFlyweight flyweight,
-        DirectBuffer buffer,
-        int offset,
-        int limit);
+    void updateSentFullData(OctetsFW payload);
 }

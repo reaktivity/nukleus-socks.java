@@ -87,7 +87,7 @@ public class ClientStreamFactory implements StreamFactory
             final RouteFW route = context.routeRO.wrap(b, o, l);
             return acceptSourceRef == route.sourceRef() && acceptSourceName.equals(route.source().asString());
         };
-        final RouteFW route = context.router.resolve(filter, this::wrapRoute);
+        final RouteFW route = context.router.resolve(0L, filter, this::wrapRoute);
         if (route != null)
         {
             return new AcceptStreamProcessor(

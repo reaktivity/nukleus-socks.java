@@ -15,13 +15,11 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.types;
 
-import org.agrona.DirectBuffer;
+import org.agrona.MutableDirectBuffer;
 
-public interface FragmentedHandler
+public interface FragmentedForwarderBufferData
 {
-    void handle(
-        FragmentedFlyweight flyweight,
-        DirectBuffer buffer,
-        int offset,
-        int limit);
+    void updateSendDataFromBuffer(
+        MutableDirectBuffer acceptBuffer,
+        int payloadSize);
 }
