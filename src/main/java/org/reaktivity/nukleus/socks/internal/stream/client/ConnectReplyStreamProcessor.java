@@ -38,7 +38,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 {
 
-    public static final int MAX_WRITABLE_BYTES = Integer.parseInt(System.getProperty("socks.initial.window", "65536"));
+    private final int socksInitialWindow;
 
     private MessageConsumer streamState;
     private MessageConsumer acceptReplyThrottleState;
@@ -58,6 +58,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         long connectReplyId)
     {
         super(context);
+        this.socksInitialWindow = context.socksConfiguration.socksInitialWindow();
         this.streamState = this::beforeBegin;
         this.connectReplyThrottle = connectReplyThrottle;
         this.connectReplyStreamId = connectReplyId;
@@ -115,7 +116,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             doWindow(
                 connectReplyThrottle,
                 connectReplyStreamId,
-                MAX_WRITABLE_BYTES,
+                socksInitialWindow,
                 0);
         }
         else
@@ -236,7 +237,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             doWindow(
                 correlation.connectReplyThrottle(),
                 correlation.connectReplyStreamId(),
-                acceptReplyCredit - receivedConnectReplyBytes - MAX_WRITABLE_BYTES,
+                acceptReplyCredit - receivedConnectReplyBytes - socksInitialWindow,
                 acceptReplyPadding);
         }
         else
@@ -485,7 +486,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 
     public boolean isAcceptReplyWindowGreaterThanConnectReplyWindow()
     {
-        return acceptReplyCredit - acceptReplyPadding >= MAX_WRITABLE_BYTES - receivedConnectReplyBytes;
+        return acceptReplyCredit - acceptReplyPadding >= socksInitialWindow - receivedConnectReplyBytes;
     }
 
     private int getCurrentTargetCredit()

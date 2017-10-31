@@ -45,7 +45,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
 public final class AcceptStreamProcessor extends AbstractStreamProcessor implements AcceptTransitionListener<TcpBeginExFW>
 {
-    public static final int MAX_WRITABLE_BYTES = Integer.parseInt(System.getProperty("socks.initial.window", "65536"));
+    private final int socksInitialWindow;
 
     private MessageConsumer streamState;
     private MessageConsumer acceptReplyThrottleState;
@@ -74,6 +74,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         long acceptCorrelationId)
     {
         super(context);
+        this.socksInitialWindow = context.socksConfiguration.socksInitialWindow();
         final long acceptReplyStreamId = context.supplyStreamId.getAsLong();
         this.streamState = this::beforeBegin;
         this.acceptReplyThrottleState = this::handleAcceptReplyThrottleBeforeHandshake;
@@ -154,7 +155,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         doWindow(
             correlation.acceptThrottle(),
             correlation.acceptStreamId(),
-            MAX_WRITABLE_BYTES,
+            socksInitialWindow,
             0);
         this.streamState = this::afterNegotiationInitialized;
     }
@@ -465,7 +466,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             doWindow(
                 correlation.acceptThrottle(),
                 correlation.acceptStreamId(),
-                connectCredit - receivedAcceptBytes - MAX_WRITABLE_BYTES,
+                connectCredit - receivedAcceptBytes - socksInitialWindow,
                 connectPadding);
         }
         else
@@ -777,7 +778,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
 
     public boolean isConnectWindowGreaterThanAcceptWindow()
     {
-        return connectCredit - connectPadding > MAX_WRITABLE_BYTES - receivedAcceptBytes;
+        return connectCredit - connectPadding > socksInitialWindow - receivedAcceptBytes;
     }
 
     private int getCurrentTargetCredit()

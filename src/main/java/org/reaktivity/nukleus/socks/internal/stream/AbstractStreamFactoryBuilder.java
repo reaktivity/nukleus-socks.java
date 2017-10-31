@@ -20,14 +20,14 @@ import java.util.function.Supplier;
 
 import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.Long2ObjectHashMap;
-import org.reaktivity.nukleus.Configuration;
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.route.RouteManager;
+import org.reaktivity.nukleus.socks.internal.SocksConfiguration;
 import org.reaktivity.nukleus.stream.StreamFactoryBuilder;
 
 public abstract class AbstractStreamFactoryBuilder implements StreamFactoryBuilder
 {
-    protected final Configuration config;
+    protected final SocksConfiguration config;
     protected final Long2ObjectHashMap<Correlation> correlations;
 
     protected RouteManager router;
@@ -37,7 +37,7 @@ public abstract class AbstractStreamFactoryBuilder implements StreamFactoryBuild
     protected Supplier<BufferPool> supplyBufferPool;
 
     public AbstractStreamFactoryBuilder(
-        Configuration config)
+        SocksConfiguration config)
     {
         this.config = config;
         this.correlations = new Long2ObjectHashMap<>();

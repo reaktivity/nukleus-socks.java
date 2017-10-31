@@ -13,26 +13,25 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package org.reaktivity.nukleus.socks.internal.stream.client;
+package org.reaktivity.nukleus.socks.internal;
 
-import org.reaktivity.nukleus.buffer.BufferPool;
-import org.reaktivity.nukleus.socks.internal.SocksConfiguration;
-import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamFactoryBuilder;
-import org.reaktivity.nukleus.stream.StreamFactory;
+import org.reaktivity.nukleus.Configuration;
 
-public class ClientStreamFactoryBuilder extends AbstractStreamFactoryBuilder
+public class SocksConfiguration extends Configuration
 {
-    public ClientStreamFactoryBuilder(SocksConfiguration config)
+    public static final String SOCKS_INITIAL_WINDOW = "nukleus.socks.initial.window";
+
+    private static final int SOCKS_INITIAL_WINDOW_DEFAULT = 65536;
+
+    public SocksConfiguration(
+        Configuration config)
     {
         super(config);
     }
 
-    @Override
-    public StreamFactory build()
+    public int socksInitialWindow()
     {
-        final BufferPool bufferPool = supplyBufferPool.get();
-
-        return new ClientStreamFactory(config, router, writeBuffer,
-            bufferPool, supplyStreamId, supplyCorrelationId, correlations);
+        return getInteger(SOCKS_INITIAL_WINDOW, SOCKS_INITIAL_WINDOW_DEFAULT);
     }
+
 }

@@ -34,10 +34,6 @@ import org.reaktivity.reaktor.test.ReaktorRule;
  */
 public class ThrottlingUnbufferIT
 {
-    static
-    {
-        System.setProperty("socks.initial.window", "200");
-    }
 
     private final K3poRule k3po = new K3poRule()
         .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
@@ -52,6 +48,7 @@ public class ThrottlingUnbufferIT
         .responseBufferCapacity(1024)
         .counterValuesBufferCapacity(1024)
         .nukleus("socks"::equals)
+        .configure("nukleus.socks.initial.window", 200)
         .clean();
 
     @Rule

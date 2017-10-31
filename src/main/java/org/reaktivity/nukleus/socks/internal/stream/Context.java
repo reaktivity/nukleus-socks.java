@@ -21,10 +21,10 @@ import java.util.function.LongSupplier;
 
 import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.Long2ObjectHashMap;
-import org.reaktivity.nukleus.Configuration;
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageFunction;
 import org.reaktivity.nukleus.route.RouteManager;
+import org.reaktivity.nukleus.socks.internal.SocksConfiguration;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandRequestFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandResponseFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationRequestFW;
@@ -42,6 +42,8 @@ import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
 public class Context
 {
+    public final SocksConfiguration socksConfiguration;
+
     public final RouteFW routeRO = new RouteFW();
     public final BeginFW beginRO = new BeginFW();
     public final DataFW dataRO = new DataFW();
@@ -89,7 +91,7 @@ public class Context
     public final SocksCommandResponseFW.Builder socksConnectionResponseRW = new SocksCommandResponseFW.Builder();
 
     public Context(
-        Configuration config,
+        SocksConfiguration config,
         RouteManager router,
         MutableDirectBuffer writeBuffer,
         BufferPool bufferPool,
@@ -98,6 +100,7 @@ public class Context
         Long2ObjectHashMap<Correlation> correlations,
         MessageFunction<RouteFW> wrapRoute)
     {
+        this.socksConfiguration = config;
         this.router = requireNonNull(router);
         this.writeBuffer = requireNonNull(writeBuffer);
         this.bufferPool = requireNonNull(bufferPool);

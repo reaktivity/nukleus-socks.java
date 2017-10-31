@@ -15,14 +15,14 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.server;
 
-import org.reaktivity.nukleus.Configuration;
 import org.reaktivity.nukleus.buffer.BufferPool;
+import org.reaktivity.nukleus.socks.internal.SocksConfiguration;
 import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamFactoryBuilder;
 import org.reaktivity.nukleus.stream.StreamFactory;
 
 public class ServerStreamFactoryBuilder extends AbstractStreamFactoryBuilder
 {
-    public ServerStreamFactoryBuilder(Configuration config)
+    public ServerStreamFactoryBuilder(SocksConfiguration config)
     {
         super(config);
     }

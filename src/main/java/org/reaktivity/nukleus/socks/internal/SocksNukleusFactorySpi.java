@@ -38,9 +38,10 @@ public final class SocksNukleusFactorySpi implements NukleusFactorySpi
         Configuration config,
         NukleusBuilder builder)
     {
+        SocksConfiguration socksConfiguration = new SocksConfiguration(config);
         return builder
-            .streamFactory(CLIENT, new ClientStreamFactoryBuilder(config))
-            .streamFactory(SERVER, new ServerStreamFactoryBuilder(config))
+            .streamFactory(CLIENT, new ClientStreamFactoryBuilder(socksConfiguration))
+            .streamFactory(SERVER, new ServerStreamFactoryBuilder(socksConfiguration))
             .build();
     }
 }
