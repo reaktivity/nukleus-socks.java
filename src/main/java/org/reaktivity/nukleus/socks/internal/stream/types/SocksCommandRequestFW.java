@@ -15,17 +15,16 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.types;
 
-import java.net.Inet4Address;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 
 import org.agrona.BitUtil;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.socks.internal.types.Flyweight;
+import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
+import org.reaktivity.nukleus.socks.internal.types.SocksAddressFW;
 import org.reaktivity.nukleus.socks.internal.types.StringFW;
+import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
 
 public class SocksCommandRequestFW extends FragmentedFlyweight<SocksCommandRequestFW>
 {
@@ -63,6 +62,9 @@ public class SocksCommandRequestFW extends FragmentedFlyweight<SocksCommandReque
 
     // Temporary data used for decoding
     private final StringFW domainFW = new StringFW();
+    private final OctetsFW addressFW = new OctetsFW();
+
+
     private byte[] ipv4 = new byte[4];
     private byte[] ipv6 = new byte[16];
 
@@ -153,17 +155,19 @@ public class SocksCommandRequestFW extends FragmentedFlyweight<SocksCommandReque
         return null;
     }
 
-    public InetAddress ip() throws UnknownHostException
+    public Flyweight socksAddress()
     {
         if (atype() == 0x01)
         {
-            buffer().getBytes(offset() + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, ipv4);
-            return Inet4Address.getByAddress(ipv4);
+            return addressFW.wrap(buffer(), offset()  + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, 4);
         }
         else if (atype() == 0x04)
         {
-            buffer().getBytes(offset() + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, ipv6);
-            return Inet6Address.getByAddress(ipv6);
+            return addressFW.wrap(buffer(), offset()  + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, 16);
+        }
+        else if (atype() == 0x03)
+        {
+            return domainFW.wrap(buffer(), offset() + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, maxLimit());
         }
         return null;
     }
@@ -172,33 +176,6 @@ public class SocksCommandRequestFW extends FragmentedFlyweight<SocksCommandReque
     {
         int portOffset = decodeLimit(buffer(), offset()) - FIELD_SIZEBY_DSTPORT;
         return ((buffer().getByte(portOffset) & 0xff) << 8) | (buffer().getByte(portOffset + 1) & 0xff);
-    }
-
-    public String getDstAddrPort()
-    {
-        StringBuilder dstAddrPortBuilder = new StringBuilder();
-        byte atype = this.atype();
-        if (atype == 0x03)
-        {
-            dstAddrPortBuilder.append(this.domain());
-        }
-        else if (atype == 0x01 || atype == 0x04)
-        {
-            try
-            {
-                dstAddrPortBuilder.append(this.ip().getHostAddress());
-            }
-            catch (UnknownHostException e)
-            {
-                return null;
-            }
-        }
-        else
-        {
-            return null;
-        }
-        dstAddrPortBuilder.append(":").append(this.port());
-        return dstAddrPortBuilder.toString();
     }
 
     public static final class Builder extends Flyweight.Builder<SocksCommandRequestFW>
@@ -252,27 +229,33 @@ public class SocksCommandRequestFW extends FragmentedFlyweight<SocksCommandReque
             return this;
         }
 
-        public Builder destination(String destinationAddress)
+        public Builder destination(SocksRouteExFW socksRouteExFW)
         {
-            String[] tokens = destinationAddress.split(":");
-            int port = Integer.parseInt(tokens[1]);
-            // Remove digits, ., : and [ ], and check if there is anything remaining
-            if (tokens[0].replaceAll("[0-9\\.\\]\\[:]", "").length() == 0)
+            int port = socksRouteExFW.socksPort();
+            byte[] a = null;
+
+            SocksAddressFW fw = socksRouteExFW.socksAddress();
+            if (fw.kind() == 1)
             {
-                try
-                {
-                    InetAddress inetAddress = InetAddress.getByName(tokens[0]);
-                    return this.destination(inetAddress instanceof Inet4Address ? (byte) 0x01 : (byte) 0x04,
-                        inetAddress.getAddress(), port);
-                }
-                catch (UnknownHostException e)
-                {
-                    flyweight().buildState = BuildState.BROKEN;
-                    return this;
-                }
+                a = new byte[4];
+                fw.ipv4Address().buffer().getBytes(fw.ipv4Address().offset(), a);
             }
-            return this.destination((byte) 0x03, tokens[0].getBytes(StandardCharsets.UTF_8), port);
+            else if (fw.kind() == 3)
+            {
+                a = fw.domainName().asString().getBytes(StandardCharsets.UTF_8);
+            }
+            else if (fw.kind() == 4)
+            {
+                a = new byte[16];
+                fw.ipv6Address().buffer().getBytes(fw.ipv6Address().offset(), a);
+            }
+            if (a != null)
+            {
+                return this.destination((byte) fw.kind(), a, port);
+            }
+            return this;
         }
+
 
         public Builder destination(
             byte atyp,

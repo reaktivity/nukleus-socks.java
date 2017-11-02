@@ -32,7 +32,9 @@ import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandRequestFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksCommandResponseFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationRequestFW;
 import org.reaktivity.nukleus.socks.internal.stream.types.SocksNegotiationResponseFW;
+import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
+import org.reaktivity.nukleus.socks.internal.types.StringFW;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
@@ -340,11 +342,10 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         }
         else
         {
-            final String dstAddrPort = socksCommandRequestFW.getDstAddrPort();
             final RouteFW connectRoute = resolveTarget(
                 correlation.acceptSourceRef(),
                 correlation.acceptSourceName(),
-                dstAddrPort);
+                socksCommandRequestFW);
             final String connectTargetName = connectRoute.target().asString();
             final MessageConsumer connectEndpoint = context.router.supplyTarget(connectTargetName);
             final long connectTargetRef = connectRoute.targetRef();
@@ -753,7 +754,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     RouteFW resolveTarget(
         long sourceRef,
         String sourceName,
-        String dstAddrPort)
+        SocksCommandRequestFW socksCommandRequestFW)
     {
         MessagePredicate filter = (t, b, o, l) ->
         {
@@ -762,9 +763,48 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 .get(context.routeExRO::wrap);
             return sourceRef == route.sourceRef() &&
                 sourceName.equals(route.source().asString()) &&
-                dstAddrPort.equals(routeEx.destAddrPort().asString());
+                routeEx.socksPort() == socksCommandRequestFW.port() &&
+                routeEx.socksAddress().kind() == socksCommandRequestFW.atype() &&
+                ((
+                    socksCommandRequestFW.atype() == 1 &&
+                    equalFlyweights(socksCommandRequestFW.socksAddress(), routeEx.socksAddress().ipv4Address())
+                ) ||
+                (
+                    socksCommandRequestFW.atype() == 3 &&
+                        ((StringFW)socksCommandRequestFW.socksAddress()).asString()
+                            .equalsIgnoreCase(routeEx.socksAddress().domainName().asString())
+                ) ||
+                (
+                    socksCommandRequestFW.atype() == 4 &&
+                    equalFlyweights(socksCommandRequestFW.socksAddress(), routeEx.socksAddress().ipv6Address())
+                )
+                );
         };
         return context.router.resolve(0L, filter, this::wrapRoute);
+    }
+
+    private static boolean equalFlyweights(Flyweight f1, Flyweight f2)
+    {
+        if (f1 == null && f2 == null)
+        {
+            return true;
+        }
+        if (f1 == null || f2 == null)
+        {
+            return false;
+        }
+        if (f1.sizeof() != f2.sizeof())
+        {
+            return false;
+        }
+        for (int i = 0; i < f1.sizeof(); i++)
+        {
+            if (f1.buffer().getByte(f1.offset() + i) != f2.buffer().getByte(f2.offset() + i))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private RouteFW wrapRoute(

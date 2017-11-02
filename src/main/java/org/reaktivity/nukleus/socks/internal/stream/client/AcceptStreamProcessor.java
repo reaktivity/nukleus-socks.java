@@ -272,13 +272,13 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         }
         final RouteFW connectRoute = correlation.connectRoute();
         final SocksRouteExFW routeEx = connectRoute.extension().get(context.routeExRO::wrap);
-        String destAddrPort = routeEx.destAddrPort().asString();
+
         // Reply with Socks version 5 and "NO AUTHENTICATION REQUIRED"
         SocksCommandRequestFW socksConnectRequestFW = context.socksConnectionRequestRW
             .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
             .version((byte) 0x05)
             .command((byte) 0x01) // CONNECT
-            .destination(destAddrPort)
+            .destination(routeEx)
             .build();
         doFragmentedData(socksConnectRequestFW,
             connectWindowCredit,

@@ -18,6 +18,10 @@ package org.reaktivity.nukleus.socks.internal;
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteOrder.nativeOrder;
 
+import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.CompletableFuture;
 
 import org.agrona.MutableDirectBuffer;
@@ -179,9 +183,57 @@ public final class SocksController implements Controller
     private Flyweight.Builder.Visitor visitRouteEx(
         String dstAddrPort)
     {
+        final String[] tokens = dstAddrPort.split(":");
+        final int port = Integer.parseInt(tokens[1]);
+        int tmpKind = -1;
+        byte[] a = null;
+        // Remove digits, ., : and [ ], and check if there is anything remaining
+        if (tokens[0].replaceAll("[0-9\\.\\]\\[:]", "").length() == 0)
+        {
+            try
+            {
+                InetAddress inetAddress = InetAddress.getByName(tokens[0]);
+                if (inetAddress instanceof Inet4Address)
+                {
+                    tmpKind = 1;
+                }
+                else if (inetAddress instanceof Inet6Address)
+                {
+                    tmpKind = 4;
+                }
+                a = inetAddress.getAddress();
+            }
+            catch (UnknownHostException e)
+            {
+            }
+        }
+        else
+        {
+            tmpKind = 3;
+        }
+        final int kind = tmpKind;
+        final byte[] address = a;
         return (MutableDirectBuffer buffer, int offset, int limit) ->
             routeExRW.wrap(buffer, offset, limit)
-                .destAddrPort(dstAddrPort)
+                .socksAddress(builder ->
+                {
+                    System.out.println("kind: " + kind);
+                    System.out.println("builder.maxLimit(): " + builder.maxLimit());
+                    System.out.println("builder.limit(): " + builder.limit());
+                    if (kind == 1)
+                    {
+                        builder.ipv4Address(builder1 -> builder1.set(address));
+                    }
+                    if (kind == 3)
+                    {
+                        builder.domainName(tokens[0]);
+                    }
+                    if (kind == 4)
+                    {
+                        builder.ipv6Address(builder12 -> builder12.set(address));
+                    }
+                })
+                .socksPort(port)
                 .build()
                 .sizeof();
     }
