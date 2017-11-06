@@ -15,6 +15,10 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.types;
 
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_DOMAIN;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP4;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP6;
+
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -141,14 +145,14 @@ public class SocksCommandResponseFW extends FragmentedFlyweight<SocksCommandResp
         byte addrVariableSize = 0;
         switch (buffer.getByte(addrTypOffset))
         {
-        case 0x01:
+        case SOCKS_ADDRESS_IP4:
             addrLength = 4;
             break;
-        case 0x03:
+        case SOCKS_ADDRESS_DOMAIN:
             addrLength = buffer.getByte(addrTypOffset + FIELD_SIZEBY_ADDRTYP);
             addrVariableSize = 1;
             break;
-        case 0x04:
+        case SOCKS_ADDRESS_IP6:
             addrLength = 16;
             break;
         default:
@@ -174,7 +178,7 @@ public class SocksCommandResponseFW extends FragmentedFlyweight<SocksCommandResp
 
     public String domain()
     {
-        if (atype() == 0x03)
+        if (atype() == SOCKS_ADDRESS_DOMAIN)
         {
             return domainFW.wrap(buffer(), offset() + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, maxLimit())
                 .asString();
@@ -184,12 +188,12 @@ public class SocksCommandResponseFW extends FragmentedFlyweight<SocksCommandResp
 
     public InetAddress ip() throws UnknownHostException
     {
-        if (atype() == 0x01)
+        if (atype() == SOCKS_ADDRESS_IP4)
         {
             buffer().getBytes(offset() + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, ipv4);
             return Inet4Address.getByAddress(ipv4);
         }
-        else if (atype() == 0x04)
+        else if (atype() == SOCKS_ADDRESS_IP6)
         {
             buffer().getBytes(offset() + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, ipv6);
             return Inet6Address.getByAddress(ipv6);
@@ -260,7 +264,7 @@ public class SocksCommandResponseFW extends FragmentedFlyweight<SocksCommandResp
             buffer().putByte(offset() + FIELD_OFFSET_ADDRTYP, atyp);
 
             int addrOffset = offset() + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP;
-            if (atyp == 0x03)
+            if (atyp == SOCKS_ADDRESS_DOMAIN)
             {
                 checkLimit(++newLimit, maxLimit());
                 buffer().putByte(addrOffset++, (byte) addr.length);

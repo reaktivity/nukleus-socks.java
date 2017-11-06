@@ -18,15 +18,21 @@ package org.reaktivity.nukleus.socks.internal.streams.forward.server;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.rules.RuleChain.outerRule;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
 import org.reaktivity.reaktor.test.ReaktorRule;
 
+@RunWith(Parameterized.class)
 public class ThrottlingIT
 {
 
@@ -37,37 +43,37 @@ public class ThrottlingIT
 
     private final TestRule timeout = new DisableOnDebug(new Timeout(10, SECONDS));
 
-    private final ReaktorRule reaktor = new ReaktorRule()
-        .directory("target/nukleus-itests")
-        .commandBufferCapacity(1024)
-        .responseBufferCapacity(1024)
-        .counterValuesBufferCapacity(1024)
-        .nukleus("socks"::equals)
-        .clean();
+    private final ReaktorRule reaktor;
 
     @Rule
-    public final TestRule chain = outerRule(reaktor).around(k3po)
-        .around(timeout);
+    public final TestRule chain;
 
-    @Test
-    @Specification({
-        "${route}/server/controller",
-        "${client}/client.connect.send.data.throttling.server.smaller/client",
-        "${server}/client.connect.send.data.throttling.server.smaller/server"})
-    public void shouldSendDataBothWaysWithThrottlingServerSmaller() throws Exception
+    private int socksInitialWindow;
+
+    @Parameterized.Parameters
+    public static Collection<Object[]> data()
     {
-        k3po.finish();
+        return Arrays.asList(new Object[][]
+                {
+                    {200}, {400}, {10000}, {65536}
+                }
+                            );
     }
 
-    @Test
-    @Specification({
-        "${route}/server/controller",
-        "${client}/client.connect.send.data.throttling.client.smaller/client",
-        "${server}/client.connect.send.data.throttling.client.smaller/server"})
-    public void shouldSendDataBothWaysWithThrottlingClientSmaller() throws Exception
+    public ThrottlingIT(int socksInitialWindow)
     {
-        k3po.finish();
+        this.socksInitialWindow = socksInitialWindow;
+        this.reaktor = new ReaktorRule()
+            .directory("target/nukleus-itests")
+            .commandBufferCapacity(1024)
+            .responseBufferCapacity(1024)
+            .counterValuesBufferCapacity(1024)
+            .nukleus("socks"::equals)
+            .configure("nukleus.socks.initial.window", this.socksInitialWindow)
+            .clean();
+        chain = outerRule(reaktor).around(k3po).around(timeout);
     }
+
 
     @Test
     @Specification({

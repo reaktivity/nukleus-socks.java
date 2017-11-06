@@ -50,17 +50,17 @@
     <k3po.version>3.0.0-alpha-84</k3po.version>
     <k3po.nukleus.ext.version>0.12</k3po.nukleus.ext.version>
 
-    <nukleus.plugin.version>0.13</nukleus.plugin.version>
+    <!-- <nukleus.plugin.version>0.13</nukleus.plugin.version> -->
+    <nukleus.plugin.version>develop-SNAPSHOT</nukleus.plugin.version>
     <nukleus.version>0.12</nukleus.version>
 
     <nukleus.socks.spec.version>develop-SNAPSHOT</nukleus.socks.spec.version>
 
     <nukleus.tcp.spec.version>0.21</nukleus.tcp.spec.version>
-    <reaktor.version>0.31</reaktor.version>
+    <reaktor.version>develop-SNAPSHOT</reaktor.version>
 
     <jacoco.coverage.ratio>0.80</jacoco.coverage.ratio>
     <jacoco.missed.count>0</jacoco.missed.count>
-    <mockito-core.version>2.11.0</mockito-core.version>
   </properties>
 
   <dependencies>

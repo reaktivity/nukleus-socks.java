@@ -17,6 +17,9 @@ package org.reaktivity.nukleus.socks.internal;
 
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteOrder.nativeOrder;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_DOMAIN;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP4;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP6;
 
 import java.net.Inet4Address;
 import java.net.Inet6Address;
@@ -195,11 +198,11 @@ public final class SocksController implements Controller
                 InetAddress inetAddress = InetAddress.getByName(tokens[0]);
                 if (inetAddress instanceof Inet4Address)
                 {
-                    tmpKind = 1;
+                    tmpKind = SOCKS_ADDRESS_IP4;
                 }
                 else if (inetAddress instanceof Inet6Address)
                 {
-                    tmpKind = 4;
+                    tmpKind = SOCKS_ADDRESS_IP6;
                 }
                 a = inetAddress.getAddress();
             }
@@ -209,7 +212,7 @@ public final class SocksController implements Controller
         }
         else
         {
-            tmpKind = 3;
+            tmpKind = SOCKS_ADDRESS_DOMAIN;
         }
         final int kind = tmpKind;
         final byte[] address = a;
@@ -217,18 +220,15 @@ public final class SocksController implements Controller
             routeExRW.wrap(buffer, offset, limit)
                 .socksAddress(builder ->
                 {
-                    System.out.println("kind: " + kind);
-                    System.out.println("builder.maxLimit(): " + builder.maxLimit());
-                    System.out.println("builder.limit(): " + builder.limit());
-                    if (kind == 1)
+                    if (kind == SOCKS_ADDRESS_IP4)
                     {
                         builder.ipv4Address(builder1 -> builder1.set(address));
                     }
-                    if (kind == 3)
+                    if (kind == SOCKS_ADDRESS_DOMAIN)
                     {
                         builder.domainName(tokens[0]);
                     }
-                    if (kind == 4)
+                    if (kind == SOCKS_ADDRESS_IP6)
                     {
                         builder.ipv6Address(builder12 -> builder12.set(address));
                     }

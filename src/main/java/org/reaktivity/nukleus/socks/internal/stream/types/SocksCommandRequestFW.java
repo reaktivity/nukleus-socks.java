@@ -15,6 +15,10 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.types;
 
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_DOMAIN;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP4;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP6;
+
 import java.nio.charset.StandardCharsets;
 
 import org.agrona.BitUtil;
@@ -114,14 +118,14 @@ public class SocksCommandRequestFW extends FragmentedFlyweight<SocksCommandReque
         byte addrVariableSize = 0;
         switch (buffer.getByte(addrTypOffset))
         {
-        case 0x01:
+        case SOCKS_ADDRESS_IP4:
             addrLength = 4;
             break;
-        case 0x03:
+        case SOCKS_ADDRESS_DOMAIN:
             addrLength = buffer.getByte(addrTypOffset + FIELD_SIZEBY_ADDRTYP);
             addrVariableSize = 1;
             break;
-        case 0x04:
+        case SOCKS_ADDRESS_IP6:
             addrLength = 16;
             break;
         default:
@@ -147,7 +151,7 @@ public class SocksCommandRequestFW extends FragmentedFlyweight<SocksCommandReque
 
     public String domain()
     {
-        if (atype() == 0x03)
+        if (atype() == SOCKS_ADDRESS_DOMAIN)
         {
             return domainFW.wrap(buffer(), offset() + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, maxLimit())
                 .asString();
@@ -157,15 +161,15 @@ public class SocksCommandRequestFW extends FragmentedFlyweight<SocksCommandReque
 
     public Flyweight socksAddress()
     {
-        if (atype() == 0x01)
+        if (atype() == SOCKS_ADDRESS_IP4)
         {
             return addressFW.wrap(buffer(), offset()  + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, 4);
         }
-        else if (atype() == 0x04)
+        else if (atype() == SOCKS_ADDRESS_IP6)
         {
             return addressFW.wrap(buffer(), offset()  + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, 16);
         }
-        else if (atype() == 0x03)
+        else if (atype() == SOCKS_ADDRESS_DOMAIN)
         {
             return domainFW.wrap(buffer(), offset() + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, maxLimit());
         }
@@ -235,16 +239,16 @@ public class SocksCommandRequestFW extends FragmentedFlyweight<SocksCommandReque
             byte[] a = null;
 
             SocksAddressFW fw = socksRouteExFW.socksAddress();
-            if (fw.kind() == 1)
+            if (fw.kind() == SOCKS_ADDRESS_IP4)
             {
                 a = new byte[4];
                 fw.ipv4Address().buffer().getBytes(fw.ipv4Address().offset(), a);
             }
-            else if (fw.kind() == 3)
+            else if (fw.kind() == SOCKS_ADDRESS_DOMAIN)
             {
                 a = fw.domainName().asString().getBytes(StandardCharsets.UTF_8);
             }
-            else if (fw.kind() == 4)
+            else if (fw.kind() == SOCKS_ADDRESS_IP6)
             {
                 a = new byte[16];
                 fw.ipv6Address().buffer().getBytes(fw.ipv6Address().offset(), a);
@@ -267,7 +271,7 @@ public class SocksCommandRequestFW extends FragmentedFlyweight<SocksCommandReque
             buffer().putByte(offset() + FIELD_OFFSET_ADDRTYP, atyp);
 
             int addrOffset = offset() + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP;
-            if (atyp == 0x03)
+            if (atyp == SOCKS_ADDRESS_DOMAIN)
             {
                 checkLimit(++newLimit, maxLimit());
                 buffer().putByte(addrOffset++, (byte) addr.length);

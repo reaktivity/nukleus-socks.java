@@ -15,6 +15,9 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.server;
 
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP4;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP6;
+
 import java.util.Optional;
 
 import org.agrona.DirectBuffer;
@@ -400,12 +403,12 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         socksPort = tcpBeginEx.localPort();
         if (tcpBeginEx.localAddress().kind() == 1)
         {
-            socksAtyp = (byte) 0x01;
+            socksAtyp = (byte) SOCKS_ADDRESS_IP4;
             socksAddr = new byte[4];
         }
         else
         {
-            socksAtyp = (byte) 0x04;
+            socksAtyp = (byte) SOCKS_ADDRESS_IP6;
             socksAddr = new byte[16];
         }
         tcpBeginEx.localAddress()
