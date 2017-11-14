@@ -49,17 +49,37 @@ public class ConnectionIT
 
     @Test
     @Specification({
-        "${route}/server/controller",
-        "${client}/client.connect.send.data/client",
+        "${route}/server/domain/controller",
+        "${client}/client.connect.send.data/domain/client",
         "${server}/client.connect.send.data/server"})
-    public void shouldSendDataBothWays() throws Exception
+    public void shouldSendDataBothWaysDomain() throws Exception
     {
         k3po.finish();
     }
 
     @Test
     @Specification({
-        "${route}/server/controller",
+        "${route}/server/ipv4/controller",
+        "${client}/client.connect.send.data/ipv4/client",
+        "${server}/client.connect.send.data/server"})
+    public void shouldSendDataBothWaysIpv4() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/ipv6/controller",
+        "${client}/client.connect.send.data/ipv6/client",
+        "${server}/client.connect.send.data/server"})
+    public void shouldSendDataBothWaysIpv6() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/domain/controller",
         "${client}/client.does.not.connect.no.acceptable.methods/client"})
     public void shouldNotEstablishConnectionNoAcceptableMethods() throws Exception
     {
@@ -68,7 +88,7 @@ public class ConnectionIT
 
     @Test
     @Specification({
-        "${route}/server/controller",
+        "${route}/server/domain/controller",
         "${client}/client.connect.fallback.to.no.authentication/client",
         "${server}/client.connect.fallback.to.no.authentication/server"})
     public void shouldEstablishConnectionFallbackToNoAuthentication() throws Exception
@@ -78,7 +98,7 @@ public class ConnectionIT
 
     @Test
     @Specification({
-        "${route}/server/controller",
+        "${route}/server/domain/controller",
         "${client}/client.connect.request.with.command.not.supported/client"})
     public void shouldNotEstablishConnectionCommandNotSupported() throws Exception
     {

@@ -15,8 +15,6 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.client;
 
-import java.util.Optional;
-
 import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.metadata.Signal;
@@ -295,7 +293,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     }
 
     @Override
-    public void transitionToConnectionReady(Optional connectionInfo)
+    public void transitionToConnectionReady()
     {
         this.acceptProcessorState = this::afterConnect;
         context.router.setThrottle(

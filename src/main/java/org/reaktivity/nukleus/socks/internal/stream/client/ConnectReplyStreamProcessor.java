@@ -15,8 +15,6 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.client;
 
-import java.util.Optional;
-
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
@@ -231,7 +229,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         }
         streamState = this::afterConnectionResponse;
         acceptReplyThrottleState = this::handleAcceptReplyThrottleAfterHandshake;
-        correlation.acceptTransitionListener().transitionToConnectionReady(Optional.empty());
+        correlation.acceptTransitionListener().transitionToConnectionReady();
         if (isAcceptReplyWindowGreaterThanConnectReplyWindow())
         {
             doWindow(
@@ -386,8 +384,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             acceptReplyPadding = window.padding();
             break;
         case ResetFW.TYPE_ID:
-            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
-            handleReset(reset);
+            handleReset();
             break;
         default:
             // ignore
@@ -414,7 +411,6 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             );
             break;
         case ResetFW.TYPE_ID:
-            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
             doReset(correlation.connectReplyThrottle(), correlation.connectReplyStreamId());
             break;
         default:
@@ -470,8 +466,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
                 window.padding());
             break;
         case ResetFW.TYPE_ID:
-            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
-            handleReset(reset);
+            handleReset();
             break;
         default:
             // ignore
@@ -479,7 +474,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         }
     }
 
-    private void handleReset(ResetFW reset)
+    private void handleReset()
     {
         doReset(connectReplyThrottle, connectReplyStreamId);
     }

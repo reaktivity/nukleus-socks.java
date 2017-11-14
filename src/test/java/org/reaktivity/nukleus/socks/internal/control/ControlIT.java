@@ -48,38 +48,114 @@ public class ControlIT
 
     @Test
     @Specification({
-        "${route}/server/controller"
+        "${route}/server/domain/controller"
     })
-    public void shouldRouteServer() throws Exception
+    public void shouldRouteServerDomain() throws Exception
     {
         k3po.finish();
     }
 
     @Test
     @Specification({
-        "${route}/client/controller"
+        "${route}/server/ipv4/controller"
     })
-    public void shouldRouteClient() throws Exception
+    public void shouldRouteServerIpv4() throws Exception
     {
         k3po.finish();
     }
 
     @Test
     @Specification({
-        "${route}/server/controller",
-        "${unroute}/server/controller"
+        "${route}/server/ipv6/controller"
     })
-    public void shouldUnrouteServer() throws Exception
+    public void shouldRouteServerIpv6() throws Exception
+    {
+        k3po.finish();
+    }
+    
+    @Test
+    @Specification({
+        "${route}/client/domain/controller"
+    })
+    public void shouldRouteClientDomain() throws Exception
     {
         k3po.finish();
     }
 
     @Test
     @Specification({
-        "${route}/client/controller",
-        "${unroute}/client/controller"
+        "${route}/client/ipv4/controller"
     })
-    public void shouldUnrouteClient() throws Exception
+    public void shouldRouteClientIpv4() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/client/ipv6/controller"
+    })
+    public void shouldRouteClientIpv6() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/domain/controller",
+        "${unroute}/server/domain/controller"
+    })
+    public void shouldUnrouteServerDomain() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/ipv4/controller",
+        "${unroute}/server/ipv4/controller"
+    })
+    public void shouldUnrouteServerIpv4() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/ipv6/controller",
+        "${unroute}/server/ipv6/controller"
+    })
+    public void shouldUnrouteServerIpv6() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/client/domain/controller",
+        "${unroute}/client/domain/controller"
+    })
+    public void shouldUnrouteClientDomain() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/client/ipv4/controller",
+        "${unroute}/client/ipv4/controller"
+    })
+    public void shouldUnrouteClientIpv4() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/client/ipv6/controller",
+        "${unroute}/client/ipv6/controller"
+    })
+    public void shouldUnrouteClientIpv6() throws Exception
     {
         k3po.finish();
     }

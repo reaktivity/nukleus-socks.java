@@ -15,9 +15,9 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.types;
 
-public class SocksAddressTypes
+public interface SocksAddressTypes
 {
-    public static final int SOCKS_ADDRESS_IP4 = 1;
-    public static final int SOCKS_ADDRESS_DOMAIN = 3;
-    public static final int SOCKS_ADDRESS_IP6 = 4;
+    int SOCKS_ADDRESS_IP4 = 1;
+    int SOCKS_ADDRESS_DOMAIN = 3;
+    int SOCKS_ADDRESS_IP6 = 4;
 }

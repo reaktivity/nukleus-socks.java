@@ -56,11 +56,35 @@ public class ConnectionIT
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
-        "${route}/client/controller",
+        "${route}/client/domain/controller",
         "${client}/client.connect.send.data/client",
-        "${server}/client.connect.send.data/server"
+        "${server}/client.connect.send.data/domain/server"
     })
-    public void shouldSendDataBothWays() throws Exception
+    public void shouldSendDataBothWaysDomain() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
+    @Specification({
+        "${route}/client/ipv4/controller",
+        "${client}/client.connect.send.data/client",
+        "${server}/client.connect.send.data/ipv4/server"
+    })
+    public void shouldSendDataBothWaysIpv4() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
+    @Specification({
+        "${route}/client/ipv6/controller",
+        "${client}/client.connect.send.data/client",
+        "${server}/client.connect.send.data/ipv6/server"
+    })
+    public void shouldSendDataBothWaysIpv6() throws Exception
     {
         k3po.finish();
     }

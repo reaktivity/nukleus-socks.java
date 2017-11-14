@@ -23,6 +23,17 @@ import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 public class SocksNegotiationRequestFW extends FragmentedFlyweight<SocksNegotiationRequestFW>
 {
 
+    /* From https://tools.ietf.org/html/rfc1928
+
+       The client connects to the server, and sends a version
+       identifier/method selection message:
+                       +----+----------+----------+
+                       |VER | NMETHODS | METHODS  |
+                       +----+----------+----------+
+                       | 1  |    1     | 1 to 255 |
+                       +----+----------+----------+
+     */
+
     private static final int FIELD_OFFSET_VERSION = 0;
     private static final int FIELD_SIZEBY_VERSION = BitUtil.SIZE_OF_BYTE;
 

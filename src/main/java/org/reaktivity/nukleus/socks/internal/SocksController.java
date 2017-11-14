@@ -186,16 +186,23 @@ public final class SocksController implements Controller
     private Flyweight.Builder.Visitor visitRouteEx(
         String dstAddrPort)
     {
-        final String[] tokens = dstAddrPort.split(":");
-        final int port = Integer.parseInt(tokens[1]);
+        int lastColonIndex = dstAddrPort.lastIndexOf(":");
+        if (lastColonIndex == -1 || lastColonIndex == dstAddrPort.length() - 1)
+        {
+            throw new IllegalArgumentException("Missing colon from destination port and address, " + dstAddrPort);
+        }
+        String t0 = dstAddrPort.substring(0, lastColonIndex);
+        String t1 = dstAddrPort.substring(lastColonIndex + 1);
+        // TODO Ipv6 syntax should be supported
+        final int port = Integer.parseInt(t1);
         int tmpKind = -1;
         byte[] a = null;
         // Remove digits, ., : and [ ], and check if there is anything remaining
-        if (tokens[0].replaceAll("[0-9\\.\\]\\[:]", "").length() == 0)
+        if (t0.replaceAll("[0-9\\.\\]\\[:]", "").length() == 0)
         {
             try
             {
-                InetAddress inetAddress = InetAddress.getByName(tokens[0]);
+                InetAddress inetAddress = InetAddress.getByName(t0);
                 if (inetAddress instanceof Inet4Address)
                 {
                     tmpKind = SOCKS_ADDRESS_IP4;
@@ -226,7 +233,7 @@ public final class SocksController implements Controller
                     }
                     if (kind == SOCKS_ADDRESS_DOMAIN)
                     {
-                        builder.domainName(tokens[0]);
+                        builder.domainName(t0);
                     }
                     if (kind == SOCKS_ADDRESS_IP6)
                     {

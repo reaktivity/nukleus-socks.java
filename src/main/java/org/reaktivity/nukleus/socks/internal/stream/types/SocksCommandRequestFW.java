@@ -163,11 +163,17 @@ public class SocksCommandRequestFW extends FragmentedFlyweight<SocksCommandReque
     {
         if (atype() == SOCKS_ADDRESS_IP4)
         {
-            return addressFW.wrap(buffer(), offset()  + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, 4);
+            return addressFW.wrap(
+                buffer(),
+                offset()  + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP,
+                offset()  + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP + 4);
         }
         else if (atype() == SOCKS_ADDRESS_IP6)
         {
-            return addressFW.wrap(buffer(), offset()  + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP, 16);
+            return addressFW.wrap(
+                buffer(),
+                offset()  + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP,
+                offset()  + FIELD_OFFSET_ADDRTYP + FIELD_SIZEBY_ADDRTYP + 16);
         }
         else if (atype() == SOCKS_ADDRESS_DOMAIN)
         {

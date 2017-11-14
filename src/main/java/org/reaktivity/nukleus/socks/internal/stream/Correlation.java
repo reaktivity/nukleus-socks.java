@@ -72,8 +72,6 @@ public class Correlation
     // Invoked from the ConnectReplyProcessor or AcceptProcessor. Sends data if window available.
     private Consumer<Boolean> nextAcceptSignal;
 
-    private ConnectTransitionListener connectTransitionListener;
-
     public Correlation(
         MessageConsumer acceptThrottle,
         long acceptStreamId,
@@ -225,15 +223,5 @@ public class Correlation
     public void connectReplyStreamId(long connectReplyId)
     {
         this.connectReplyStreamId = connectReplyId;
-    }
-
-    public ConnectTransitionListener connectTransitionListener()
-    {
-        return connectTransitionListener;
-    }
-
-    public void connectTransitionListener(ConnectTransitionListener connectTransitionListener)
-    {
-        this.connectTransitionListener = connectTransitionListener;
     }
 }

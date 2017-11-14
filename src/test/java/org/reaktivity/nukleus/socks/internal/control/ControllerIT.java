@@ -52,9 +52,9 @@ public class ControllerIT
 
     @Test
     @Specification({
-        "${route}/server/nukleus"
+        "${route}/server/domain/nukleus"
     })
-    public void shouldRouteServer() throws Exception
+    public void shouldRouteServerDomain() throws Exception
     {
         long targetRef = new Random().nextLong();
 
@@ -69,9 +69,43 @@ public class ControllerIT
 
     @Test
     @Specification({
-        "${route}/client/nukleus"
+        "${route}/server/ipv4/nukleus"
     })
-    public void shouldRouteClient() throws Exception
+    public void shouldRouteServerIpv4() throws Exception
+    {
+        long targetRef = new Random().nextLong();
+
+        k3po.start();
+
+        reaktor.controller(SocksController.class)
+            .routeServer("source", 0L, "target", targetRef, "127.0.0.1:8080")
+            .get();
+
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/ipv6/nukleus"
+    })
+    public void shouldRouteServerIpv6() throws Exception
+    {
+        long targetRef = new Random().nextLong();
+
+        k3po.start();
+
+        reaktor.controller(SocksController.class)
+            .routeServer("source", 0L, "target", targetRef, "::1:8080")
+            .get();
+
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/client/domain/nukleus"
+    })
+    public void shouldRouteClientDomain() throws Exception
     {
         long targetRef = new Random().nextLong();
 
@@ -86,10 +120,44 @@ public class ControllerIT
 
     @Test
     @Specification({
-        "${route}/server/nukleus",
-        "${unroute}/server/nukleus"
+        "${route}/client/ipv4/nukleus"
     })
-    public void shouldUnrouteServer() throws Exception
+    public void shouldRouteClientIpv4() throws Exception
+    {
+        long targetRef = new Random().nextLong();
+
+        k3po.start();
+
+        reaktor.controller(SocksController.class)
+            .routeClient("source", 0L, "target", targetRef, "127.0.0.1:8080")
+            .get();
+
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/client/ipv6/nukleus"
+    })
+    public void shouldRouteClientIpv6() throws Exception
+    {
+        long targetRef = new Random().nextLong();
+
+        k3po.start();
+
+        reaktor.controller(SocksController.class)
+            .routeClient("source", 0L, "target", targetRef, "::1:8080")
+            .get();
+
+        k3po.finish();
+    }
+    
+    @Test
+    @Specification({
+        "${route}/server/domain/nukleus",
+        "${unroute}/server/domain/nukleus"
+    })
+    public void shouldUnrouteServerDomain() throws Exception
     {
         long targetRef = new Random().nextLong();
 
@@ -110,10 +178,58 @@ public class ControllerIT
 
     @Test
     @Specification({
-        "${route}/client/nukleus",
-        "${unroute}/client/nukleus"
+        "${route}/server/ipv4/nukleus",
+        "${unroute}/server/ipv4/nukleus"
     })
-    public void shouldUnrouteClient() throws Exception
+    public void shouldUnrouteServerIpv4() throws Exception
+    {
+        long targetRef = new Random().nextLong();
+
+        k3po.start();
+
+        long sourceRef = reaktor.controller(SocksController.class)
+            .routeServer("source", 0L, "target", targetRef, "127.0.0.1:8080")
+            .get();
+
+        k3po.notifyBarrier("ROUTED_SERVER");
+
+        reaktor.controller(SocksController.class)
+            .unrouteServer("source", sourceRef, "target", targetRef, "127.0.0.1:8080")
+            .get();
+
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/ipv6/nukleus",
+        "${unroute}/server/ipv6/nukleus"
+    })
+    public void shouldUnrouteServerIpv6() throws Exception
+    {
+        long targetRef = new Random().nextLong();
+
+        k3po.start();
+
+        long sourceRef = reaktor.controller(SocksController.class)
+            .routeServer("source", 0L, "target", targetRef, "::1:8080")
+            .get();
+
+        k3po.notifyBarrier("ROUTED_SERVER");
+
+        reaktor.controller(SocksController.class)
+            .unrouteServer("source", sourceRef, "target", targetRef, "::1:8080")
+            .get();
+
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/client/domain/nukleus",
+        "${unroute}/client/domain/nukleus"
+    })
+    public void shouldUnrouteClientDomain() throws Exception
     {
         long targetRef = new Random().nextLong();
 
@@ -127,6 +243,54 @@ public class ControllerIT
 
         reaktor.controller(SocksController.class)
             .unrouteClient("source", sourceRef, "target", targetRef, "example.com:8080")
+            .get();
+
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/client/ipv4/nukleus",
+        "${unroute}/client/ipv4/nukleus"
+    })
+    public void shouldUnrouteClientIpv4() throws Exception
+    {
+        long targetRef = new Random().nextLong();
+
+        k3po.start();
+
+        long sourceRef = reaktor.controller(SocksController.class)
+            .routeClient("source", 0L, "target", targetRef, "127.0.0.1:8080")
+            .get();
+
+        k3po.notifyBarrier("ROUTED_CLIENT");
+
+        reaktor.controller(SocksController.class)
+            .unrouteClient("source", sourceRef, "target", targetRef, "127.0.0.1:8080")
+            .get();
+
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/client/ipv6/nukleus",
+        "${unroute}/client/ipv6/nukleus"
+    })
+    public void shouldUnrouteClientIpv6() throws Exception
+    {
+        long targetRef = new Random().nextLong();
+
+        k3po.start();
+
+        long sourceRef = reaktor.controller(SocksController.class)
+            .routeClient("source", 0L, "target", targetRef, "::1:8080")
+            .get();
+
+        k3po.notifyBarrier("ROUTED_CLIENT");
+
+        reaktor.controller(SocksController.class)
+            .unrouteClient("source", sourceRef, "target", targetRef, "::1:8080")
             .get();
 
         k3po.finish();

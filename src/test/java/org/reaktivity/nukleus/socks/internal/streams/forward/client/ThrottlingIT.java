@@ -77,7 +77,7 @@ public class ThrottlingIT
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
-        "${route}/client/controller",
+        "${route}/client/domain/controller",
         "${client}/client.connect.send.data.throttling.window.1/client",
         "${server}/client.connect.send.data.throttling.window.1/server"
     })
@@ -89,7 +89,7 @@ public class ThrottlingIT
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
-        "${route}/client/controller",
+        "${route}/client/domain/controller",
         "${client}/client.connect.send.data.throttling.window.8.padding.7/client",
         "${server}/client.connect.send.data.throttling.window.8.padding.7/server"
     })
@@ -101,7 +101,7 @@ public class ThrottlingIT
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
-        "${route}/client/controller",
+        "${route}/client/domain/controller",
         "${client}/client.connect.send.data.throttling.window.100.padding.17/client",
         "${server}/client.connect.send.data.throttling.window.100.padding.17/server"
     })
@@ -113,7 +113,7 @@ public class ThrottlingIT
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
-        "${route}/client/controller",
+        "${route}/client/domain/controller",
         "${client}/client.connect.send.data.throttling.window.100.padding.17/client",
         "${server}/client.connect.send.data.throttling.window.8.padding.7/server"})
     public void shouldSendDataBothWaysWithThrottlingDifferentWindowLargerClient() throws Exception
@@ -124,7 +124,7 @@ public class ThrottlingIT
     @Test
     @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
     @Specification({
-        "${route}/client/controller",
+        "${route}/client/domain/controller",
         "${client}/client.connect.send.data.throttling.window.100.padding.17/client",
         "${server}/client.connect.send.data.throttling.window.8.padding.7/server"})
     public void shouldSendDataBothWaysWithThrottlingDifferentWindowLargerServer() throws Exception

@@ -22,6 +22,16 @@ import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 
 public class SocksNegotiationResponseFW extends FragmentedFlyweight<SocksNegotiationResponseFW>
 {
+    /* From https://tools.ietf.org/html/rfc1928
+
+       The server selects from one of the methods given in METHODS, and
+       sends a METHOD selection message:
+                         +----+--------+
+                         |VER | METHOD |
+                         +----+--------+
+                         | 1  |   1    |
+                         +----+--------+
+     */
 
     private static final int FIELD_OFFSET_VERSION = 0;
     private static final int FIELD_SIZEBY_VERSION = BitUtil.SIZE_OF_BYTE;

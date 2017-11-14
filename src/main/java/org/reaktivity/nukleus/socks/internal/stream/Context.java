@@ -37,7 +37,6 @@ import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.TcpBeginExFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
 public class Context
@@ -49,8 +48,6 @@ public class Context
     public final DataFW dataRO = new DataFW();
     public final EndFW endRO = new EndFW();
     public final AbortFW abortRO = new AbortFW();
-
-    public final TcpBeginExFW tcpBeginExRO = new TcpBeginExFW();
 
     public final BeginFW.Builder beginRW = new BeginFW.Builder();
     public final DataFW.Builder dataRW = new DataFW.Builder();

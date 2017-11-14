@@ -15,10 +15,11 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.server;
 
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_DOMAIN;
 import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP4;
 import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP6;
 
-import java.util.Optional;
+import java.util.Arrays;
 
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
@@ -45,10 +46,9 @@ import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.TcpBeginExFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-public final class AcceptStreamProcessor extends AbstractStreamProcessor implements AcceptTransitionListener<TcpBeginExFW>
+public final class AcceptStreamProcessor extends AbstractStreamProcessor implements AcceptTransitionListener
 {
     private final int socksInitialWindow;
 
@@ -104,6 +104,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         correlation.nextAcceptSignal(this::noop);
     }
 
+    @Override
     protected void handleStream(
         int msgTypeId,
         DirectBuffer buffer,
@@ -140,8 +141,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     {
         if (msgTypeId == BeginFW.TYPE_ID)
         {
-            final BeginFW begin = context.beginRO.wrap(buffer, index, index + length);
-            initializeNegotiation(begin);
+            initializeNegotiation();
         }
         else
         {
@@ -149,8 +149,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         }
     }
 
-    private void initializeNegotiation(
-        BeginFW begin)
+    private void initializeNegotiation()
     {
         doBegin(
             correlation.acceptReplyEndpoint(),
@@ -397,27 +396,12 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     }
 
     @Override
-    public void transitionToConnectionReady(Optional<TcpBeginExFW> connectionInfo)
+    public void transitionToConnectionReady()
     {
-        TcpBeginExFW tcpBeginEx = connectionInfo.get(); // Only reading so should be safe
-        socksPort = tcpBeginEx.localPort();
-        if (tcpBeginEx.localAddress().kind() == 1)
-        {
-            socksAtyp = (byte) SOCKS_ADDRESS_IP4;
-            socksAddr = new byte[4];
-        }
-        else
-        {
-            socksAtyp = (byte) SOCKS_ADDRESS_IP6;
-            socksAddr = new byte[16];
-        }
-        tcpBeginEx.localAddress()
-            .ipv4Address()
-            .get((directBuffer, offset, limit) ->
-            {
-                directBuffer.getBytes(offset, socksAddr);
-                return null;
-            });
+        socksPort = 0;
+        socksAtyp = (byte) SOCKS_ADDRESS_IP4;
+        socksAddr = new byte[4];
+        Arrays.fill(socksAddr, (byte) 0x00);
         attemptConnectionResponse(false);
     }
 
@@ -607,7 +591,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             correlation.nextAcceptSignal().accept(true);
             break;
         case ResetFW.TYPE_ID:
-            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
             doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
             break;
         default:
@@ -633,7 +616,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 window.padding());
             break;
         case ResetFW.TYPE_ID:
-            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
             doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
             doAbort(correlation.connectEndpoint(), correlation.connectStreamId());
             break;
@@ -657,7 +639,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             connectPadding = window.padding();
             break;
         case ResetFW.TYPE_ID:
-            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
             doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
             break;
         default:
@@ -684,7 +665,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 this::updateThrottlingWithEmptyBuffer);
             break;
         case ResetFW.TYPE_ID:
-            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
             doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
             doAbort(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
             doReset(correlation.connectReplyThrottle(), correlation.connectReplyStreamId());
@@ -743,7 +723,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 window.padding());
             break;
         case ResetFW.TYPE_ID:
-            final ResetFW reset = context.resetRO.wrap(buffer, index, index + length);
             doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
             doAbort(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
             doReset(correlation.connectReplyThrottle(), correlation.connectReplyStreamId());
@@ -769,19 +748,18 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 routeEx.socksPort() == socksCommandRequestFW.port() &&
                 routeEx.socksAddress().kind() == socksCommandRequestFW.atype() &&
                 ((
-                    socksCommandRequestFW.atype() == 1 &&
+                    socksCommandRequestFW.atype() == SOCKS_ADDRESS_IP4 &&
                     equalFlyweights(socksCommandRequestFW.socksAddress(), routeEx.socksAddress().ipv4Address())
                 ) ||
                 (
-                    socksCommandRequestFW.atype() == 3 &&
+                    socksCommandRequestFW.atype() == SOCKS_ADDRESS_DOMAIN &&
                         ((StringFW)socksCommandRequestFW.socksAddress()).asString()
                             .equalsIgnoreCase(routeEx.socksAddress().domainName().asString())
                 ) ||
                 (
-                    socksCommandRequestFW.atype() == 4 &&
+                    socksCommandRequestFW.atype() == SOCKS_ADDRESS_IP6 &&
                     equalFlyweights(socksCommandRequestFW.socksAddress(), routeEx.socksAddress().ipv6Address())
-                )
-                );
+                ));
         };
         return context.router.resolve(0L, filter, this::wrapRoute);
     }

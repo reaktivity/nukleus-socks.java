@@ -15,8 +15,6 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.server;
 
-import java.util.Optional;
-
 import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.metadata.State;
@@ -28,7 +26,6 @@ import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.TcpBeginExFW;
 
 final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 {
@@ -86,9 +83,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         {
             correlation.connectReplyThrottle(connectReplyThrottle);
             correlation.connectReplyStreamId(connectReplyId);
-            final TcpBeginExFW tcpBeginEx = begin.extension().get(context.tcpBeginExRO::wrap);
-            Optional<TcpBeginExFW> connectionInfo = Optional.of(tcpBeginEx);
-            correlation.acceptTransitionListener().transitionToConnectionReady(connectionInfo);
+            correlation.acceptTransitionListener().transitionToConnectionReady();
             this.streamState = this::afterBeginOrData;
         }
         else
