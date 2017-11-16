@@ -135,7 +135,12 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         case DataFW.TYPE_ID:
             final DataFW data = context.dataRO.wrap(buffer, index, index + length);
             receivedConnectReplyBytes += data.payload().sizeof();
-            handleNegotiationResponse(data);
+            handleFragmentedData(
+                data,
+                context.socksNegotiationResponseRO,
+                this::handleFullNegotiationFlyweight,
+                correlation.acceptThrottle(),
+                correlation.acceptStreamId());
             break;
         case EndFW.TYPE_ID:
             final EndFW end = context.endRO.wrap(buffer, index, index + length);
@@ -149,16 +154,6 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             doReset(connectReplyThrottle, connectReplyStreamId);
             break;
         }
-    }
-
-    private void handleNegotiationResponse(DataFW data)
-    {
-        handleFragmentedData(
-            data,
-            context.socksNegotiationResponseRO,
-            this::handleFullNegotiationFlyweight,
-            correlation.acceptThrottle(),
-            correlation.acceptStreamId());
     }
 
     private void handleFullNegotiationFlyweight(
@@ -189,7 +184,12 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         case DataFW.TYPE_ID:
             final DataFW data = context.dataRO.wrap(buffer, index, index + length);
             receivedConnectReplyBytes += data.payload().sizeof();
-            handleConnectionResponse(data);
+            handleFragmentedData(
+                data,
+                context.socksConnectionResponseRO,
+                this::handleFullConnectionFlyweight,
+                correlation.acceptThrottle(),
+                correlation.acceptStreamId());
             break;
         case EndFW.TYPE_ID:
             final EndFW end = context.endRO.wrap(buffer, index, index + length);
@@ -203,16 +203,6 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             doReset(connectReplyThrottle, connectReplyStreamId);
             break;
         }
-    }
-
-    private void handleConnectionResponse(DataFW data)
-    {
-        handleFragmentedData(
-            data,
-            context.socksConnectionResponseRO,
-            this::handleFullConnectionFlyweight,
-            correlation.acceptThrottle(),
-            correlation.acceptStreamId());
     }
 
     private void handleFullConnectionFlyweight(
@@ -235,7 +225,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
             doWindow(
                 correlation.connectReplyThrottle(),
                 correlation.connectReplyStreamId(),
-                acceptReplyCredit - receivedConnectReplyBytes - socksInitialWindow,
+                acceptReplyCredit - (socksInitialWindow - receivedConnectReplyBytes),
                 acceptReplyPadding);
         }
         else

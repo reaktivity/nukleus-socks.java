@@ -176,7 +176,12 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         case DataFW.TYPE_ID:
             final DataFW data = context.dataRO.wrap(buffer, index, index + length);
             receivedAcceptBytes += data.payload().sizeof();
-            handleNegotiationData(data);
+            handleFragmentedData(
+                data,
+                context.socksNegotiationRequestRO,
+                this::handleNegotiationFlyweight,
+                correlation.acceptThrottle(),
+                correlation.acceptStreamId());
             break;
         case EndFW.TYPE_ID:
         case AbortFW.TYPE_ID:
@@ -186,17 +191,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
             break;
         }
-    }
-
-    private void handleNegotiationData(
-        DataFW data)
-    {
-        handleFragmentedData(
-            data,
-            context.socksNegotiationRequestRO,
-            this::handleNegotiationFlyweight,
-            correlation.acceptThrottle(),
-            correlation.acceptStreamId());
     }
 
     private void handleNegotiationFlyweight(
@@ -314,7 +308,12 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         case DataFW.TYPE_ID:
             final DataFW data = context.dataRO.wrap(buffer, index, index + length);
             receivedAcceptBytes += data.payload().sizeof();
-            handleConnectRequestData(data);
+            handleFragmentedData(
+                data,
+                context.socksConnectionRequestRO,
+                this::handleConnectRequestFlyweight,
+                correlation.acceptThrottle(),
+                correlation.acceptStreamId());
             break;
         case EndFW.TYPE_ID:
         case AbortFW.TYPE_ID:
@@ -372,17 +371,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             correlation.nextAcceptSignal(this::noop);
             this.streamState = this::afterTargetConnectBegin;
         }
-    }
-
-    private void handleConnectRequestData(
-        DataFW data)
-    {
-        handleFragmentedData(
-            data,
-            context.socksConnectionRequestRO,
-            this::handleConnectRequestFlyweight,
-            correlation.acceptThrottle(),
-            correlation.acceptStreamId());
     }
 
     @State
@@ -454,7 +442,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             doWindow(
                 correlation.acceptThrottle(),
                 correlation.acceptStreamId(),
-                connectCredit - receivedAcceptBytes - socksInitialWindow,
+                connectCredit - (socksInitialWindow - receivedAcceptBytes),
                 connectPadding);
         }
         else
@@ -554,7 +542,11 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         {
         case DataFW.TYPE_ID:
             final DataFW data = context.dataRO.wrap(buffer, index, index + length);
-            handleHighLevelData(data);
+            OctetsFW payload = data.payload();
+            doForwardData(
+                payload,
+                correlation.connectStreamId(),
+                correlation.connectEndpoint());
             break;
         case EndFW.TYPE_ID:
             doEnd(correlation.acceptReplyEndpoint(), correlation.acceptReplyStreamId());
@@ -565,15 +557,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         default:
             doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
         }
-    }
-
-    private void handleHighLevelData(DataFW data)
-    {
-        OctetsFW payload = data.payload();
-        doForwardData(
-            payload,
-            correlation.connectStreamId(),
-            correlation.connectEndpoint());
     }
 
     private void handleAcceptReplyThrottleBeforeHandshake(

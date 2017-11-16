@@ -149,8 +149,8 @@ public abstract class AbstractStreamProcessor
             acceptBuffer.putBytes(0, buffer, offset, size);
             slotWriteOffset += size;                                  // New starting point is moved to the end of the buffer
             buffer = context.bufferPool.buffer(slotIndex);            // Try to decode from the beginning of the buffer
-            offset = 0;                                                    //
-            limit = slotWriteOffset;                                  //
+            offset = 0;
+            limit = slotWriteOffset;
         }
         FragmentedFlyweight.ReadState fragmentationState = to.canWrap(buffer, offset, limit);
         if (fragmentationState == FragmentedFlyweight.ReadState.FULL) // one negotiation request frame is in the buffer
