@@ -15,6 +15,10 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.client;
 
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksProtocolTypes.AUTH_METHOD_NONE;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksProtocolTypes.COMMAND_CONNECT;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksProtocolTypes.SOCKS_VERSION_5;
+
 import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.metadata.Signal;
@@ -62,7 +66,6 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         acceptProcessorState = this::beforeBegin;
         final RouteFW connectRoute = resolveTarget(acceptSourceRef, acceptSourceName);
         final String connectTargetName = connectRoute.target().asString();
-        final MessageConsumer acceptReplyEndpoint = context.router.supplyTarget(acceptSourceName);
         final long acceptReplyStreamId = context.supplyStreamId.getAsLong();
         correlation = new Correlation(
             acceptThrottle,
@@ -242,9 +245,9 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     {
         SocksNegotiationRequestFW socksNegotiationRequestFW = context.socksNegotiationRequestRW
             .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
-            .version((byte) 0x05)
+            .version(SOCKS_VERSION_5)
             .nmethods((byte) 0x01)
-            .method(new byte[]{0x00})
+            .method(new byte[]{AUTH_METHOD_NONE})
             .build();
         doFragmentedData(socksNegotiationRequestFW,
             connectWindowCredit,
@@ -274,8 +277,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         // Reply with Socks version 5 and "NO AUTHENTICATION REQUIRED"
         SocksCommandRequestFW socksConnectRequestFW = context.socksConnectionRequestRW
             .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
-            .version((byte) 0x05)
-            .command((byte) 0x01) // CONNECT
+            .version(SOCKS_VERSION_5)
+            .command(COMMAND_CONNECT)
             .destination(routeEx)
             .build();
         doFragmentedData(socksConnectRequestFW,

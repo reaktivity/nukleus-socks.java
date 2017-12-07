@@ -18,6 +18,12 @@ package org.reaktivity.nukleus.socks.internal.stream.server;
 import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_DOMAIN;
 import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP4;
 import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP6;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksProtocolTypes.AUTH_METHOD_NONE;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksProtocolTypes.AUTH_NO_ACCEPTABLE_METHODS;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksProtocolTypes.COMMAND_CONNECT;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksProtocolTypes.REPLY_COMMAND_NOT_SUPPORTED;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksProtocolTypes.REPLY_SUCCEEDED;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksProtocolTypes.SOCKS_VERSION_5;
 
 import java.util.Arrays;
 
@@ -200,7 +206,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         int limit)
     {
         final SocksNegotiationRequestFW socksNegotiation = flyweight.wrap(buffer, offset, limit);
-        if (socksNegotiation.version() != 0x05)
+        if (socksNegotiation.version() != SOCKS_VERSION_5)
         {
             doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
         }
@@ -208,7 +214,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         byte i = 0;
         for (; i < nmethods; i++)
         {
-            if (socksNegotiation.methods()[0] == (byte) 0x00)
+            if (socksNegotiation.methods()[0] == AUTH_METHOD_NONE)
             {
                 break;
             }
@@ -243,8 +249,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     {
         SocksNegotiationResponseFW socksNegotiationResponseFW = context.socksNegotiationResponseRW
             .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
-            .version((byte) 0x05)
-            .method((byte) 0x00)
+            .version(SOCKS_VERSION_5)
+            .method(AUTH_METHOD_NONE)
             .build();
         doFragmentedData(socksNegotiationResponseFW,
             acceptReplyCredit,
@@ -268,8 +274,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     {
         SocksNegotiationResponseFW socksNegotiationResponseFW = context.socksNegotiationResponseRW
             .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
-            .version((byte) 0x05)
-            .method((byte) 0xFF)
+            .version(SOCKS_VERSION_5)
+            .method(AUTH_NO_ACCEPTABLE_METHODS)
             .build();
         doFragmentedData(socksNegotiationResponseFW,
             acceptReplyCredit,
@@ -332,11 +338,11 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         int limit)
     {
         final SocksCommandRequestFW socksCommandRequestFW = flyweight.wrap(buffer, offset, limit);
-        if (socksCommandRequestFW.version() != 0x05)
+        if (socksCommandRequestFW.version() != SOCKS_VERSION_5)
         {
             doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
         }
-        if (socksCommandRequestFW.command() != 0x01)
+        if (socksCommandRequestFW.command() != COMMAND_CONNECT)
         {
             correlation.nextAcceptSignal(this::attemptFailedConnectionResponse);
             correlation.nextAcceptSignal().accept(true);
@@ -403,8 +409,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         }
         SocksCommandResponseFW socksConnectResponseFW = context.socksConnectionResponseRW
             .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
-            .version((byte) 0x05)
-            .reply((byte) 0x07) // COMMAND NOT SUPPORTED
+            .version(SOCKS_VERSION_5)
+            .reply(REPLY_COMMAND_NOT_SUPPORTED)
             .bind((byte) 0x01, new byte[]{0x00, 0x00, 0x00, 0x00}, 0x00)
             .build();
         doFragmentedData(socksConnectResponseFW,
@@ -462,8 +468,8 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         }
         SocksCommandResponseFW socksConnectResponseFW = context.socksConnectionResponseRW
             .wrap(context.writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, context.writeBuffer.capacity())
-            .version((byte) 0x05)
-            .reply((byte) 0x00) // CONNECT
+            .version(SOCKS_VERSION_5)
+            .reply(REPLY_SUCCEEDED)
             .bind(socksAtyp, socksAddr, socksPort)
             .build();
         doFragmentedData(socksConnectResponseFW,

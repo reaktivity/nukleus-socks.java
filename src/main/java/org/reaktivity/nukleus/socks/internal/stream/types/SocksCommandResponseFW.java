@@ -23,7 +23,6 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.nio.ByteOrder;
 
 import org.agrona.BitUtil;
 import org.agrona.DirectBuffer;
@@ -203,7 +202,8 @@ public class SocksCommandResponseFW extends FragmentedFlyweight<SocksCommandResp
 
     public int port()
     {
-        return buffer().getShort(decodeLimit(buffer(), offset()) - FIELD_SIZEBY_BNDPORT, ByteOrder.BIG_ENDIAN);
+        int portOffset = decodeLimit(buffer(), offset()) - FIELD_SIZEBY_BNDPORT;
+        return (buffer().getByte(portOffset) & 0xff) | ((buffer().getByte(portOffset +1) & 0xff) << 8);
     }
 
     public static final class Builder extends Flyweight.Builder<SocksCommandResponseFW>
@@ -272,8 +272,8 @@ public class SocksCommandResponseFW extends FragmentedFlyweight<SocksCommandResp
             newLimit += addr.length + 2;
             checkLimit(newLimit, maxLimit());
             buffer().putBytes(addrOffset, addr);
-            buffer().putByte(addrOffset + addr.length, (byte) ((port >> 8) & 0xFF));
-            buffer().putByte(addrOffset + addr.length + 1, (byte) (port & 0xFF));
+            buffer().putByte(addrOffset + addr.length, (byte) (port & 0xFF));
+            buffer().putByte(addrOffset + addr.length + 1, (byte) ((port >> 8) & 0xFF));
             limit(newLimit);
             return this;
         }

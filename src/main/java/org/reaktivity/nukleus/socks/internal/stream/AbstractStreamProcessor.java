@@ -122,6 +122,13 @@ public abstract class AbstractStreamProcessor
         final MessageConsumer throttle,
         final long throttleId)
     {
+        if (slotIndex != NO_SLOT)
+        {
+            // Can safely release the buffer
+            context.bufferPool.release(slotIndex);
+            slotWriteOffset = 0;
+            slotIndex = NO_SLOT;
+        }
         final ResetFW reset =
             context.resetRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
@@ -155,7 +162,14 @@ public abstract class AbstractStreamProcessor
         FragmentedFlyweight.ReadState fragmentationState = to.canWrap(buffer, offset, limit);
         if (fragmentationState == FragmentedFlyweight.ReadState.FULL) // one negotiation request frame is in the buffer
         {
-            handler.handle(to, buffer, offset, limit);
+            try
+            {
+                handler.handle(to, buffer, offset, limit);
+            }
+            catch (Exception e)
+            {
+                doReset(throttle, throttleStreamId);
+            }
         }
         else if (fragmentationState == FragmentedFlyweight.ReadState.BROKEN)
         {
@@ -303,13 +317,27 @@ public abstract class AbstractStreamProcessor
 
         if (currentTargetCredit >= payload.sizeof())
         {
-            forwarderComplete.updateSentFullData(payload);
+            try
+            {
+                forwarderComplete.updateSentFullData(payload);
+            }
+            catch (Exception e)
+            {
+                doReset(sourceThrottle, sourceStreamId);
+            }
         }
         else
         {
             if (currentTargetCredit > 0)
             {
+                try
+                {
                 forwarderPartial.updateSentPartialData(payload, currentTargetCredit);
+                }
+                catch (Exception e)
+                {
+                    doReset(sourceThrottle, sourceStreamId);
+                }
             }
             // Buffer the remaining payload. First initialize the buffer
             if (NO_SLOT == (slotIndex = context.bufferPool.acquire(targetStreamId)))

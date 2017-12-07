@@ -15,6 +15,9 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream.client;
 
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksProtocolTypes.REPLY_SUCCEEDED;
+import static org.reaktivity.nukleus.socks.internal.stream.types.SocksProtocolTypes.SOCKS_VERSION_5;
+
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
@@ -163,8 +166,8 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         int limit)
     {
         final SocksNegotiationResponseFW socksNegotiationResponse = flyweight.wrap(buffer, offset, limit);
-        if (socksNegotiationResponse.version() != 0x05 ||
-            socksNegotiationResponse.method() != 0x00)
+        if (socksNegotiationResponse.version() != SOCKS_VERSION_5 ||
+            socksNegotiationResponse.method() != REPLY_SUCCEEDED)
         {
             doReset(connectReplyThrottle, connectReplyStreamId); // TODO diagnostic
         }
@@ -212,8 +215,8 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
         int limit)
     {
         final SocksCommandResponseFW socksConnectionResponse = flyweight.wrap(buffer, offset, limit);
-        if (socksConnectionResponse.version() != 0x05 ||
-            socksConnectionResponse.reply() != 0x00)
+        if (socksConnectionResponse.version() != SOCKS_VERSION_5 ||
+            socksConnectionResponse.reply() != REPLY_SUCCEEDED)
         {
             doReset(connectReplyThrottle, connectReplyStreamId); // TODO diagnostic
         }
