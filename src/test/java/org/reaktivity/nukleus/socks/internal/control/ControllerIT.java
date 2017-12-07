@@ -16,13 +16,19 @@
 package org.reaktivity.nukleus.socks.internal.control;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.hamcrest.Matchers.either;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.rules.RuleChain.outerRule;
 
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
 
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
+import org.junit.rules.ExpectedException;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 import org.kaazing.k3po.junit.annotation.Specification;
@@ -45,6 +51,9 @@ public class ControllerIT
         .responseBufferCapacity(1024)
         .counterValuesBufferCapacity(1024)
         .controller(SocksController.class::isAssignableFrom);
+
+    @Rule
+    public final ExpectedException thrown = ExpectedException.none();
 
     @Rule
     public final TestRule chain = outerRule(k3po).around(timeout)
@@ -226,6 +235,25 @@ public class ControllerIT
 
     @Test
     @Specification({
+        "${unroute}/server/fails.unknown.route/nukleus"
+    })
+    public void shouldFailToUnrouteServerWithUnknownAcceptRouteRef() throws Exception
+    {
+        thrown.expect(either(is(instanceOf(IllegalStateException.class)))
+            .or(is(instanceOf(ExecutionException.class))));
+        thrown.expectCause(either(nullValue(Exception.class)).or(is(instanceOf(IllegalStateException.class))));
+        k3po.start();
+        long sourceRef = new Random().nextLong();
+        long targetRef = new Random().nextLong();
+        reaktor.controller(SocksController.class)
+            .unrouteServer("source", sourceRef, "target", targetRef, "example.com:8080")
+            .get();
+
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
         "${route}/client/domain/nukleus",
         "${unroute}/client/domain/nukleus"
     })
@@ -295,4 +323,24 @@ public class ControllerIT
 
         k3po.finish();
     }
+
+    @Test
+    @Specification({
+        "${unroute}/client/fails.unknown.route/nukleus"
+    })
+    public void shouldFailToUnrouteClientWithUnknownAcceptRouteRef() throws Exception
+    {
+        thrown.expect(either(is(instanceOf(IllegalStateException.class)))
+            .or(is(instanceOf(ExecutionException.class))));
+        thrown.expectCause(either(nullValue(Exception.class)).or(is(instanceOf(IllegalStateException.class))));
+        k3po.start();
+        long sourceRef = new Random().nextLong();
+        long targetRef = new Random().nextLong();
+        reaktor.controller(SocksController.class)
+            .unrouteClient("source", sourceRef, "target", targetRef, "example.com:8080")
+            .get();
+
+        k3po.finish();
+    }
+
 }

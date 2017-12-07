@@ -130,6 +130,16 @@ public class ControlIT
         k3po.finish();
     }
 
+
+    @Test
+    @Specification({
+        "${unroute}/server/fails.unknown.route/controller"
+    })
+    public void shouldUnrouteServerUnknownRoute() throws Exception
+    {
+        k3po.finish();
+    }
+
     @Test
     @Specification({
         "${route}/client/domain/controller",
@@ -156,6 +166,15 @@ public class ControlIT
         "${unroute}/client/ipv6/controller"
     })
     public void shouldUnrouteClientIpv6() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${unroute}/client/fails.unknown.route/controller"
+    })
+    public void shouldUnrouteClientUnknownRoute() throws Exception
     {
         k3po.finish();
     }
