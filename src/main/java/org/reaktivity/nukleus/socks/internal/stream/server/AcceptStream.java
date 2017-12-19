@@ -33,7 +33,7 @@ import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.function.MessagePredicate;
 import org.reaktivity.nukleus.socks.internal.metadata.Signal;
 import org.reaktivity.nukleus.socks.internal.metadata.State;
-import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamProcessor;
+import org.reaktivity.nukleus.socks.internal.stream.AbstractStream;
 import org.reaktivity.nukleus.socks.internal.stream.AcceptTransitionListener;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
@@ -54,7 +54,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-public final class AcceptStreamProcessor extends AbstractStreamProcessor implements AcceptTransitionListener
+public final class AcceptStream extends AbstractStream implements AcceptTransitionListener
 {
     private final int socksInitialWindow;
 
@@ -76,7 +76,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
 
     final Correlation correlation;
 
-    public AcceptStreamProcessor(
+    public AcceptStream(
         Context context,
         MessageConsumer acceptThrottle,
         long acceptStreamId,
@@ -353,6 +353,10 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
                 correlation.acceptSourceRef(),
                 correlation.acceptSourceName(),
                 socksCommandRequestFW);
+            if (connectRoute == null)
+            {
+                doReset(correlation.acceptThrottle(), correlation.acceptStreamId());
+            }
             final String connectTargetName = connectRoute.target().asString();
             final MessageConsumer connectEndpoint = context.router.supplyTarget(connectTargetName);
             final long connectTargetRef = connectRoute.targetRef();

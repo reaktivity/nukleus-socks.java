@@ -20,7 +20,7 @@ import java.lang.annotation.RetentionPolicy;
 
 /**
     Marker annotation for methods that override MessageConsumer.accept
-    defining the state of Stream Processors
+    defining the state of Streams
 */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface State

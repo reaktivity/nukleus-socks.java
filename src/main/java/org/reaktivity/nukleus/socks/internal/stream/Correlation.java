@@ -69,7 +69,7 @@ public class Correlation
     // CONNECT-REPLY stream identifier
     private long connectReplyStreamId;
 
-    // Invoked from the ConnectReplyProcessor or AcceptProcessor. Sends data if window available.
+    // Invoked from the ConnectReplyStream or AcceptStream, sends data if window available.
     private Consumer<Boolean> nextAcceptSignal;
 
     public Correlation(

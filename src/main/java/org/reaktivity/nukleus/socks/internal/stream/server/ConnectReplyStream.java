@@ -18,7 +18,7 @@ package org.reaktivity.nukleus.socks.internal.stream.server;
 import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.metadata.State;
-import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamProcessor;
+import org.reaktivity.nukleus.socks.internal.stream.AbstractStream;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
@@ -27,7 +27,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 
-final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
+final class ConnectReplyStream extends AbstractStream
 {
     private final MessageConsumer connectReplyThrottle;
     private final long connectReplyId;
@@ -36,7 +36,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 
     private Correlation correlation;
 
-    ConnectReplyStreamProcessor(
+    ConnectReplyStream(
         Context context,
         MessageConsumer connectReplyThrottle,
         long connectReplyId)

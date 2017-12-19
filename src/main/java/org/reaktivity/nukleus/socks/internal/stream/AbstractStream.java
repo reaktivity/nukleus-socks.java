@@ -37,7 +37,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-public abstract class AbstractStreamProcessor
+public abstract class AbstractStream
 {
     protected final Context context;
 
@@ -47,7 +47,7 @@ public abstract class AbstractStreamProcessor
 
     protected int attemptOffset;
 
-    public AbstractStreamProcessor(Context context)
+    public AbstractStream(Context context)
     {
         this.context = context;
     }
@@ -114,6 +114,7 @@ public abstract class AbstractStreamProcessor
             .streamId(throttleId)
             .credit(credit)
             .padding(padding)
+            .groupId(0L)
             .build();
         throttle.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
     }
@@ -162,14 +163,7 @@ public abstract class AbstractStreamProcessor
         FragmentedFlyweight.ReadState fragmentationState = to.canWrap(buffer, offset, limit);
         if (fragmentationState == FragmentedFlyweight.ReadState.FULL) // one negotiation request frame is in the buffer
         {
-            try
-            {
-                handler.handle(to, buffer, offset, limit);
-            }
-            catch (Exception e)
-            {
-                doReset(throttle, throttleStreamId);
-            }
+            handler.handle(to, buffer, offset, limit);
         }
         else if (fragmentationState == FragmentedFlyweight.ReadState.BROKEN)
         {
@@ -212,6 +206,8 @@ public abstract class AbstractStreamProcessor
             DataFW dataFW = context.dataRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(targetStreamId)
+                .groupId(0L)
+                .padding(0)
                 .payload(p -> p.set(
                     flyweight.buffer(),
                     flyweight.offset() + attemptOffset,
@@ -230,6 +226,8 @@ public abstract class AbstractStreamProcessor
             DataFW dataFW = context.dataRW
                 .wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
                 .streamId(targetStreamId)
+                .groupId(0L)
+                .padding(0)
                 .payload(p -> p.set(
                     flyweight.buffer(),
                     flyweight.offset() + attemptOffset,
@@ -280,6 +278,8 @@ public abstract class AbstractStreamProcessor
     {
         DataFW dataForwardFW = context.dataRW.wrap(context.writeBuffer, 0, context.writeBuffer.capacity())
             .streamId(streamId)
+            .groupId(0L)
+            .padding(0)
             .payload(p -> p.set(
                 payloadBuffer,
                 payloadOffset,
@@ -317,27 +317,13 @@ public abstract class AbstractStreamProcessor
 
         if (currentTargetCredit >= payload.sizeof())
         {
-            try
-            {
-                forwarderComplete.updateSentFullData(payload);
-            }
-            catch (Exception e)
-            {
-                doReset(sourceThrottle, sourceStreamId);
-            }
+            forwarderComplete.updateSentFullData(payload);
         }
         else
         {
             if (currentTargetCredit > 0)
             {
-                try
-                {
                 forwarderPartial.updateSentPartialData(payload, currentTargetCredit);
-                }
-                catch (Exception e)
-                {
-                    doReset(sourceThrottle, sourceStreamId);
-                }
             }
             // Buffer the remaining payload. First initialize the buffer
             if (NO_SLOT == (slotIndex = context.bufferPool.acquire(targetStreamId)))

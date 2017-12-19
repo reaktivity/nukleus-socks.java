@@ -23,7 +23,7 @@ import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.metadata.Signal;
 import org.reaktivity.nukleus.socks.internal.metadata.State;
-import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamProcessor;
+import org.reaktivity.nukleus.socks.internal.stream.AbstractStream;
 import org.reaktivity.nukleus.socks.internal.stream.AcceptTransitionListener;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
@@ -39,11 +39,11 @@ import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-public final class AcceptStreamProcessor extends AbstractStreamProcessor implements AcceptTransitionListener
+public final class AcceptStream extends AbstractStream implements AcceptTransitionListener
 {
 
     // Current handler of incoming BEGIN, DATA, END, ABORT frames on the ACCEPT stream
-    private MessageConsumer acceptProcessorState;
+    private MessageConsumer acceptState;
 
     private final Correlation correlation;
 
@@ -53,7 +53,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     boolean isConnectReplyStateReady = false;
 
     // One instance per Stream
-    AcceptStreamProcessor(
+    AcceptStream(
         Context context,
         MessageConsumer acceptThrottle,
         long acceptStreamId,
@@ -63,8 +63,15 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     {
         super(context);
         // init state machine
-        acceptProcessorState = this::beforeBegin;
+        acceptState = this::beforeBegin;
         final RouteFW connectRoute = resolveTarget(acceptSourceRef, acceptSourceName);
+        if (connectRoute == null)
+        {
+            correlation = null;
+            acceptState = this::beforeConnect;
+            doReset(acceptThrottle, acceptStreamId);
+            return;
+        }
         final String connectTargetName = connectRoute.target().asString();
         final long acceptReplyStreamId = context.supplyStreamId.getAsLong();
         correlation = new Correlation(
@@ -91,7 +98,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
         int index,
         int length)
     {
-        acceptProcessorState.accept(msgTypeId, buffer, index, length);
+        acceptState.accept(msgTypeId, buffer, index, length);
     }
 
     @State
@@ -124,7 +131,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
             correlation.connectStreamId(),
             correlation.connectTargetRef(),
             correlation.connectCorrelationId());
-        this.acceptProcessorState = this::beforeConnect;
+        this.acceptState = this::beforeConnect;
     }
 
     @State
@@ -298,7 +305,7 @@ public final class AcceptStreamProcessor extends AbstractStreamProcessor impleme
     @Override
     public void transitionToConnectionReady()
     {
-        this.acceptProcessorState = this::afterConnect;
+        this.acceptState = this::afterConnect;
         context.router.setThrottle(
             correlation.connectTargetName(),
             correlation.connectStreamId(),

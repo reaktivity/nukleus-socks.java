@@ -22,7 +22,7 @@ import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.socks.internal.metadata.State;
-import org.reaktivity.nukleus.socks.internal.stream.AbstractStreamProcessor;
+import org.reaktivity.nukleus.socks.internal.stream.AbstractStream;
 import org.reaktivity.nukleus.socks.internal.stream.Context;
 import org.reaktivity.nukleus.socks.internal.stream.Correlation;
 import org.reaktivity.nukleus.socks.internal.stream.types.FragmentedFlyweight;
@@ -36,7 +36,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 
-final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
+final class ConnectReplyStream extends AbstractStream
 {
 
     private final int socksInitialWindow;
@@ -53,7 +53,7 @@ final class ConnectReplyStreamProcessor extends AbstractStreamProcessor
 
     private int receivedConnectReplyBytes;
 
-    ConnectReplyStreamProcessor(
+    ConnectReplyStream(
         Context context,
         MessageConsumer connectReplyThrottle,
         long connectReplyId)

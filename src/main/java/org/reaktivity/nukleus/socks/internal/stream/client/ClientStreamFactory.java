@@ -90,7 +90,7 @@ public class ClientStreamFactory implements StreamFactory
         final RouteFW route = context.router.resolve(0L, filter, this::wrapRoute);
         if (route != null)
         {
-            return new AcceptStreamProcessor(
+            return new AcceptStream(
                 context,
                 acceptThrottle,
                 begin.streamId(),
@@ -106,7 +106,7 @@ public class ClientStreamFactory implements StreamFactory
         final BeginFW begin,
         final MessageConsumer connectReplyThrottle)
     {
-        return new ConnectReplyStreamProcessor(context, connectReplyThrottle, begin.streamId())::handleStream;
+        return new ConnectReplyStream(context, connectReplyThrottle, begin.streamId())::handleStream;
     }
 
     private RouteFW wrapRoute(
