@@ -18,7 +18,6 @@ package org.reaktivity.nukleus.socks.internal.streams.forward.client;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.rules.RuleChain.outerRule;
 
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
@@ -85,45 +84,6 @@ public class ConnectionIT
         "${server}/client.connect.send.data/ipv6/server"
     })
     public void shouldSendDataBothWaysIpv6() throws Exception
-    {
-        k3po.finish();
-    }
-
-    @Ignore("Sending other method than 0x00 not supported in client")
-    @Test
-    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
-    @Specification({
-        "${route}/client/controller",
-        "${client}/client.does.not.connect.no.acceptable.methods/client",
-        "${server}/client.does.not.connect.no.acceptable.methods/server"
-    })
-    public void shouldNotEstablishConnectionNoAcceptableMethods() throws Exception
-    {
-        k3po.finish();
-    }
-
-    @Ignore("Multiple authentication methods not supported in client")
-    @Test
-    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
-    @Specification({
-        "${route}/client/controller",
-        "${client}/client.connect.fallback.to.no.authentication/client",
-        "${server}/client.connect.fallback.to.no.authentication/server"
-    })
-    public void shouldEstablishConnectionFallbackToNoAuthentication() throws Exception
-    {
-        k3po.finish();
-    }
-
-    @Ignore("Sending other command than 0x01 not supported in client")
-    @Test
-    @ScriptProperty("serverAccept 'nukleus://target/streams/socks#source'")
-    @Specification({
-        "${route}/client/controller",
-        "${client}/client.connect.request.with.command.not.supported/client",
-        "${server}/client.connect.request.with.command.not.supported/server"
-    })
-    public void shouldNotEstablishConnectionCommandNotSupported() throws Exception
     {
         k3po.finish();
     }

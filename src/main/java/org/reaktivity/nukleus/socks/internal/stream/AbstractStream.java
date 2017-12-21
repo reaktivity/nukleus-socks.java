@@ -347,7 +347,7 @@ public abstract class AbstractStream
         FragmentedForwarderBufferData forwarderBufferData,
         FragmentedForwarderBufferEmpty forwarderBufferEmpty)
     {
-        if (this.slotWriteOffset == 0)
+        if (this.slotIndex == NO_SLOT)
         {
             forwarderBufferEmpty.updateEmptyBuffer(true);
             return;
