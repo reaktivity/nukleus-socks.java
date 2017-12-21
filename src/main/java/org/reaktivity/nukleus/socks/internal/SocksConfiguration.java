@@ -21,7 +21,7 @@ public class SocksConfiguration extends Configuration
 {
     public static final String SOCKS_INITIAL_WINDOW = "nukleus.socks.initial.window";
 
-    private static final int SOCKS_INITIAL_WINDOW_DEFAULT = 65536;
+    private static final int SOCKS_INITIAL_WINDOW_DEFAULT = 300;
 
     public SocksConfiguration(
         Configuration config)

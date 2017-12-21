@@ -53,7 +53,7 @@ public class ThrottlingIT
     @Parameterized.Parameters
     public static Collection<Object[]> data()
     {
-        return Arrays.asList(new Object[][]{{400}, {10000}, {65536}});
+        return Arrays.asList(new Object[][]{{300}, {10000}, {65536}});
     }
 
     public ThrottlingIT(int socksInitialWindow)
