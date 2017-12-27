@@ -70,7 +70,6 @@ public abstract class AbstractStream
             .source("socks")
             .sourceRef(sourceRef)
             .correlationId(correlationId)
-            .extension(e -> e.reset())
             .build();
         streamConsumer.accept(
             beginToAcceptReply.typeId(),
@@ -284,7 +283,6 @@ public abstract class AbstractStream
                 payloadBuffer,
                 payloadOffset,
                 payloadLength))
-            .extension(e -> e.reset())
             .build();
         streamEndpoint.accept(
             dataForwardFW.typeId(),
