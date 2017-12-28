@@ -17,7 +17,6 @@ package org.reaktivity.nukleus.socks.internal;
 
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteOrder.nativeOrder;
-import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_DOMAIN;
 import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP4;
 import static org.reaktivity.nukleus.socks.internal.stream.types.SocksAddressTypes.SOCKS_ADDRESS_IP6;
 
@@ -183,7 +182,7 @@ public final class SocksController implements Controller
             unroute.sizeof());
     }
 
-    private Flyweight.Builder.Visitor visitRouteEx(
+    protected Flyweight.Builder.Visitor visitRouteEx(
         String dstAddrPort)
     {
         int lastColonIndex = dstAddrPort.lastIndexOf(":");
@@ -193,7 +192,6 @@ public final class SocksController implements Controller
         }
         String t0 = dstAddrPort.substring(0, lastColonIndex);
         String t1 = dstAddrPort.substring(lastColonIndex + 1);
-        // TODO Ipv6 syntax should be supported
         final int port = Integer.parseInt(t1);
         int tmpKind = -1;
         byte[] a = null;
@@ -217,10 +215,6 @@ public final class SocksController implements Controller
             {
             }
         }
-        else
-        {
-            tmpKind = SOCKS_ADDRESS_DOMAIN;
-        }
         final int kind = tmpKind;
         final byte[] address = a;
         return (MutableDirectBuffer buffer, int offset, int limit) ->
@@ -231,13 +225,13 @@ public final class SocksController implements Controller
                     {
                         builder.ipv4Address(builder1 -> builder1.set(address));
                     }
-                    if (kind == SOCKS_ADDRESS_DOMAIN)
-                    {
-                        builder.domainName(t0);
-                    }
-                    if (kind == SOCKS_ADDRESS_IP6)
+                    else if (kind == SOCKS_ADDRESS_IP6)
                     {
                         builder.ipv6Address(builder12 -> builder12.set(address));
+                    }
+                    else
+                    {
+                        builder.domainName(t0);
                     }
                 })
                 .socksPort(port)
