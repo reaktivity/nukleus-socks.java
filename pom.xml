@@ -57,7 +57,7 @@
   
   <dependencies>    
     <dependency>    
-      <groupId>org.reaktivity</groupId>   
+      <groupId>org.reaktivity</groupId>
       <artifactId>nukleus-socks.spec</artifactId>    
       <version>${nukleus.socks.spec.version}</version>   
       <scope>provided</scope>   

@@ -16,7 +16,27 @@
 package org.reaktivity.nukleus.socks.internal.stream;
 
 import org.reaktivity.nukleus.stream.StreamFactory;
+import org.reaktivity.nukleus.socks.internal.SocksConfiguration;
+import org.reaktivity.nukleus.function.MessageConsumer;
+import org.agrona.DirectBuffer;
+
 public final class SocksServerFactory implements StreamFactory
 {
+    private final SocksConfiguration config;
+    public SocksServerFactory(SocksConfiguration config)
+    {
+        this.config = config;
+    }
+
+    @Override
+    public MessageConsumer newStream(
+            int msgTypeId,
+            DirectBuffer buffer,
+            int index,
+            int length,
+            MessageConsumer throttle)
+    {
+            return null;
+    }
 
 }

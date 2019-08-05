@@ -15,9 +15,113 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream;
 
+import java.util.function.IntUnaryOperator;
+import java.util.function.LongFunction;
+import java.util.function.LongSupplier;
+import java.util.function.LongUnaryOperator;
+import java.util.function.Supplier;
+import java.util.function.ToIntFunction;
+
+import org.agrona.MutableDirectBuffer;
+import org.reaktivity.nukleus.buffer.BufferPool;
+import org.reaktivity.nukleus.route.RouteManager;
+import org.reaktivity.nukleus.stream.StreamFactory;
 import org.reaktivity.nukleus.stream.StreamFactoryBuilder;
+import org.reaktivity.nukleus.socks.internal.SocksConfiguration;
 
 public final class SocksServerFactoryBuilder implements StreamFactoryBuilder
 {
+    private final SocksConfiguration config;
 
+    private RouteManager router;
+    private MutableDirectBuffer writeBuffer;
+    private LongUnaryOperator supplyInitialId;
+    private LongUnaryOperator supplyReplyId;
+    private LongSupplier supplyTraceId;
+    private Supplier<BufferPool> supplyBufferPool;
+    private ToIntFunction<String> supplyTypeId;
+
+    public SocksServerFactoryBuilder(
+            SocksConfiguration config)
+    {
+        this.config = config;
+    }
+
+    @Override
+    public SocksServerFactoryBuilder setRouteManager(
+            RouteManager router)
+    {
+        this.router = router;
+        return this;
+    }
+
+    @Override
+    public SocksServerFactoryBuilder setWriteBuffer(
+            MutableDirectBuffer writeBuffer)
+    {
+        this.writeBuffer = writeBuffer;
+        return this;
+    }
+
+    @Override
+    public SocksServerFactoryBuilder setInitialIdSupplier(
+            LongUnaryOperator supplyInitialId)
+    {
+        this.supplyInitialId = supplyInitialId;
+        return this;
+    }
+
+    @Override
+    public StreamFactoryBuilder setReplyIdSupplier(
+            LongUnaryOperator supplyReplyId)
+    {
+        this.supplyReplyId = supplyReplyId;
+        return this;
+    }
+
+    @Override
+    public SocksServerFactoryBuilder setGroupBudgetClaimer(
+            LongFunction<IntUnaryOperator> groupBudgetClaimer)
+    {
+        return this;
+    }
+
+    @Override
+    public SocksServerFactoryBuilder setGroupBudgetReleaser(
+            LongFunction<IntUnaryOperator> groupBudgetReleaser)
+    {
+        return this;
+    }
+
+    @Override
+    public StreamFactoryBuilder setBufferPoolSupplier(
+            Supplier<BufferPool> supplyBufferPool)
+    {
+        this.supplyBufferPool = supplyBufferPool;
+        return this;
+    }
+
+    @Override
+    public StreamFactoryBuilder setTraceSupplier(
+            LongSupplier supplyTraceId)
+    {
+        this.supplyTraceId = supplyTraceId;
+        return this;
+    }
+
+    @Override
+    public StreamFactoryBuilder setTypeIdSupplier(
+            ToIntFunction<String> supplyTypeId)
+    {
+        this.supplyTypeId = supplyTypeId;
+        return this;
+    }
+
+    @Override
+    public StreamFactory build()
+    {
+        final BufferPool bufferPool = supplyBufferPool.get();
+
+        return new SocksServerFactory(config);
+    }
 }
