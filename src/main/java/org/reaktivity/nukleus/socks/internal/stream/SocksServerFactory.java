@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright 2016-2019 The Reaktivity Project
  *
  * The Reaktivity Project licenses this file to you under the Apache License,
@@ -13,23 +13,10 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+package org.reaktivity.nukleus.socks.internal.stream;
 
-scope protocol
+import org.reaktivity.nukleus.stream.StreamFactory;
+public final class SocksServerFactory implements StreamFactory
 {
-    option byteorder network;
 
-    scope codec
-    {
-        enum SocksPacketType
-        {
-            CONNECT,
-            BID
-        }
-
-        struct Binary
-        {
-          uint16 length;
-          octets[length] bytes;
-        }
-    }
 }

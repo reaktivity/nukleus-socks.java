@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright 2016-2019 The Reaktivity Project
  *
  * The Reaktivity Project licenses this file to you under the Apache License,
@@ -13,23 +13,37 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+package org.reaktivity.nukleus.socks.internal;
 
-scope protocol
+import org.reaktivity.nukleus.Nukleus;
+
+public final class SocksNukleus implements Nukleus
 {
-    option byteorder network;
+    public static final String NAME = "socks";
 
-    scope codec
+    private final SocksConfiguration config;
+
+    SocksNukleus(
+           SocksConfiguration config)
     {
-        enum SocksPacketType
-        {
-            CONNECT,
-            BID
-        }
+        this.config = config;
+    }
 
-        struct Binary
-        {
-          uint16 length;
-          octets[length] bytes;
-        }
+    @Override
+    public String name()
+    {
+        return SocksNukleus.NAME;
+    }
+
+    @Override
+    public SocksConfiguration config()
+    {
+        return config;
+    }
+
+    @Override
+    public SocksElektron supplyElektron()
+    {
+        return new SocksElektron(config);
     }
 }

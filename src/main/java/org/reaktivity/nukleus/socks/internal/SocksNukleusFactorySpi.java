@@ -15,7 +15,21 @@
  */
 package org.reaktivity.nukleus.socks.internal;
 
-public final class MqttNukleusFactorySpi
-{
+import org.reaktivity.nukleus.Configuration;
+import org.reaktivity.nukleus.NukleusFactorySpi;
 
+public final class SocksNukleusFactorySpi implements NukleusFactorySpi
+{
+    @Override
+    public String name()
+    {
+        return SocksNukleus.NAME;
+    }
+
+    @Override
+    public SocksNukleus create(
+            Configuration config)
+    {
+        return new SocksNukleus(new SocksConfiguration(config));
+    }
 }
