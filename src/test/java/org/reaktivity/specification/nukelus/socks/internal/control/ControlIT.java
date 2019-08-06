@@ -13,48 +13,32 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+package java.org.reaktivity.specification.nukelus.socks.internal.control;
 
-package org.reaktivity.nukleus.socks.internal;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.junit.rules.RuleChain.outerRule;
-import static org.reaktivity.reaktor.test.ReaktorRule.EXTERNAL_AFFINITY_MASK;
-
-import org.junit.Rule;
-import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
-import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
 import org.reaktivity.reaktor.test.ReaktorRule;
 
-public class ConnectionIT
-{
-    private final K3poRule k3po = new K3poRule()
-        .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route");
+import static java.util.concurrent.TimeUnit.SECONDS;
 
-    private final TestRule timeout = new DisableOnDebug(new Timeout(10, SECONDS));
+public class ControlIT {
+
+    private final K3poRule k3po = new K3poRule()
+            .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
+            .addScriptRoot("routeExt", "org/reaktivity/specification/nukleus/socks/control/route.ext")
+            .addScriptRoot("unroute", "org/reaktivity/specification/nukleus/socks/control/unroute");
+
+    private final TestRule timeout = new DisableOnDebug(new Timeout(5, SECONDS));
 
     private final ReaktorRule reaktor = new ReaktorRule()
             .directory("target/nukleus-itests")
             .commandBufferCapacity(1024)
             .responseBufferCapacity(1024)
             .counterValuesBufferCapacity(4096)
-            .nukleus("socks"::equals)
-            .affinityMask("target#0", EXTERNAL_AFFINITY_MASK)
-            .clean();
+            .nukleus("socks"::equals);
 
-    @Rule
-    public final TestRule chain = outerRule(reaktor).around(k3po).around(timeout);
 
-    @Test
-    @Specification({
-            "${route}/server/controller",
-            "${client}/connect/successful/client"})
-    public void shouldExchangeConnectAndConnackPackets() throws Exception
-    {
-        k3po.finish();
-    }
 
 }
