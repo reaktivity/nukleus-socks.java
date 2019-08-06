@@ -14,7 +14,7 @@
  * under the License.
  */
 
-package org.reaktivity.nukleus.socks.internal.control;
+package org.reaktivity.nukleus.socks.internal;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.rules.RuleChain.outerRule;
@@ -32,9 +32,31 @@ import org.reaktivity.reaktor.test.ReaktorRule;
 public class ConnectionIT
 {
     private final K3poRule k3po = new K3poRule()
-        .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
-         .addScriptRoot("client", "org/reaktivity/specification/socks");
+        .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route");
 
     private final TestRule timeout = new DisableOnDebug(new Timeout(10, SECONDS));
+
+    private final ReaktorRule reaktor = new ReaktorRule()
+            .directory("target/nukleus-itests")
+            .commandBufferCapacity(1024)
+            .responseBufferCapacity(1024)
+            .counterValuesBufferCapacity(4096)
+            .nukleus("socks"::equals)
+            .affinityMask("target#0", EXTERNAL_AFFINITY_MASK)
+            .clean();
+
+    @Rule
+    public final TestRule chain = outerRule(reaktor).around(k3po).around(timeout);
+
+    @Test
+    @Specification({
+            "${route}/server/controller",
+            "${client}/connect/successful/client"})
+    public void shouldExchangeConnectAndConnackPackets() throws Exception
+    {
+        k3po.finish();
+    }
+
+
 
 }
