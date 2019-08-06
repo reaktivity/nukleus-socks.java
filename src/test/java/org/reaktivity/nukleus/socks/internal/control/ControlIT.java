@@ -13,23 +13,24 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package java.org.reaktivity.specification.nukelus.socks.internal.control;
+package org.reaktivity.nukleus.socks.internal.control;
 
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
+import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
 import org.reaktivity.reaktor.test.ReaktorRule;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.junit.rules.RuleChain.outerRule;
 
-public class ControlIT {
-
+public class ControlIT
+{
     private final K3poRule k3po = new K3poRule()
-            .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
-            .addScriptRoot("routeExt", "org/reaktivity/specification/nukleus/socks/control/route.ext")
-            .addScriptRoot("unroute", "org/reaktivity/specification/nukleus/socks/control/unroute");
-
+            .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route");
     private final TestRule timeout = new DisableOnDebug(new Timeout(5, SECONDS));
 
     private final ReaktorRule reaktor = new ReaktorRule()
@@ -38,7 +39,18 @@ public class ControlIT {
             .responseBufferCapacity(1024)
             .counterValuesBufferCapacity(4096)
             .nukleus("socks"::equals);
+    @Rule
+    public final TestRule chain = outerRule(k3po).around(timeout).around(reaktor);
 
+    @Test
+    @Specification({
+            "${route}/server/routed.domain/nukleus",
+            "${route}/server/routed.domain/controller"
+    })
+    public void shouldRouteServerWithDomainAddress() throws Exception
+    {
+        k3po.finish();
+    }
 
 
 }

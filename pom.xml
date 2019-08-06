@@ -208,7 +208,7 @@
         <version>0.8.2</version>
         <configuration>
         <excludes>    
-            <exclude>org/reaktivity/nukleus/mqtt/internal/types/**/*.class</exclude>    
+            <exclude>org/reaktivity/nukleus/socks/internal/types/**/*.class</exclude>
         </excludes>
           <rules>
             <rule>
