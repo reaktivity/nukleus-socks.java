@@ -48,13 +48,4 @@ public class ConnectionIT
     @Rule
     public final TestRule chain = outerRule(reaktor).around(k3po).around(timeout);
 
-    @Test
-    @Specification({
-            "${route}/server/controller",
-            "${client}/connect/successful/client"})
-    public void shouldExchangeConnectAndConnackPackets() throws Exception
-    {
-        k3po.finish();
-    }
-
 }

@@ -15,8 +15,40 @@
  */
 package org.reaktivity.nukleus.socks.internal;
 
+import com.google.gson.Gson;
+import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.reaktivity.nukleus.Controller;
+import org.reaktivity.nukleus.ControllerSpi;
 
-public abstract  class SocksController implements Controller {
+import static java.nio.ByteBuffer.allocateDirect;
+import static java.nio.ByteOrder.nativeOrder;
+
+public final class SocksController implements Controller
+{
+    private static final int MAX_SEND_LENGTH = 1024;
+    private final ControllerSpi controllerSpi;
+    private final MutableDirectBuffer commandBuffer;
+    private final MutableDirectBuffer extensionBuffer;
+    private final Gson gson;
+
+    public SocksController(
+            ControllerSpi controllerSpi)
+    {
+        this.controllerSpi = controllerSpi;
+        this.commandBuffer = new UnsafeBuffer(allocateDirect(MAX_SEND_LENGTH).order(nativeOrder()));
+        this.extensionBuffer = new UnsafeBuffer(allocateDirect(MAX_SEND_LENGTH).order(nativeOrder()));
+        this.gson = new Gson();
+    }
+    @Override
+    public String name()
+    {
+        return SocksNukleus.NAME;
+    }
+    @Override
+    public int process()
+    {
+        return controllerSpi.doProcess();
+    }
 
 }

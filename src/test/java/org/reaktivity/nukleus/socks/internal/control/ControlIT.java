@@ -30,7 +30,8 @@ import static org.junit.rules.RuleChain.outerRule;
 public class ControlIT
 {
     private final K3poRule k3po = new K3poRule()
-            .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route");
+            .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
+            .addScriptRoot("unroute", "org/reaktivity/specification/nukleus/socks/control/unroute");
     private final TestRule timeout = new DisableOnDebug(new Timeout(5, SECONDS));
 
     private final ReaktorRule reaktor = new ReaktorRule()
@@ -44,11 +45,136 @@ public class ControlIT
 
     @Test
     @Specification({
-            "${route}/server/routed.domain/nukleus",
             "${route}/server/routed.domain/controller"
     })
     public void shouldRouteServerWithDomainAddress() throws Exception
     {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${route}/server/routed.ipv4/controller"
+    })
+    public void shouldRouteServerWithIPv4Address() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${route}/server/routed.ipv6/controller"
+    })
+    public void shouldRouteServerWithIPv6Address() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${route}/client/routed.ipv4/controller"
+    })
+    public void shouldRouteClientWithIPv4Address() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${route}/client/routed.ipv6/controller"
+    })
+    public void shouldRouteClientWithIPv6Address() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${route}/server.reverse/routed.domain/controller"
+    })
+    public void shouldRouteReverseServerWithDomainAddress() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${route}/client.reverse/routed.domain/controller"
+    })
+    public void shouldRouteReverseClientWithDomainAddress() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${route}/client.reverse/routed.ipv4/controller"
+    })
+    public void shouldRouteReverseClientWithIPv4Address() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${route}/client.reverse/routed.ipv6/controller"
+    })
+    public void shouldRouteReverseClientWithIPv6Address() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${unroute}/server/controller"
+    })
+    public void shouldUnrouteServer() throws Exception
+    {
+        k3po.start();
+        k3po.notifyBarrier("ROUTED_SERVER");
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${unroute}/unknown/controller"
+    })
+    public void shouldNotUnrouteUnknown() throws Exception
+    {
+        k3po.start();
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${unroute}/client/controller"
+    })
+    public void shouldUnrouteClient() throws Exception
+    {
+        k3po.start();
+        k3po.notifyBarrier("ROUTED_CLIENT");
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${unroute}/server.reverse/controller"
+    })
+    public void shouldUnrouteReverseServer() throws Exception
+    {
+        k3po.start();
+        k3po.notifyBarrier("ROUTED_SERVER_REVERSE");
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${unroute}/client.reverse/controller"
+    })
+    public void shouldUnrouteReverseClient() throws Exception
+    {
+        k3po.start();
+        k3po.notifyBarrier("ROUTED_CLIENT_REVERSE");
         k3po.finish();
     }
 

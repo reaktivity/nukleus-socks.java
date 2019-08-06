@@ -15,5 +15,30 @@
  */
 package org.reaktivity.nukleus.socks.internal;
 
-public class SocksControllerFactorySpi {
+import org.reaktivity.nukleus.Configuration;
+import org.reaktivity.nukleus.ControllerBuilder;
+import org.reaktivity.nukleus.ControllerFactorySpi;
+
+public class SocksControllerFactorySpi implements ControllerFactorySpi<SocksController>
+{
+    @Override
+    public String name()
+    {
+        return SocksNukleus.NAME;
+    }
+
+    @Override
+    public Class<SocksController> kind()
+    {
+        return SocksController.class;
+    }
+
+    @Override
+    public SocksController create(
+            Configuration config,
+            ControllerBuilder<SocksController> builder)
+    {
+        return builder.setFactory(SocksController::new)
+                .build();
+    }
 }
