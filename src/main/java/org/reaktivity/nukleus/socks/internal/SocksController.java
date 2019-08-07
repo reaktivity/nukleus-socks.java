@@ -16,10 +16,20 @@
 package org.reaktivity.nukleus.socks.internal;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.reaktivity.nukleus.Controller;
 import org.reaktivity.nukleus.ControllerSpi;
+import org.reaktivity.nukleus.route.RouteKind;
+import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
+import org.reaktivity.nukleus.socks.internal.types.Flyweight;
+import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
+import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
+import org.reaktivity.nukleus.socks.internal.types.control.Role;
+import java.util.concurrent.CompletableFuture;
 
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteOrder.nativeOrder;
@@ -30,7 +40,12 @@ public final class SocksController implements Controller
     private final ControllerSpi controllerSpi;
     private final MutableDirectBuffer commandBuffer;
     private final MutableDirectBuffer extensionBuffer;
+    private final SocksRouteExFW.Builder routeExRW = new SocksRouteExFW.Builder();
+
     private final Gson gson;
+
+    private final RouteFW.Builder routeRw = new RouteFW.Builder();
+    private final OctetsFW extensionRO = new OctetsFW().wrap(new UnsafeBuffer(new byte[0]), 0, 0);
 
     public SocksController(
             ControllerSpi controllerSpi)
@@ -50,5 +65,61 @@ public final class SocksController implements Controller
     {
         return controllerSpi.doProcess();
     }
+
+    public CompletableFuture<Long> route(
+            RouteKind kind,
+            String localAddress,
+            String remoteAddress)
+    {
+        return route(kind, localAddress, remoteAddress, null);
+    }
+
+    public CompletableFuture<Long> route(
+            RouteKind kind,
+            String localAddress,
+            String remoteAddress,
+            String extension)
+    {
+        Flyweight routeEx = extensionRO;
+
+        if (extension != null)
+        {
+            final JsonParser parser = new JsonParser();
+            final JsonElement element = parser.parse(extension);
+            if (element.isJsonObject())
+            {
+                final JsonObject object = (JsonObject) element;
+                final String topic = gson.fromJson(object.get("topic"), String.class);
+
+                routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
+                        .build();
+            }
+        }
+
+        return doRoute(kind, localAddress, remoteAddress, routeEx);
+    }
+
+    private CompletableFuture<Long> doRoute(
+            RouteKind kind,
+            String localAddress,
+            String remoteAddress,
+            Flyweight extension)
+    {
+        final long correlationId = controllerSpi.nextCorrelationId();
+        final Role role = Role.valueOf(kind.ordinal());
+
+        final RouteFW route = routeRw.wrap(commandBuffer, 0, commandBuffer.capacity())
+                .correlationId(correlationId)
+                .nukleus(name())
+                .role(b -> b.set(role))
+                .localAddress(localAddress)
+                .remoteAddress(remoteAddress)
+                .extension(extension.buffer(), extension.offset(), extension.sizeof())
+                .build();
+        return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
+    }
+
+
+
 
 }

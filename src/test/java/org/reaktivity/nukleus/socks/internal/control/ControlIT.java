@@ -127,7 +127,8 @@ public class ControlIT
 
     @Test
     @Specification({
-            "${unroute}/server/controller"
+            "${unroute}/server/controller",
+            "${unroute}/server/nukleus"
     })
     public void shouldUnrouteServer() throws Exception
     {
@@ -148,7 +149,8 @@ public class ControlIT
 
     @Test
     @Specification({
-            "${unroute}/client/controller"
+            "${unroute}/client/controller",
+            "${unroute}/client/nukleus"
     })
     public void shouldUnrouteClient() throws Exception
     {
@@ -159,7 +161,8 @@ public class ControlIT
 
     @Test
     @Specification({
-            "${unroute}/server.reverse/controller"
+            "${unroute}/server.reverse/controller",
+            "${unroute}/server.reverse/nukleus"
     })
     public void shouldUnrouteReverseServer() throws Exception
     {
@@ -170,6 +173,7 @@ public class ControlIT
 
     @Test
     @Specification({
+            "${unroute}/client.reverse/nukleus",
             "${unroute}/client.reverse/controller"
     })
     public void shouldUnrouteReverseClient() throws Exception
