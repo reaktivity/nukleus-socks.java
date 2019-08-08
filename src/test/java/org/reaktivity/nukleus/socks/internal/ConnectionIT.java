@@ -37,13 +37,13 @@ public class ConnectionIT
     private final TestRule timeout = new DisableOnDebug(new Timeout(10, SECONDS));
 
     private final ReaktorRule reaktor = new ReaktorRule()
-            .directory("target/nukleus-itests")
-            .commandBufferCapacity(1024)
-            .responseBufferCapacity(1024)
-            .counterValuesBufferCapacity(4096)
-            .nukleus("socks"::equals)
-            .affinityMask("target#0", EXTERNAL_AFFINITY_MASK)
-            .clean();
+        .directory("target/nukleus-itests")
+        .commandBufferCapacity(1024)
+        .responseBufferCapacity(1024)
+        .counterValuesBufferCapacity(4096)
+        .nukleus("socks"::equals)
+        .affinityMask("target#0", EXTERNAL_AFFINITY_MASK)
+        .clean();
 
     @Rule
     public final TestRule chain = outerRule(reaktor).around(k3po).around(timeout);

@@ -32,23 +32,23 @@ import static org.reaktivity.nukleus.route.RouteKind.SERVER;
 
 public class ControllerIT {
     private final K3poRule k3po = new K3poRule()
-            .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
-            .addScriptRoot("unroute", "org/reaktivity/specification/nukleus/socks/control/unroute");
+        .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
+        .addScriptRoot("unroute", "org/reaktivity/specification/nukleus/socks/control/unroute");
 
     private final TestRule timeout = new DisableOnDebug(new Timeout(5, SECONDS));
 
     private final ReaktorRule reaktor = new ReaktorRule()
-            .directory("target/nukleus-itests")
-            .commandBufferCapacity(1024)
-            .responseBufferCapacity(1024)
-            .counterValuesBufferCapacity(4096)
-            .controller("socks"::equals);
+        .directory("target/nukleus-itests")
+        .commandBufferCapacity(1024)
+        .responseBufferCapacity(1024)
+        .counterValuesBufferCapacity(4096)
+        .controller("socks"::equals);
 
     private final Gson gson = new Gson();
 
     @Test
     @Specification({
-            "${route}/server/nukleus"
+        "${route}/server/nukleus"
     })
     public void shouldRouteServer() throws Exception
     {
@@ -63,7 +63,7 @@ public class ControllerIT {
 
     @Test
     @Specification({
-            "${routeExt}/server/nukleus"
+        "${routeExt}/server/nukleus"
     })
     public void shouldRouteServerWithExt() throws Exception
     {

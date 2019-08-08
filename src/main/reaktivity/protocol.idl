@@ -23,7 +23,7 @@ scope protocol
         enum SocksPacketType
         {
             CONNECT,
-            BID
+            BIND
         }
 
         struct Binary
