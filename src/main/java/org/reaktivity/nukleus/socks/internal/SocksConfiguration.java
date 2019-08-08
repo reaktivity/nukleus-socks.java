@@ -28,7 +28,7 @@ public class SocksConfiguration extends Configuration
     }
 
     public SocksConfiguration(
-            Configuration config)
+        Configuration config)
     {
         super(SOCKS_CONFIG, config);
     }

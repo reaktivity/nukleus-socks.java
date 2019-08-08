@@ -48,7 +48,7 @@ public final class SocksController implements Controller
     private final OctetsFW extensionRO = new OctetsFW().wrap(new UnsafeBuffer(new byte[0]), 0, 0);
 
     public SocksController(
-            ControllerSpi controllerSpi)
+        ControllerSpi controllerSpi)
     {
         this.controllerSpi = controllerSpi;
         this.commandBuffer = new UnsafeBuffer(allocateDirect(MAX_SEND_LENGTH).order(nativeOrder()));
@@ -67,18 +67,17 @@ public final class SocksController implements Controller
     }
 
     public CompletableFuture<Long> route(
-            RouteKind kind,
-            String localAddress,
-            String remoteAddress)
+        RouteKind kind,
+        String localAddress,
+        String remoteAddress)
     {
         return route(kind, localAddress, remoteAddress, null);
     }
 
-    public CompletableFuture<Long> route(
-            RouteKind kind,
-            String localAddress,
-            String remoteAddress,
-            String extension)
+    public CompletableFuture<Long> route(RouteKind kind,
+        String localAddress,
+        String remoteAddress,
+        String extension)
     {
         Flyweight routeEx = extensionRO;
 
@@ -100,10 +99,10 @@ public final class SocksController implements Controller
     }
 
     private CompletableFuture<Long> doRoute(
-            RouteKind kind,
-            String localAddress,
-            String remoteAddress,
-            Flyweight extension)
+        RouteKind kind,
+        String localAddress,
+        String remoteAddress,
+        Flyweight extension)
     {
         final long correlationId = controllerSpi.nextCorrelationId();
         final Role role = Role.valueOf(kind.ordinal());

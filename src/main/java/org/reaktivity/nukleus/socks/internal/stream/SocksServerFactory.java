@@ -30,13 +30,13 @@ public final class SocksServerFactory implements StreamFactory
 
     @Override
     public MessageConsumer newStream(
-            int msgTypeId,
-            DirectBuffer buffer,
-            int index,
-            int length,
-            MessageConsumer throttle)
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length,
+        MessageConsumer throttle)
     {
-            return null;
+        return null;
     }
 
 }

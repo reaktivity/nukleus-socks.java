@@ -24,7 +24,7 @@ public final class SocksNukleus implements Nukleus
     private final SocksConfiguration config;
 
     SocksNukleus(
-           SocksConfiguration config)
+        SocksConfiguration config)
     {
         this.config = config;
     }

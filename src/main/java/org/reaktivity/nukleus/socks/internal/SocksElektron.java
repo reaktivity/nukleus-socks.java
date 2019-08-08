@@ -31,7 +31,7 @@ final class SocksElektron implements Elektron
     private final Map<RouteKind, StreamFactoryBuilder> buildersByKind;
 
     SocksElektron(
-            SocksConfiguration config)
+        SocksConfiguration config)
     {
         final EnumMap<RouteKind, StreamFactoryBuilder> buildersByKind = new EnumMap<>(RouteKind.class);
         buildersByKind.put(SERVER, new SocksServerFactoryBuilder(config));
@@ -40,7 +40,7 @@ final class SocksElektron implements Elektron
 
     @Override
     public StreamFactoryBuilder streamFactoryBuilder(
-            RouteKind kind)
+        RouteKind kind)
     {
         return buildersByKind.get(kind);
     }

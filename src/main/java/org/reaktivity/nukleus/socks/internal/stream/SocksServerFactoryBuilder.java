@@ -42,14 +42,14 @@ public final class SocksServerFactoryBuilder implements StreamFactoryBuilder
     private ToIntFunction<String> supplyTypeId;
 
     public SocksServerFactoryBuilder(
-            SocksConfiguration config)
+        SocksConfiguration config)
     {
         this.config = config;
     }
 
     @Override
     public SocksServerFactoryBuilder setRouteManager(
-            RouteManager router)
+        RouteManager router)
     {
         this.router = router;
         return this;
@@ -57,7 +57,7 @@ public final class SocksServerFactoryBuilder implements StreamFactoryBuilder
 
     @Override
     public SocksServerFactoryBuilder setWriteBuffer(
-            MutableDirectBuffer writeBuffer)
+        MutableDirectBuffer writeBuffer)
     {
         this.writeBuffer = writeBuffer;
         return this;
@@ -65,7 +65,7 @@ public final class SocksServerFactoryBuilder implements StreamFactoryBuilder
 
     @Override
     public SocksServerFactoryBuilder setInitialIdSupplier(
-            LongUnaryOperator supplyInitialId)
+        LongUnaryOperator supplyInitialId)
     {
         this.supplyInitialId = supplyInitialId;
         return this;
@@ -73,7 +73,7 @@ public final class SocksServerFactoryBuilder implements StreamFactoryBuilder
 
     @Override
     public StreamFactoryBuilder setReplyIdSupplier(
-            LongUnaryOperator supplyReplyId)
+        LongUnaryOperator supplyReplyId)
     {
         this.supplyReplyId = supplyReplyId;
         return this;
@@ -81,21 +81,21 @@ public final class SocksServerFactoryBuilder implements StreamFactoryBuilder
 
     @Override
     public SocksServerFactoryBuilder setGroupBudgetClaimer(
-            LongFunction<IntUnaryOperator> groupBudgetClaimer)
+        LongFunction<IntUnaryOperator> groupBudgetClaimer)
     {
         return this;
     }
 
     @Override
     public SocksServerFactoryBuilder setGroupBudgetReleaser(
-            LongFunction<IntUnaryOperator> groupBudgetReleaser)
+        LongFunction<IntUnaryOperator> groupBudgetReleaser)
     {
         return this;
     }
 
     @Override
     public StreamFactoryBuilder setBufferPoolSupplier(
-            Supplier<BufferPool> supplyBufferPool)
+        Supplier<BufferPool> supplyBufferPool)
     {
         this.supplyBufferPool = supplyBufferPool;
         return this;
@@ -103,7 +103,7 @@ public final class SocksServerFactoryBuilder implements StreamFactoryBuilder
 
     @Override
     public StreamFactoryBuilder setTraceSupplier(
-            LongSupplier supplyTraceId)
+        LongSupplier supplyTraceId)
     {
         this.supplyTraceId = supplyTraceId;
         return this;
@@ -111,7 +111,7 @@ public final class SocksServerFactoryBuilder implements StreamFactoryBuilder
 
     @Override
     public StreamFactoryBuilder setTypeIdSupplier(
-            ToIntFunction<String> supplyTypeId)
+        ToIntFunction<String> supplyTypeId)
     {
         this.supplyTypeId = supplyTypeId;
         return this;

@@ -28,7 +28,7 @@ public final class SocksNukleusFactorySpi implements NukleusFactorySpi
 
     @Override
     public SocksNukleus create(
-            Configuration config)
+        Configuration config)
     {
         return new SocksNukleus(new SocksConfiguration(config));
     }

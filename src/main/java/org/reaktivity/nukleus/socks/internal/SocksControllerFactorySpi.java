@@ -35,8 +35,8 @@ public class SocksControllerFactorySpi implements ControllerFactorySpi<SocksCont
 
     @Override
     public SocksController create(
-            Configuration config,
-            ControllerBuilder<SocksController> builder)
+        Configuration config,
+        ControllerBuilder<SocksController> builder)
     {
         return builder.setFactory(SocksController::new)
                 .build();
