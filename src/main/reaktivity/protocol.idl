@@ -31,5 +31,11 @@ scope protocol
           uint16 length;
           octets[length] bytes;
         }
+
+        struct SocksIdentifier
+        {
+          unit8 version;
+          unit16 methods;
+        }
     }
 }
