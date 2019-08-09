@@ -103,7 +103,7 @@ public class ConnectionIT
     @Specification({
         "${route}/server/controller",
         "${forward}/connected.then.client.abort/server",
-        "${client}/rfc1928/connect/connected.then.client.abort/client"
+        "${client}/rfc1928/connect/connected.then.client.abort/clint"
     })
     public void shouldConnectedThenClientAbort() throws Exception
     {
