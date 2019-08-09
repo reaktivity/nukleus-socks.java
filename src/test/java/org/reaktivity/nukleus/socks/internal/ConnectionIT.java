@@ -33,6 +33,8 @@ public class ConnectionIT
 {
     private final K3poRule k3po = new K3poRule()
         .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
+        .addScriptRoot("forward", "org/reaktivity/specification/nukleus/socks/streams/forward")
+        //.addScriptRoot("reverse", "org/reaktivity/specification/nukleus/socks/streams/reverse")
         .addScriptRoot("client", "org/reaktivity/specification/socks");
 
     private final TestRule timeout = new DisableOnDebug(new Timeout(10, SECONDS));
@@ -52,16 +54,32 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
+        "${forward}/connected.domain/server",
         "${client}/rfc1928/connect/connected.domain/client"
     })
-    public void shouldConnectedDomain() throws Exception
+    public void shouldForwardConnectedDomain() throws Exception
     {
         k3po.finish();
     }
 
+    /**
+    @Test
+    @Specification({
+            "${route}/server/controller",
+            "${forward}/connected.domain/server",
+            "${client}/rfc1928/connect/connected.domain/client",
+            "${reverse}/accepted.domain/server",
+    })
+    public void shouldForwardConnectedDomainThenAccepted() throws Exception
+    {
+        k3po.finish();
+    }
+     **/
+
     @Test
     @Specification({
         "${route}/server/controller",
+        "${forward}/connected.ipv4/server",
         "${client}/rfc1928/connect/connected.ipv4/client"
     })
     public void shouldConnectedIpv4() throws Exception
@@ -72,6 +90,7 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
+        "${forward}/connected.ipv6/server",
         "${client}/rfc1928/connect/connected.ipv6/client"
     })
     public void shouldConnectedIpv6() throws Exception
@@ -83,6 +102,7 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
+        "${forward}/connected.then.client.abort/server",
         "${client}/rfc1928/connect/connected.then.client.abort/client"
     })
     public void shouldConnectedThenClientAbort() throws Exception
@@ -93,6 +113,7 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
+        "${forward}/connected.then.client.close/server",
         "${client}/rfc1928/connect/connected.then.client.close/client"
     })
     public void shouldConnectedThenClientClose() throws Exception
@@ -103,6 +124,7 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
+        "${forward}/connected.then.client.reset/server",
         "${client}/rfc1928/connect/connected.then.client.reset/client"
     })
     public void shouldConnectedThenClientReset() throws Exception
@@ -113,6 +135,52 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
+        "${forward}/connected.then.client.write.data/server",
+        "${client}/rfc1928/connect/connected.then.client.write.data/client"
+    })
+    public void shouldConnectedThenClientWriteData() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${route}/server/controller",
+            "${forward}/connected.then.server.abort/server",
+            "${client}/rfc1928/connect/connected.then.server.abort/client"
+    })
+    public void shouldConnectedThenServerAbort() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${route}/server/controller",
+            "${forward}/connected.then.server.close/server",
+            "${client}/rfc1928/connect/connected.then.server.close/client"
+    })
+    public void shouldConnectedThenServerClose() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+            "${route}/server/controller",
+            "${forward}/connected.then.server.reset/server",
+            "${client}/rfc1928/connect/connected.then.server.reset/client"
+    })
+    public void shouldConnectedThenServerReset() throws Exception
+    {
+        k3po.finish();
+    }
+
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${forward}/connected.then.server.write.data/server",
         "${client}/rfc1928/connect/connected.then.server.write.data/client"
     })
     public void shouldConnectedThenServerWriteData() throws Exception
@@ -123,6 +191,7 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
+        //"${forward}/rejected.address.type.not.supported/server",
         "${client}/rfc1928/connect/rejected.address.type.not.supported/client"
     })
     public void shouldRejectedAddressTypeNotSupported() throws Exception
@@ -133,6 +202,7 @@ public class ConnectionIT
     @Test
     @Specification({
         "${route}/server/controller",
+        //"${forward}/rejected.connection.not.allowed.by.ruleset/server",
         "${client}/rfc1928/connect/rejected.connection.not.allowed.by.ruleset/client"
     })
     public void shouldRejectedConnectionNotAllowedByRuleset() throws Exception
