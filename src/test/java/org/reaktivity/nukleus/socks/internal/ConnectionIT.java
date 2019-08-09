@@ -34,7 +34,6 @@ public class ConnectionIT
     private final K3poRule k3po = new K3poRule()
         .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
         .addScriptRoot("forward", "org/reaktivity/specification/nukleus/socks/streams/forward")
-        //.addScriptRoot("reverse", "org/reaktivity/specification/nukleus/socks/streams/reverse")
         .addScriptRoot("client", "org/reaktivity/specification/socks");
 
     private final TestRule timeout = new DisableOnDebug(new Timeout(10, SECONDS));
@@ -53,7 +52,7 @@ public class ConnectionIT
 
     @Test
     @Specification({
-        "${route}/server/controller",
+        "${route}/server/routed.domain/controller",
         "${forward}/connected.domain/server",
         "${client}/rfc1928/connect/connected.domain/client"
     })
@@ -78,7 +77,7 @@ public class ConnectionIT
 
     @Test
     @Specification({
-        "${route}/server/controller",
+        "${route}/server/routed.ipv4/controller",
         "${forward}/connected.ipv4/server",
         "${client}/rfc1928/connect/connected.ipv4/client"
     })
@@ -89,7 +88,7 @@ public class ConnectionIT
 
     @Test
     @Specification({
-        "${route}/server/controller",
+        "${route}/server/routed.ipv6/controller",
         "${forward}/connected.ipv6/server",
         "${client}/rfc1928/connect/connected.ipv6/client"
     })
