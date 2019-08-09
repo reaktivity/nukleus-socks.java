@@ -32,7 +32,8 @@ import org.reaktivity.reaktor.test.ReaktorRule;
 public class ConnectionIT
 {
     private final K3poRule k3po = new K3poRule()
-        .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route");
+        .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
+        .addScriptRoot("client", "org/reaktivity/specification/socks");
 
     private final TestRule timeout = new DisableOnDebug(new Timeout(10, SECONDS));
 
@@ -47,5 +48,110 @@ public class ConnectionIT
 
     @Rule
     public final TestRule chain = outerRule(reaktor).around(k3po).around(timeout);
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/rfc1928/connect/connected.domain/client"
+    })
+    public void shouldConnectedDomain() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/rfc1928/connect/connected.ipv4/client"
+    })
+    public void shouldConnectedIpv4() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/rfc1928/connect/connected.ipv6/client"
+    })
+    public void shouldConnectedIpv6() throws Exception
+    {
+        k3po.finish();
+    }
+
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/rfc1928/connect/connected.then.client.abort/client"
+    })
+    public void shouldConnectedThenClientAbort() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/rfc1928/connect/connected.then.client.close/client"
+    })
+    public void shouldConnectedThenClientClose() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/rfc1928/connect/connected.then.client.reset/client"
+    })
+    public void shouldConnectedThenClientReset() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/rfc1928/connect/connected.then.server.write.data/client"
+    })
+    public void shouldConnectedThenServerWriteData() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/rfc1928/connect/rejected.address.type.not.supported/client"
+    })
+    public void shouldRejectedAddressTypeNotSupported() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/rfc1928/connect/rejected.connection.not.allowed.by.ruleset/client"
+    })
+    public void shouldRejectedConnectionNotAllowedByRuleset() throws Exception
+    {
+        k3po.finish();
+    }
+
+
+    @Test
+    @Specification({
+        "${route}/server/controller",
+        "${client}/rfc1928/connect/rejected.connection.refused/client"
+    })
+    public void shouldRejectedConnectionRefused() throws Exception
+    {
+        k3po.finish();
+    }
+
+
+
 
 }

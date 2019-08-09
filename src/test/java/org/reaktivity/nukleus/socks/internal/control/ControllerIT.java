@@ -17,7 +17,7 @@ package org.reaktivity.nukleus.socks.internal.control;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import org.junit.Rule;
+//import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
@@ -30,7 +30,8 @@ import org.reaktivity.nukleus.socks.internal.SocksController;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.reaktivity.nukleus.route.RouteKind.SERVER;
 
-public class ControllerIT {
+public class ControllerIT
+{
     private final K3poRule k3po = new K3poRule()
         .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
         .addScriptRoot("unroute", "org/reaktivity/specification/nukleus/socks/control/unroute");

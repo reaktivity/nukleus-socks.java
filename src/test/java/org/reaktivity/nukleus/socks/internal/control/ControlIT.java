@@ -30,23 +30,22 @@ import static org.junit.rules.RuleChain.outerRule;
 public class ControlIT
 {
     private final K3poRule k3po = new K3poRule()
-            .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
-            .addScriptRoot("unroute", "org/reaktivity/specification/nukleus/socks/control/unroute");
-    
+        .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
+        .addScriptRoot("unroute", "org/reaktivity/specification/nukleus/socks/control/unroute");
     private final TestRule timeout = new DisableOnDebug(new Timeout(5, SECONDS));
 
     private final ReaktorRule reaktor = new ReaktorRule()
-            .directory("target/nukleus-itests")
-            .commandBufferCapacity(1024)
-            .responseBufferCapacity(1024)
-            .counterValuesBufferCapacity(4096)
-            .nukleus("socks"::equals);
+        .directory("target/nukleus-itests")
+        .commandBufferCapacity(1024)
+        .responseBufferCapacity(1024)
+        .counterValuesBufferCapacity(4096)
+        .nukleus("socks"::equals);
     @Rule
     public final TestRule chain = outerRule(k3po).around(timeout).around(reaktor);
 
     @Test
     @Specification({
-            "${route}/server/routed.domain/controller"
+        "${route}/server/routed.domain/controller"
     })
     public void shouldRouteServerWithDomainAddress() throws Exception
     {
@@ -55,7 +54,7 @@ public class ControlIT
 
     @Test
     @Specification({
-            "${route}/server/routed.ipv4/controller"
+        "${route}/server/routed.ipv4/controller"
     })
     public void shouldRouteServerWithIPv4Address() throws Exception
     {
@@ -64,7 +63,7 @@ public class ControlIT
 
     @Test
     @Specification({
-            "${route}/server/routed.ipv6/controller"
+        "${route}/server/routed.ipv6/controller"
     })
     public void shouldRouteServerWithIPv6Address() throws Exception
     {
@@ -73,7 +72,7 @@ public class ControlIT
 
     @Test
     @Specification({
-            "${route}/client/routed.ipv4/controller"
+        "${route}/client/routed.ipv4/controller"
     })
     public void shouldRouteClientWithIPv4Address() throws Exception
     {
@@ -82,7 +81,7 @@ public class ControlIT
 
     @Test
     @Specification({
-            "${route}/client/routed.ipv6/controller"
+        "${route}/client/routed.ipv6/controller"
     })
     public void shouldRouteClientWithIPv6Address() throws Exception
     {
@@ -91,7 +90,7 @@ public class ControlIT
 
     @Test
     @Specification({
-            "${route}/server.reverse/routed.domain/controller"
+        "${route}/server.reverse/routed.domain/controller"
     })
     public void shouldRouteReverseServerWithDomainAddress() throws Exception
     {
