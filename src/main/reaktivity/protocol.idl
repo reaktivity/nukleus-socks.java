@@ -43,8 +43,8 @@ scope protocol
 
         struct SocksHandshake
         {
-          uint8 version = 5;
-          uint16 methods;
+            uint8 version = 5;
+            uint16 methods;
         }
 
         union SocksAddress switch (uint8)
@@ -56,20 +56,20 @@ scope protocol
 
         struct SocksRequest
         {
-          uint8 version = 5;
-          SocksCommandType command;
-          uint8 reserved = 0;
-          SocksAddress address;
-          uint32 port;
+            uint8 version = 5;
+            SocksCommandType command;
+            uint8 reserved = 0;
+            SocksAddress address;
+            uint32 port;
         }
 
         struct SocksResponse
         {
-          uint8 version = 5;
-          SocksReplyType reply;
-          uint8 reserved = 0;
-          SocksAddress address;
-          uint32 port;
+            uint8 version = 5;
+            SocksReplyType reply;
+            uint8 reserved = 0;
+            SocksAddress address;
+            uint32 port;
         }
     }
 }
