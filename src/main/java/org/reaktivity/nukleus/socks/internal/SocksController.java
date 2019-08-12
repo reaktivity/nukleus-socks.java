@@ -72,6 +72,11 @@ public final class SocksController implements Controller
         controllerSpi.doClose();
     }
 
+    @Override
+    public Class<SocksController> kind()
+    {
+        return SocksController.class;
+    }
     public CompletableFuture<Long> route(
         RouteKind kind,
         String localAddress,
