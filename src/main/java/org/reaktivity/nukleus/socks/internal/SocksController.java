@@ -85,7 +85,8 @@ public final class SocksController implements Controller
         return route(kind, localAddress, remoteAddress, null);
     }
 
-    public CompletableFuture<Long> route(RouteKind kind,
+    public CompletableFuture<Long> route(
+        RouteKind kind,
         String localAddress,
         String remoteAddress,
         String extension)

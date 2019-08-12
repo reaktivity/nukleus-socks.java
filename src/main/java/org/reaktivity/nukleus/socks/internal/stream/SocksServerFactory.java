@@ -16,7 +16,7 @@
 package org.reaktivity.nukleus.socks.internal.stream;
 
 import org.agrona.MutableDirectBuffer;
-import org.agrona.collections.Long2ObjectHashMap;
+//import org.agrona.collections.Long2ObjectHashMap;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageFunction;
@@ -70,10 +70,10 @@ public final class SocksServerFactory implements StreamFactory
     }
 
     private RouteFW wrapRoute(
-            int msgTypeId,
-            DirectBuffer buffer,
-            int index,
-            int length)
+        int msgTypeId,
+        DirectBuffer buffer,
+        int index,
+        int length)
     {
         return routeRO.wrap(buffer, index, index + length);
     }
@@ -107,16 +107,15 @@ public final class SocksServerFactory implements StreamFactory
         private int slotLimit;
 
         private SocksServer(
-                MessageConsumer network,
-                long routeId,
-                long initialId,
-                long replyId)
+            MessageConsumer network,
+            long routeId,
+            long initialId,
+            long replyId)
         {
             this.network = network;
             this.routeId = routeId;
             this.initialId = initialId;
             this.replyId = replyId;
-            //this.decodeState = this::decodeConnectPacket;
         }
 
     }

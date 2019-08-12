@@ -28,7 +28,6 @@ import org.reaktivity.nukleus.route.RouteManager;
 import org.reaktivity.nukleus.stream.StreamFactory;
 import org.reaktivity.nukleus.stream.StreamFactoryBuilder;
 import org.reaktivity.nukleus.socks.internal.SocksConfiguration;
-import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 
 public final class SocksServerFactoryBuilder implements StreamFactoryBuilder
 {
