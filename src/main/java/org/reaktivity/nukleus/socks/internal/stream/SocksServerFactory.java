@@ -89,7 +89,8 @@ public final class SocksServerFactory implements StreamFactory
         return null;
     }
 
-    private final class SocksServer {
+    private final class SocksServer
+    {
         private final MessageConsumer network;
         private final long routeId;
         private final long initialId;
@@ -104,6 +105,19 @@ public final class SocksServerFactory implements StreamFactory
         private DecoderState decodeState;
         private int slotIndex = NO_SLOT;
         private int slotLimit;
+
+        private SocksServer(
+                MessageConsumer network,
+                long routeId,
+                long initialId,
+                long replyId)
+        {
+            this.network = network;
+            this.routeId = routeId;
+            this.initialId = initialId;
+            this.replyId = replyId;
+            //this.decodeState = this::decodeConnectPacket;
+        }
 
     }
 
