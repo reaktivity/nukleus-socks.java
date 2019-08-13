@@ -15,10 +15,17 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream;
 
-import org.agrona.MutableDirectBuffer;
+import static java.util.Objects.requireNonNull;
+import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
+import java.util.function.LongSupplier;
+import java.util.function.LongUnaryOperator;
+
+import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.Long2ObjectHashMap;
 import org.agrona.concurrent.UnsafeBuffer;
+import org.agrona.DirectBuffer;
+
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageFunction;
 import org.reaktivity.nukleus.function.MessagePredicate;
@@ -26,7 +33,6 @@ import org.reaktivity.nukleus.route.RouteManager;
 import org.reaktivity.nukleus.stream.StreamFactory;
 import org.reaktivity.nukleus.socks.internal.SocksConfiguration;
 import org.reaktivity.nukleus.function.MessageConsumer;
-import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
@@ -34,15 +40,10 @@ import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.SignalFW;
-
-import java.util.function.LongSupplier;
-import java.util.function.LongUnaryOperator;
-
-import static java.util.Objects.requireNonNull;
-import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
-
-import org.reaktivity.nukleus.socks.internal.types.stream.SocksBeginExFW;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.SocksBeginExFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.SocksAbortExFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.SocksEndExFW;
 
 public final class SocksServerFactory implements StreamFactory
 {
@@ -56,9 +57,16 @@ public final class SocksServerFactory implements StreamFactory
     private final SignalFW signalRO = new SignalFW();
 
     private final BeginFW.Builder beginRW = new BeginFW.Builder();
-
+    private final DataFW.Builder dataRW = new DataFW.Builder();
+    private final EndFW.Builder endRW = new EndFW.Builder();
+    private final AbortFW.Builder abortRW = new AbortFW.Builder();
+    private final WindowFW.Builder windowRW = new WindowFW.Builder();
+    private final ResetFW.Builder resetRW = new ResetFW.Builder();
+    private final SignalFW.Builder signalRW = new SignalFW.Builder();
 
     private final SocksBeginExFW.Builder socksBeginExRW = new SocksBeginExFW.Builder();
+    private final SocksEndExFW.Builder socksEndExRW = new SocksEndExFW.Builder();
+
     private final RouteManager router;
     private final MutableDirectBuffer writeBuffer;
     private final MutableDirectBuffer encodeBuffer;
@@ -144,7 +152,6 @@ public final class SocksServerFactory implements StreamFactory
         final RouteFW route = router.resolve(routeId, begin.authorization(), filter, this::wrapRoute);
         MessageConsumer newStream = null;
 
-
         if (route != null)
         {
             final SocksServer connection = new SocksServer(sender, routeId, initialId, replyId);
@@ -225,6 +232,18 @@ public final class SocksServerFactory implements StreamFactory
                     final AbortFW abort = abortRO.wrap(buffer, index, index + length);
                     onAbort(abort);
                     break;
+                case WindowFW.TYPE_ID:
+                    final WindowFW window = windowRO.wrap(buffer, index, index + length);
+                    onWindow(window);
+                    break;
+                case ResetFW.TYPE_ID:
+                    final ResetFW reset = resetRO.wrap(buffer, index, index + length);
+                    onReset(reset);
+                    break;
+                case SignalFW.TYPE_ID:
+                    final SignalFW signal = signalRO.wrap(buffer, index, index + length);
+                    onSignal(signal);
+                    break;
                 default:
                     break;
             }
@@ -234,6 +253,52 @@ public final class SocksServerFactory implements StreamFactory
             BeginFW begin)
         {
             doBegin(supplyTraceId.getAsLong());
+        }
+
+        private void onData(
+            DataFW data)
+        {
+            //TODO
+        }
+
+        private void onEnd(
+            EndFW end)
+        {
+            final long traceId = end.trace();
+            doEnd(traceId);
+        }
+
+        private void onAbort(
+            AbortFW abort)
+        {
+            final long traceId = abort.trace();
+            doAbort(traceId);
+        }
+
+        private void onWindow(
+            WindowFW window)
+        {
+            final int replyCredit = window.credit();
+
+            replyBudget += replyCredit;
+            replyPadding += window.padding();
+
+            final int initialCredit = bufferPool.slotCapacity() - initialBudget;
+            doWindow(supplyTraceId.getAsLong(), initialCredit);
+        }
+
+        private void onReset(
+            ResetFW reset)
+        {
+            final long traceId = reset.trace();
+            doReset(traceId);
+        }
+
+        private void onSignal(
+            SignalFW signal)
+        {
+            final long traceId = signal.trace();
+            doSignal(traceId);
         }
 
         private void doBegin(
