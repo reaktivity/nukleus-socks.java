@@ -19,6 +19,7 @@ import static java.util.Objects.requireNonNull;
 import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandType;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksRequestFW;
 
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
@@ -67,6 +68,8 @@ public final class SocksServerFactory implements StreamFactory
 
     private final SocksBeginExFW.Builder socksBeginExRW = new SocksBeginExFW.Builder();
     private final SocksEndExFW.Builder socksEndExRW = new SocksEndExFW.Builder();
+
+    private final SocksRequestFW socksRequestR0 = new SocksRequestFW();
 
     private final RouteManager router;
     private final MutableDirectBuffer writeBuffer;
@@ -206,6 +209,32 @@ public final class SocksServerFactory implements StreamFactory
             this.decodeState = this::decodeCommandPacket;
         }
 
+        private int decodeCommandPacket(
+            SocksCommandType socksCommandType,
+            DirectBuffer directBuffer,
+            int offset,
+            int length)
+        {
+            switch (socksCommandType)
+            {
+                case CONNECT:
+                    SocksRequestFW socksRequestFW = socksRequestR0.tryWrap(directBuffer, offset, length);
+                    onSocksRequest(socksRequestFW);
+                    break;
+                case BIND:
+                    //TODO
+                    break;
+                case UDP_ASSOCIATE:
+                    //TODO
+                    break;
+                default:
+                    //TODO
+                    break;
+            }
+            return 0;
+
+        }
+
         private void onNetwork(
             int msgTypeId,
             DirectBuffer buffer,
@@ -283,6 +312,12 @@ public final class SocksServerFactory implements StreamFactory
 
             final int initialCredit = bufferPool.slotCapacity() - initialBudget;
             doWindow(supplyTraceId.getAsLong(), initialCredit);
+        }
+
+        private void onSocksRequest(
+            SocksRequestFW socksRequestFW)
+        {
+
         }
 
         private void onReset(
@@ -377,22 +412,12 @@ public final class SocksServerFactory implements StreamFactory
 
             network.accept(signal.typeId(), signal.buffer(), signal.offset(), signal.sizeof());
         }
-
-        private int decodeCommandPacket(
-            final SocksCommandType packetType,
-            final DirectBuffer buffer,
-            final int offset,
-            final int limit)
-        {
-            return 0;
-        }
     }
-
 
     @FunctionalInterface
     private interface DecoderState
     {
-        int decode(DirectBuffer buffer, int offset, int length);
+        int decode(SocksCommandType commandType, DirectBuffer buffer, int offset, int length);
     }
 
 }
