@@ -30,7 +30,7 @@ import org.agrona.DirectBuffer;
 import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
@@ -190,8 +190,6 @@ public final class SocksServerFactory implements StreamFactory
             this.replyId = replyId;
         }
 
-
-
         private void onNetwork(
             int msgTypeId,
             DirectBuffer buffer,
@@ -205,6 +203,18 @@ public final class SocksServerFactory implements StreamFactory
                     System.out.println("SocksServerFactory 204");
                     final BeginFW begin = beginRO.wrap(buffer, index, index + length);
                     onBegin(begin);
+                    break;
+                case DataFW.TYPE_ID:
+                    final DataFW data = dataRO.wrap(buffer, index, index + length);
+                    onData(data);
+                    break;
+                case EndFW.TYPE_ID:
+                    final EndFW end = endRO.wrap(buffer, index, index + length);
+                    onEnd(end);
+                    break;
+                case AbortFW.TYPE_ID:
+                    final AbortFW abort = abortRO.wrap(buffer, index, index + length);
+                    onAbort(abort);
                     break;
                 default:
                     break;
