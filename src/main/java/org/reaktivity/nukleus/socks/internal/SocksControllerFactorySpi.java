@@ -38,6 +38,7 @@ public class SocksControllerFactorySpi implements ControllerFactorySpi<SocksCont
         Configuration config,
         ControllerBuilder<SocksController> builder)
     {
+        System.out.println("Run SocksControllerFactorySpi 41");
         return builder.setFactory(SocksController::new)
                 .build();
     }

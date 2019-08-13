@@ -30,6 +30,7 @@ public final class SocksNukleusFactorySpi implements NukleusFactorySpi
     public SocksNukleus create(
         Configuration config)
     {
+        System.out.println("Run SocksNukleusFactorySpi 33");
         return new SocksNukleus(new SocksConfiguration(config));
     }
 }
