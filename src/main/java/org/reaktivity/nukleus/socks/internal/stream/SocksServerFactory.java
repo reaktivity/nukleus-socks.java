@@ -42,7 +42,6 @@ import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.SignalFW;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.SocksBeginExFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.SocksAbortExFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.SocksEndExFW;
 
 public final class SocksServerFactory implements StreamFactory
@@ -75,10 +74,11 @@ public final class SocksServerFactory implements StreamFactory
     private final LongSupplier supplyTraceId;
     private final SocksConfiguration config;
 
-    private final BufferPool bufferPool;
-
     private final Long2ObjectHashMap<SocksServer> correlations;
     private final MessageFunction<RouteFW> wrapRoute;
+
+    private final BufferPool bufferPool;
+
     public SocksServerFactory(
         SocksConfiguration config,
         RouteManager router,
@@ -312,6 +312,73 @@ public final class SocksServerFactory implements StreamFactory
             System.out.println("SocksServerFactory 227");
             network.accept(begin.typeId(), begin.buffer(), begin.offset(), begin.sizeof());
             router.setThrottle(replyId, this::onNetwork);
+        }
+
+        private void doEnd(
+            long traceId)
+        {
+            final EndFW end = endRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+                .routeId(routeId)
+                .streamId(replyId)
+                .trace(traceId)
+                .build();
+
+            network.accept(end.typeId(), end.buffer(), end.offset(), end.sizeof());
+        }
+
+        private void doAbort(
+            long traceId)
+        {
+            final AbortFW abort = abortRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+                .routeId(routeId)
+                .streamId(replyId)
+                .trace(traceId)
+                .build();
+
+            network.accept(abort.typeId(), abort.buffer(), abort.offset(), abort.sizeof());
+        }
+
+        private void doWindow(
+            long traceId,
+            int initialCredit)
+        {
+            if (initialCredit > 0)
+            {
+                initialBudget += initialCredit;
+
+                final WindowFW window = windowRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+                    .routeId(routeId)
+                    .streamId(initialId)
+                    .trace(traceId)
+                    .credit(initialCredit)
+                    .padding(initialPadding)
+                    .groupId(0)
+                    .build();
+
+                network.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
+            }
+        }
+
+        private void doReset(
+            long traceId)
+        {
+            final ResetFW reset = resetRW.wrap(writeBuffer, 0, writeBuffer.capacity()).routeId(routeId)
+                .streamId(initialId)
+                .trace(traceId)
+                .build();
+
+            network.accept(reset.typeId(), reset.buffer(), reset.offset(), reset.sizeof());
+        }
+
+        private void doSignal(
+            long traceId)
+        {
+            final SignalFW signal = signalRW.wrap(writeBuffer, 0, writeBuffer.capacity()).routeId(routeId)
+                .streamId(initialId)
+                .trace(traceId)
+                .build();
+
+            network.accept(signal.typeId(), signal.buffer(), signal.offset(), signal.sizeof());
         }
     }
 

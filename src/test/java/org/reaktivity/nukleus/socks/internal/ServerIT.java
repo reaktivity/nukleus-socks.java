@@ -29,7 +29,7 @@ import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
 import org.reaktivity.reaktor.test.ReaktorRule;
 
-public class ConnectionIT
+public class ServerIT
 {
     private final K3poRule k3po = new K3poRule()
         .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
@@ -81,7 +81,7 @@ public class ConnectionIT
         "${forward}/connected.ipv4/server",
         "${client}/rfc1928/connect/connected.ipv4/client"
     })
-    public void shouldConnectedIpv4() throws Exception
+    public void shouldConnectIpv4() throws Exception
     {
         k3po.finish();
     }
@@ -92,7 +92,7 @@ public class ConnectionIT
         "${forward}/connected.ipv6/server",
         "${client}/rfc1928/connect/connected.ipv6/client"
     })
-    public void shouldConnectedIpv6() throws Exception
+    public void shouldConnectIpv6() throws Exception
     {
         k3po.finish();
     }
@@ -104,7 +104,7 @@ public class ConnectionIT
         "${forward}/connected.then.client.abort/server",
         "${client}/rfc1928/connect/connected.then.client.abort/clint"
     })
-    public void shouldConnectedThenClientAbort() throws Exception
+    public void shouldConnectThenClientAbort() throws Exception
     {
         k3po.finish();
     }
@@ -115,7 +115,7 @@ public class ConnectionIT
         "${forward}/connected.then.client.close/server",
         "${client}/rfc1928/connect/connected.then.client.close/client"
     })
-    public void shouldConnectedThenClientClose() throws Exception
+    public void shouldConnectThenClientClose() throws Exception
     {
         k3po.finish();
     }
@@ -126,7 +126,7 @@ public class ConnectionIT
         "${forward}/connected.then.client.reset/server",
         "${client}/rfc1928/connect/connected.then.client.reset/client"
     })
-    public void shouldConnectedThenClientReset() throws Exception
+    public void shouldConnectThenClientReset() throws Exception
     {
         k3po.finish();
     }
@@ -137,7 +137,7 @@ public class ConnectionIT
         "${forward}/connected.then.client.write.data/server",
         "${client}/rfc1928/connect/connected.then.client.write.data/client"
     })
-    public void shouldConnectedThenClientWriteData() throws Exception
+    public void shouldConnectThenClientWriteData() throws Exception
     {
         k3po.finish();
     }
@@ -148,7 +148,7 @@ public class ConnectionIT
             "${forward}/connected.then.server.abort/server",
             "${client}/rfc1928/connect/connected.then.server.abort/client"
     })
-    public void shouldConnectedThenServerAbort() throws Exception
+    public void shouldConnectThenServerAbort() throws Exception
     {
         k3po.finish();
     }
@@ -159,7 +159,7 @@ public class ConnectionIT
             "${forward}/connected.then.server.close/server",
             "${client}/rfc1928/connect/connected.then.server.close/client"
     })
-    public void shouldConnectedThenServerClose() throws Exception
+    public void shouldConnectThenServerClose() throws Exception
     {
         k3po.finish();
     }
@@ -170,7 +170,7 @@ public class ConnectionIT
             "${forward}/connected.then.server.reset/server",
             "${client}/rfc1928/connect/connected.then.server.reset/client"
     })
-    public void shouldConnectedThenServerReset() throws Exception
+    public void shouldConnectThenServerReset() throws Exception
     {
         k3po.finish();
     }
@@ -182,7 +182,7 @@ public class ConnectionIT
         "${forward}/connected.then.server.write.data/server",
         "${client}/rfc1928/connect/connected.then.server.write.data/client"
     })
-    public void shouldConnectedThenServerWriteData() throws Exception
+    public void shouldConnectThenServerWriteData() throws Exception
     {
         k3po.finish();
     }
@@ -193,7 +193,7 @@ public class ConnectionIT
         //"${forward}/rejected.address.type.not.supported/server",
         "${client}/rfc1928/connect/rejected.address.type.not.supported/client"
     })
-    public void shouldRejectedAddressTypeNotSupported() throws Exception
+    public void shouldRejectAddressTypeNotSupported() throws Exception
     {
         k3po.finish();
     }
@@ -204,7 +204,7 @@ public class ConnectionIT
         //"${forward}/rejected.connection.not.allowed.by.ruleset/server",
         "${client}/rfc1928/connect/rejected.connection.not.allowed.by.ruleset/client"
     })
-    public void shouldRejectedConnectionNotAllowedByRuleset() throws Exception
+    public void shouldRejectConnectionNotAllowedByRuleset() throws Exception
     {
         k3po.finish();
     }
@@ -215,7 +215,7 @@ public class ConnectionIT
         "${route}/server/controller",
         "${client}/rfc1928/connect/rejected.connection.refused/client"
     })
-    public void shouldRejectedConnectionRefused() throws Exception
+    public void shouldRejectConnectionRefused() throws Exception
     {
         k3po.finish();
     }
