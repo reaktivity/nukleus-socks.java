@@ -121,7 +121,6 @@ public final class SocksServerFactoryBuilder implements StreamFactoryBuilder
     public StreamFactory build()
     {
         final BufferPool bufferPool = supplyBufferPool.get();
-        System.out.println("SocksServerFactorBuilder 124");
         return new SocksServerFactory(
             config,
             router,

@@ -117,7 +117,6 @@ public final class SocksServerFactory implements StreamFactory
         int length,
         MessageConsumer throttle)
     {
-        System.out.println("SocksServerFactory 103");
         final BeginFW begin = beginRO.wrap(buffer, index, index + length);
         final long streamId = begin.streamId();
 
@@ -138,7 +137,6 @@ public final class SocksServerFactory implements StreamFactory
         final BeginFW begin,
         final MessageConsumer sender)
     {
-        System.out.println("SocksServerFactory 124");
         final long routeId = begin.routeId();
         final long initialId = begin.streamId();
         final long replyId = supplyReplyId.applyAsLong(initialId);
@@ -156,7 +154,6 @@ public final class SocksServerFactory implements StreamFactory
         {
             final SocksServer connection = new SocksServer(sender, routeId, initialId, replyId);
             correlations.put(replyId, connection);
-            System.out.println("SocksServerFactory 143");
             newStream = connection::onNetwork;
         }
         return newStream;
@@ -212,11 +209,9 @@ public final class SocksServerFactory implements StreamFactory
             int index,
             int length)
         {
-            System.out.printf("MsgTypeId: %d\t BeginFw: %d\n", msgTypeId, BeginFW.TYPE_ID);
             switch (msgTypeId)
             {
                 case BeginFW.TYPE_ID:
-                    System.out.println("SocksServerFactory 204");
                     final BeginFW begin = beginRO.wrap(buffer, index, index + length);
                     onBegin(begin);
                     break;
@@ -309,7 +304,6 @@ public final class SocksServerFactory implements StreamFactory
                 .streamId(replyId)
                 .trace(traceId)
                 .build();
-            System.out.println("SocksServerFactory 227");
             network.accept(begin.typeId(), begin.buffer(), begin.offset(), begin.sizeof());
             router.setThrottle(replyId, this::onNetwork);
         }

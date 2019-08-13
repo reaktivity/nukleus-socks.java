@@ -61,20 +61,6 @@ public class ServerIT
         k3po.finish();
     }
 
-    /**
-    @Test
-    @Specification({
-            "${route}/server/controller",
-            "${forward}/connected.domain/server",
-            "${client}/rfc1928/connect/connected.domain/client",
-            "${reverse}/accepted.domain/server",
-    })
-    public void shouldForwardConnectedDomainThenAccepted() throws Exception
-    {
-        k3po.finish();
-    }
-     **/
-
     @Test
     @Specification({
         "${route}/server/routed.ipv4/controller",
@@ -96,7 +82,6 @@ public class ServerIT
     {
         k3po.finish();
     }
-
 
     @Test
     @Specification({
@@ -175,14 +160,13 @@ public class ServerIT
         k3po.finish();
     }
 
-
     @Test
     @Specification({
         "${route}/server/controller",
         "${forward}/connected.then.server.write.data/server",
         "${client}/rfc1928/connect/connected.then.server.write.data/client"
     })
-    public void shouldConnectThenServerWriteData() throws Exception
+    public void shouldConnectThenServerWritesData() throws Exception
     {
         k3po.finish();
     }
@@ -190,7 +174,6 @@ public class ServerIT
     @Test
     @Specification({
         "${route}/server/controller",
-        //"${forward}/rejected.address.type.not.supported/server",
         "${client}/rfc1928/connect/rejected.address.type.not.supported/client"
     })
     public void shouldRejectAddressTypeNotSupported() throws Exception
@@ -201,14 +184,12 @@ public class ServerIT
     @Test
     @Specification({
         "${route}/server/controller",
-        //"${forward}/rejected.connection.not.allowed.by.ruleset/server",
         "${client}/rfc1928/connect/rejected.connection.not.allowed.by.ruleset/client"
     })
     public void shouldRejectConnectionNotAllowedByRuleset() throws Exception
     {
         k3po.finish();
     }
-
 
     @Test
     @Specification({
