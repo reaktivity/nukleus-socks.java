@@ -201,6 +201,7 @@ public final class SocksServerFactory implements StreamFactory
             this.routeId = routeId;
             this.initialId = initialId;
             this.replyId = replyId;
+            this.decodeState = this::decodeCommandPacket;
         }
 
         private void onNetwork(
@@ -374,7 +375,17 @@ public final class SocksServerFactory implements StreamFactory
 
             network.accept(signal.typeId(), signal.buffer(), signal.offset(), signal.sizeof());
         }
+
+        private int decodeConnectPacket(
+            final SocksPacketType packetType,
+            final DirectBuffer buffer,
+            final int offset,
+            final int limit)
+        {
+
+        }
     }
+
 
     @FunctionalInterface
     private interface DecoderState
