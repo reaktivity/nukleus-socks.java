@@ -219,8 +219,4 @@ public class ConnectionIT
     {
         k3po.finish();
     }
-
-
-
-
 }

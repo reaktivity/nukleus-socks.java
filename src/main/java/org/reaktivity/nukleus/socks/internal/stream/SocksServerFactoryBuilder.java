@@ -131,6 +131,4 @@ public final class SocksServerFactoryBuilder implements StreamFactoryBuilder
             supplyReplyId,
             supplyTraceId);
     }
-
-
 }

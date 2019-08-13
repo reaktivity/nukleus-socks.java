@@ -129,8 +129,4 @@ public final class SocksController implements Controller
                 .build();
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
     }
-
-
-
-
 }

@@ -181,6 +181,4 @@ public class ControlIT
         k3po.notifyBarrier("ROUTED_CLIENT_REVERSE");
         k3po.finish();
     }
-
-
 }

@@ -231,8 +231,6 @@ public final class SocksServerFactory implements StreamFactory
         }
     }
 
-
-
     @FunctionalInterface
     private interface DecoderState
     {
