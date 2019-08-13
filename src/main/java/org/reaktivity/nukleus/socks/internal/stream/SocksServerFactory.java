@@ -18,6 +18,8 @@ package org.reaktivity.nukleus.socks.internal.stream;
 import static java.util.Objects.requireNonNull;
 import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandType;
+
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 
@@ -376,13 +378,13 @@ public final class SocksServerFactory implements StreamFactory
             network.accept(signal.typeId(), signal.buffer(), signal.offset(), signal.sizeof());
         }
 
-        private int decodeConnectPacket(
-            final SocksPacketType packetType,
+        private int decodeCommandPacket(
+            final SocksCommandType packetType,
             final DirectBuffer buffer,
             final int offset,
             final int limit)
         {
-
+            return 0;
         }
     }
 
