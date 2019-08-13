@@ -31,6 +31,9 @@ import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.SignalFW;
 
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
@@ -44,10 +47,16 @@ import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 public final class SocksServerFactory implements StreamFactory
 {
     private final RouteFW routeRO = new RouteFW();
-
     private final BeginFW beginRO = new BeginFW();
+    private final DataFW dataRO = new DataFW();
+    private final EndFW endRO = new EndFW();
+    private final AbortFW abortRO = new AbortFW();
+    private final WindowFW windowRO = new WindowFW();
+    private final ResetFW resetRO = new ResetFW();
+    private final SignalFW signalRO = new SignalFW();
 
     private final BeginFW.Builder beginRW = new BeginFW.Builder();
+
 
     private final SocksBeginExFW.Builder socksBeginExRW = new SocksBeginExFW.Builder();
     private final RouteManager router;
