@@ -290,32 +290,56 @@ public final class SocksServerFactory implements StreamFactory
                     break;
                 case DataFW.TYPE_ID:
                     final DataFW data = dataRO.wrap(buffer, index, index + length);
-                    onNetworkBegin(data);
+                    onApplicationData(data);
                     break;
                 case EndFW.TYPE_ID:
                     final EndFW end = endRO.wrap(buffer, index, index + length);
-                    onNetworkEnd(end);
+                    onApplicationEnd(end);
                     break;
                 case AbortFW.TYPE_ID:
                     final AbortFW abort = abortRO.wrap(buffer, index, index + length);
-                    onNetworkAbort(abort);
+                    onApplicationkAbort(abort);
                     break;
                 case WindowFW.TYPE_ID:
                     final WindowFW window = windowRO.wrap(buffer, index, index + length);
-                    onNetworkWindow(window);
+                    onApplicationWindow(window);
                     break;
                 case ResetFW.TYPE_ID:
                     final ResetFW reset = resetRO.wrap(buffer, index, index + length);
-                    onNetworkReset(reset);
+                    onApplicationReset(reset);
                     break;
                 case SignalFW.TYPE_ID:
                     final SignalFW signal = signalRO.wrap(buffer, index, index + length);
-                    onNetworkSignal(signal);
+                    onApplicationSignal(signal);
                     break;
                 default:
                     break;
 
             }
+        }
+
+        private void onApplicationkAbort(
+            AbortFW abort)
+        {
+            //TODO
+        }
+
+        private void onApplicationWindow(
+            WindowFW window)
+        {
+            //TODO
+        }
+
+        private void onApplicationReset(
+            ResetFW reset)
+        {
+            //TODO
+        }
+
+        private void onApplicationSignal(
+            SignalFW singal)
+        {
+            //TODO
         }
 
         private void onNetworkBegin(
@@ -390,7 +414,19 @@ public final class SocksServerFactory implements StreamFactory
         private void onApplicationBegin(
             BeginFW begin)
         {
+            //TODO
+        }
 
+        private void onApplicationData(
+            DataFW dataFw)
+        {
+            //TODO
+        }
+
+        private void onApplicationEnd(
+            EndFW end)
+        {
+            //TODO
         }
 
         private void doNetworkBegin(
