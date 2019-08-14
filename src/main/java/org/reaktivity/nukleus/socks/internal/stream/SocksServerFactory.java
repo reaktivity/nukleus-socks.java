@@ -218,8 +218,8 @@ public final class SocksServerFactory implements StreamFactory
             switch (socksCommandType)
             {
                 case CONNECT:
-                    SocksRequestFW socksRequestFW = socksRequestR0.tryWrap(directBuffer, offset, length);
-                    onSocksRequest(socksRequestFW);
+                    //final SocksBeginExFW socksbeginExFW = socksBeginExRW.wrap(directBuffer, offset, length);
+                    //onSocksConnect(socksbeginExFW);
                     break;
                 case BIND:
                     //TODO
@@ -317,8 +317,17 @@ public final class SocksServerFactory implements StreamFactory
         private void onSocksRequest(
             SocksRequestFW socksRequestFW)
         {
+            if(socksRequestFW.version() != 5 && socksRequestFW.reserved() != 0){
+                //refuse the connection
+                //TODO
+            }
+
 
         }
+
+        private void onSocksConnect(
+
+        )
 
         private void onReset(
             ResetFW reset)
@@ -419,5 +428,4 @@ public final class SocksServerFactory implements StreamFactory
     {
         int decode(SocksCommandType commandType, DirectBuffer buffer, int offset, int length);
     }
-
 }
