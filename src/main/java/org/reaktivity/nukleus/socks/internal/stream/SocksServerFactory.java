@@ -174,7 +174,7 @@ public final class SocksServerFactory implements StreamFactory
         MessageConsumer newStream = null;
         if (connect != null)
         {
-            newStream = connect::onNetwork;
+            newStream = connect::onAppication;
         }
         return newStream;
     }
@@ -245,64 +245,106 @@ public final class SocksServerFactory implements StreamFactory
             {
                 case BeginFW.TYPE_ID:
                     final BeginFW begin = beginRO.wrap(buffer, index, index + length);
-                    onBegin(begin);
+                    onNetworkBegin(begin);
                     break;
                 case DataFW.TYPE_ID:
                     final DataFW data = dataRO.wrap(buffer, index, index + length);
-                    onData(data);
+                    onNetworkBegin(data);
                     break;
                 case EndFW.TYPE_ID:
                     final EndFW end = endRO.wrap(buffer, index, index + length);
-                    onEnd(end);
+                    onNetworkEnd(end);
                     break;
                 case AbortFW.TYPE_ID:
                     final AbortFW abort = abortRO.wrap(buffer, index, index + length);
-                    onAbort(abort);
+                    onNetworkAbort(abort);
                     break;
                 case WindowFW.TYPE_ID:
                     final WindowFW window = windowRO.wrap(buffer, index, index + length);
-                    onWindow(window);
+                    onNetworkWindow(window);
                     break;
                 case ResetFW.TYPE_ID:
                     final ResetFW reset = resetRO.wrap(buffer, index, index + length);
-                    onReset(reset);
+                    onNetworkReset(reset);
                     break;
                 case SignalFW.TYPE_ID:
                     final SignalFW signal = signalRO.wrap(buffer, index, index + length);
-                    onSignal(signal);
+                    onNetworkSignal(signal);
                     break;
                 default:
                     break;
             }
         }
 
-        private void onBegin(
-            BeginFW begin)
+        public void onAppication(
+            int msgTypeId,
+            DirectBuffer buffer,
+            int index,
+            int length)
         {
-            doBegin(supplyTraceId.getAsLong());
+            switch(msgTypeId)
+            {
+                case BeginFW.TYPE_ID:
+                    final BeginFW begin = beginRO.wrap(buffer, index, index + length);
+                    onApplicationBegin(begin);
+                    break;
+                case DataFW.TYPE_ID:
+                    final DataFW data = dataRO.wrap(buffer, index, index + length);
+                    onNetworkBegin(data);
+                    break;
+                case EndFW.TYPE_ID:
+                    final EndFW end = endRO.wrap(buffer, index, index + length);
+                    onNetworkEnd(end);
+                    break;
+                case AbortFW.TYPE_ID:
+                    final AbortFW abort = abortRO.wrap(buffer, index, index + length);
+                    onNetworkAbort(abort);
+                    break;
+                case WindowFW.TYPE_ID:
+                    final WindowFW window = windowRO.wrap(buffer, index, index + length);
+                    onNetworkWindow(window);
+                    break;
+                case ResetFW.TYPE_ID:
+                    final ResetFW reset = resetRO.wrap(buffer, index, index + length);
+                    onNetworkReset(reset);
+                    break;
+                case SignalFW.TYPE_ID:
+                    final SignalFW signal = signalRO.wrap(buffer, index, index + length);
+                    onNetworkSignal(signal);
+                    break;
+                default:
+                    break;
+
+            }
         }
 
-        private void onData(
+        private void onNetworkBegin(
+            BeginFW begin)
+        {
+            doNetworkBegin(supplyTraceId.getAsLong());
+        }
+
+        private void onNetworkBegin(
             DataFW data)
         {
             //TODO
         }
 
-        private void onEnd(
+        private void onNetworkEnd(
             EndFW end)
         {
             final long traceId = end.trace();
-            doEnd(traceId);
+            doNetworkEnd(traceId);
         }
 
-        private void onAbort(
+        private void onNetworkAbort(
             AbortFW abort)
         {
             final long traceId = abort.trace();
-            doAbort(traceId);
+            doNetworkAbort(traceId);
         }
 
-        private void onWindow(
+        private void onNetworkWindow(
             WindowFW window)
         {
             final int replyCredit = window.credit();
@@ -311,7 +353,7 @@ public final class SocksServerFactory implements StreamFactory
             replyPadding += window.padding();
 
             final int initialCredit = bufferPool.slotCapacity() - initialBudget;
-            doWindow(supplyTraceId.getAsLong(), initialCredit);
+            doNetworkWindow(supplyTraceId.getAsLong(), initialCredit);
         }
 
         private void onSocksRequest(
@@ -327,23 +369,31 @@ public final class SocksServerFactory implements StreamFactory
 
         private void onSocksConnect(
 
-        )
+        ){
+            //TODO
+        }
 
-        private void onReset(
+        private void onNetworkReset(
             ResetFW reset)
         {
             final long traceId = reset.trace();
             doReset(traceId);
         }
 
-        private void onSignal(
+        private void onNetworkSignal(
             SignalFW signal)
         {
             final long traceId = signal.trace();
             doSignal(traceId);
         }
 
-        private void doBegin(
+        private void onApplicationBegin(
+            BeginFW begin)
+        {
+
+        }
+
+        private void doNetworkBegin(
             long traceId)
         {
             final BeginFW begin = beginRW.wrap(writeBuffer, 0, writeBuffer.capacity())
@@ -355,7 +405,7 @@ public final class SocksServerFactory implements StreamFactory
             router.setThrottle(replyId, this::onNetwork);
         }
 
-        private void doEnd(
+        private void doNetworkEnd(
             long traceId)
         {
             final EndFW end = endRW.wrap(writeBuffer, 0, writeBuffer.capacity())
@@ -367,7 +417,7 @@ public final class SocksServerFactory implements StreamFactory
             network.accept(end.typeId(), end.buffer(), end.offset(), end.sizeof());
         }
 
-        private void doAbort(
+        private void doNetworkAbort(
             long traceId)
         {
             final AbortFW abort = abortRW.wrap(writeBuffer, 0, writeBuffer.capacity())
@@ -379,7 +429,7 @@ public final class SocksServerFactory implements StreamFactory
             network.accept(abort.typeId(), abort.buffer(), abort.offset(), abort.sizeof());
         }
 
-        private void doWindow(
+        private void doNetworkWindow(
             long traceId,
             int initialCredit)
         {
