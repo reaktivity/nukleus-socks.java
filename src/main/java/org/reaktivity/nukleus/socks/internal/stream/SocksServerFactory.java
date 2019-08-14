@@ -18,6 +18,7 @@ package org.reaktivity.nukleus.socks.internal.stream;
 import static java.util.Objects.requireNonNull;
 import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
+import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandType;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksRequestFW;
 
@@ -351,7 +352,27 @@ public final class SocksServerFactory implements StreamFactory
         private void onNetworkData(
             DataFW data)
         {
-            System.out.println(data.toString());
+            //System.out.println(data.toString());
+            final OctetsFW payload = data.payload();
+            initialBudget -= Math.max(data.length(), 0) + data.padding();
+
+            if(initialBudget <= 0){ // <=
+                //doReply(supplyTraceId.getAsLong()); 02 not allowed by rulest
+                //doNetworkReset(supplyTraceId.getAsLong());
+            }
+            else if (payload != null)
+            {
+                //onrequest switch the command
+                decodeTraceId = data.trace();
+                DirectBuffer buffer = payload.buffer();
+                int offset = payload.offset();
+                int length = payload.sizeof();
+
+            }
+            else
+            {
+                //doReply error;
+            }
 
         }
 
