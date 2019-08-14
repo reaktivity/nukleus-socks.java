@@ -368,6 +368,7 @@ public final class SocksServerFactory implements StreamFactory
                 int offset = payload.offset();
                 int length = payload.sizeof();
 
+
             }
             else
             {
