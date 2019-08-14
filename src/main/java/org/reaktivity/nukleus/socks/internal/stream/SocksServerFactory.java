@@ -249,7 +249,7 @@ public final class SocksServerFactory implements StreamFactory
                     break;
                 case DataFW.TYPE_ID:
                     final DataFW data = dataRO.wrap(buffer, index, index + length);
-                    onNetworkBegin(data);
+                    onNetworkData(data);
                     break;
                 case EndFW.TYPE_ID:
                     final EndFW end = endRO.wrap(buffer, index, index + length);
@@ -348,10 +348,11 @@ public final class SocksServerFactory implements StreamFactory
             doNetworkBegin(supplyTraceId.getAsLong());
         }
 
-        private void onNetworkBegin(
+        private void onNetworkData(
             DataFW data)
         {
-            //TODO
+            System.out.println(data.toString());
+
         }
 
         private void onNetworkEnd(
