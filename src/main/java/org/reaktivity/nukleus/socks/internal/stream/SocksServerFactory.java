@@ -194,8 +194,8 @@ public final class SocksServerFactory implements StreamFactory
 
         private long decodeTraceId;
         private DecoderState decodeState;
-        private int slotIndex = NO_SLOT;
-        private int slotLimit;
+        private int bufferSlot = BufferPool.NO_SLOT;
+        private int bufferSlotOffset;
 
         private SocksServer(
             MessageConsumer network,
@@ -354,9 +354,9 @@ public final class SocksServerFactory implements StreamFactory
         {
             //System.out.println(data.toString());
             final OctetsFW payload = data.payload();
+            System.out.println(payload.sizeof());
             initialBudget -= Math.max(data.length(), 0) + data.padding();
-
-            if(initialBudget <= 0){ // <=
+            if(initialBudget < 0){ // <=
                 //doReply(supplyTraceId.getAsLong()); 02 not allowed by rulest
                 //doNetworkReset(supplyTraceId.getAsLong());
             }
@@ -367,6 +367,22 @@ public final class SocksServerFactory implements StreamFactory
                 DirectBuffer buffer = payload.buffer();
                 int offset = payload.offset();
                 int length = payload.sizeof();
+
+                if (bufferSlot != BufferPool.NO_SLOT)
+                {
+                    MutableDirectBuffer decodeBuffer = bufferPool.buffer(bufferSlot);
+                    decodeBuffer.putBytes(bufferSlotOffset, buffer, offset, length);
+                    bufferSlotOffset += length;
+                    buffer = decodeBuffer;
+                    offset = 0;
+                    length = bufferSlotOffset;
+                }
+                System.out.printf("offset: %d, length: %d\n",offset, length);
+                while(length > offset){
+                    System.out.println("line 382");
+                    final SocksRequestFW socksRequestFw = socksRequestR0.tryWrap(buffer, offset, length);
+                    //System.out.println(socksRequestFw.toString());
+                }
 
 
             }
