@@ -16,7 +16,7 @@
 package org.reaktivity.nukleus.socks.internal.stream;
 
 import static java.util.Objects.requireNonNull;
-import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
+//import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandType;
@@ -354,9 +354,10 @@ public final class SocksServerFactory implements StreamFactory
         {
             //System.out.println(data.toString());
             final OctetsFW payload = data.payload();
-            System.out.println(payload.sizeof());
+            //System.out.println(payload.sizeof());
             initialBudget -= Math.max(data.length(), 0) + data.padding();
-            if(initialBudget < 0){ // <=
+            if(initialBudget < 0)
+            { // <=
                 //doReply(supplyTraceId.getAsLong()); 02 not allowed by rulest
                 //doNetworkReset(supplyTraceId.getAsLong());
             }
@@ -377,8 +378,9 @@ public final class SocksServerFactory implements StreamFactory
                     offset = 0;
                     length = bufferSlotOffset;
                 }
-                System.out.printf("offset: %d, length: %d\n",offset, length);
-                while(length > offset){
+                //System.out.printf("offset: %d, length: %d\n",offset, length);
+                while(length > offset)
+                {
                     System.out.println("line 382");
                     final SocksRequestFW socksRequestFw = socksRequestR0.tryWrap(buffer, offset, length);
                     //System.out.println(socksRequestFw.toString());
@@ -422,7 +424,8 @@ public final class SocksServerFactory implements StreamFactory
         private void onSocksRequest(
             SocksRequestFW socksRequestFW)
         {
-            if(socksRequestFW.version() != 5 && socksRequestFW.reserved() != 0){
+            if(socksRequestFW.version() != 5 && socksRequestFW.reserved() != 0)
+            {
                 //refuse the connection
                 //TODO
             }
@@ -431,8 +434,8 @@ public final class SocksServerFactory implements StreamFactory
         }
 
         private void onSocksConnect(
-
-        ){
+        )
+        {
             //TODO
         }
 

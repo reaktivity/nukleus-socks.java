@@ -41,10 +41,27 @@ scope protocol
             TO_XFF_UNSIGNED (0x09)
         }
 
-        struct SocksHandshake
+        enum SocksHandshakeReplyMethodType (int16)
+        {
+            NO_AUTHENTICATION_REQUIRED (0x00),
+            GSSAPI (0x01),
+            USERNAME_PASSWORD (0x02),
+            TO_X7F_IANA_ASSIGNED (0x03),
+            TO_XFE_RESERVED_FOR_PRIVATE_METHODS (0x80),
+            NO_ACCEPTABLE_METHODS (0xFF)
+        }
+
+        struct SocksHandshakeRequest
         {
             uint8 version = 5;
-            uint16 methods;
+            uint8 nmethods;
+            octets[nmethods] methods;
+        }
+
+        struct SocksHandshakeReply
+        {
+            uint8 version = 5;
+            SocksHandshakeReplyMethodType method;
         }
 
         union SocksAddress switch (uint8)
