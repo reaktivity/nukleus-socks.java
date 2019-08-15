@@ -15,4 +15,6 @@ buildNumber.properties
 *.ipr
 *.iws
 *.iml
+*.ipr
+*.iws
 .DS_Store
