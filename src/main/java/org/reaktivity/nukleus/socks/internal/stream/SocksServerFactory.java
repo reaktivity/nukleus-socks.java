@@ -16,11 +16,11 @@
 package org.reaktivity.nukleus.socks.internal.stream;
 
 import static java.util.Objects.requireNonNull;
-//import static org.reaktivity.nukleus.buffer.BufferPool.NO_SLOT;
 
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandType;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksRequestFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeReplyFW;
 
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
@@ -70,6 +70,7 @@ public final class SocksServerFactory implements StreamFactory
     private final SocksBeginExFW.Builder socksBeginExRW = new SocksBeginExFW.Builder();
     private final SocksEndExFW.Builder socksEndExRW = new SocksEndExFW.Builder();
 
+    private final SocksHandshakeReplyFW socksHandshakeReplyFW = new SocksHandshakeReplyFW();
     private final SocksRequestFW socksRequestR0 = new SocksRequestFW();
 
     private final RouteManager router;
