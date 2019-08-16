@@ -248,6 +248,7 @@ public final class SocksServerFactory implements StreamFactory
             int index,
             int length)
         {
+            //System.out.println(msgTypeId);
             switch (msgTypeId)
             {
                 case BeginFW.TYPE_ID:
@@ -382,17 +383,17 @@ public final class SocksServerFactory implements StreamFactory
                     offset = 0;
                     limit = bufferSlot;
                 }
-                if(limit - offset == 3)
+
+                if(payload.sizeof() == 3)
                 {
                     final SocksHandshakeRequestFW handshakeRequest = socksHandshakeRequestR0.tryWrap(buffer, offset, limit);
                     onHandshakeRequest(handshakeRequest);
                 }
-                /**
-                while(length > offset)
+                else if (payload.sizeof() == 18)
                 {
-                    final SocksRequestFW socksRequestFw = socksRequestR0.tryWrap(buffer, offset, length);
+                    final SocksRequestFW socksRequest = socksRequestR0.tryWrap(buffer, offset, limit);
+                    onSocksRequest(socksRequest);
                 }
-                 **/
             }
             else
             {
