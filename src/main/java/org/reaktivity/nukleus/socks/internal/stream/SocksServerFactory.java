@@ -70,7 +70,7 @@ public final class SocksServerFactory implements StreamFactory
     private final WindowFW.Builder windowRW = new WindowFW.Builder();
     private final ResetFW.Builder resetRW = new ResetFW.Builder();
     private final SignalFW.Builder signalRW = new SignalFW.Builder();
-    private final SocksHandshakeReplyFW.Builder socksHandshakeReplyFWRw = new SocksHandshakeReplyFW.Builder();
+    private final SocksHandshakeReplyFW.Builder socksHandshakeReplyRw = new SocksHandshakeReplyFW.Builder();
     private final SocksReplyFW.Builder socksReplyFw = new SocksReplyFW.Builder();
 
     private final SocksHandshakeRequestFW socksHandshakeRequestR0 = new SocksHandshakeRequestFW();
@@ -632,7 +632,7 @@ public final class SocksServerFactory implements StreamFactory
         private void doNoAuthenticationRequired(
             int method)
         {
-            SocksHandshakeReplyFW socksHandshakeReplyFW = socksHandshakeReplyFWRw.wrap(writeBuffer,
+            SocksHandshakeReplyFW socksHandshakeReplyFW = socksHandshakeReplyRw.wrap(writeBuffer,
                                                                                        DataFW.FIELD_OFFSET_PAYLOAD,
                                                                                        writeBuffer.capacity())
                                                                                  .version(5)
