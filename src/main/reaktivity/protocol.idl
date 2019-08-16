@@ -75,17 +75,19 @@ scope protocol
             uint8 version = 5;
             SocksCommandType command;
             uint8 reserved = 0;
+            uint8 addressType;
             SocksAddress address;
-            uint32 port;
+            uint16 port;
         }
 
         struct SocksReply
         {
             uint8 version = 5;
-            SocksReplyType reply;
+            SocksReplyType type;
             uint8 reserved = 0;
+            uint8 addressType;
             SocksAddress address;
-            uint32 port;
+            uint16 port;
         }
     }
 }
