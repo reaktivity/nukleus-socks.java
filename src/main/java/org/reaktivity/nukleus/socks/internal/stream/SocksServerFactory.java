@@ -297,7 +297,6 @@ public final class SocksServerFactory implements StreamFactory
                     break;
                 case DataFW.TYPE_ID:
                     final DataFW data = dataRO.wrap(buffer, index, index + length);
-                    System.out.println(data.toString());
                     onApplicationData(data);
                     break;
                 case EndFW.TYPE_ID:
@@ -387,7 +386,6 @@ public final class SocksServerFactory implements StreamFactory
                 {
                     final SocksHandshakeRequestFW handshakeRequest = socksHandshakeRequestR0.tryWrap(buffer, offset, limit);
                     onHandshakeRequest(handshakeRequest);
-                    //System.out.println(handshakeRequest);
                 }
                 /**
                 while(length > offset)
@@ -602,10 +600,11 @@ public final class SocksServerFactory implements StreamFactory
         private void doReset(
             long traceId)
         {
-            final ResetFW reset = resetRW.wrap(writeBuffer, 0, writeBuffer.capacity()).routeId(routeId)
-                .streamId(initialId)
-                .trace(traceId)
-                .build();
+            final ResetFW reset = resetRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+                                         .routeId(routeId)
+                                         .streamId(initialId)
+                                         .trace(traceId)
+                                         .build();
 
             network.accept(reset.typeId(), reset.buffer(), reset.offset(), reset.sizeof());
         }
@@ -613,21 +612,22 @@ public final class SocksServerFactory implements StreamFactory
         private void doSignal(
             long traceId)
         {
-            final SignalFW signal = signalRW.wrap(writeBuffer, 0, writeBuffer.capacity()).routeId(routeId)
-                .streamId(initialId)
-                .trace(traceId)
-                .build();
+            final SignalFW signal = signalRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+                                            .routeId(routeId)
+                                            .streamId(initialId)
+                                            .trace(traceId)
+                                            .build();
 
             network.accept(signal.typeId(), signal.buffer(), signal.offset(), signal.sizeof());
         }
 
         private void doNoAuthenticationRequired(int method){
-            SocksHandshakeReplyFW socksHandshakeReplyFW = socksHandshakeReplyFWRw.wrap(writeBuffer, 0, writeBuffer.capacity())
-                                                                                     .version(5)
-                                                                                     .method(method)
-                                                                                     .build();
+            SocksHandshakeReplyFW socksHandshakeReplyFW = socksHandshakeReplyFWRw.wrap(writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, writeBuffer.capacity())
+                                                                                 .version(5)
+                                                                                 .method(method)
+                                                                                 .build();
 
-            doNetworkData(socksHandshakeReplyFW.buffer(), socksHandshakeReplyFW.offset() , socksHandshakeReplyFW.sizeof());
+            doNetworkData(socksHandshakeReplyFW.buffer(), socksHandshakeReplyFW.offset() , socksHandshakeReplyFW.limit());
         }
     }
 
