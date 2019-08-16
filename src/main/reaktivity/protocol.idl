@@ -79,7 +79,7 @@ scope protocol
             uint32 port;
         }
 
-        struct SocksResponse
+        struct SocksReply
         {
             uint8 version = 5;
             SocksReplyType reply;

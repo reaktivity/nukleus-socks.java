@@ -480,7 +480,9 @@ public final class SocksServerFactory implements StreamFactory
             //int numMethod = method.buffer().getInt(method.offset());
         }
 
-        private void onHandshakeReply(OctetsFW method){
+        private void onHandshakeReply(
+            OctetsFW method)
+        {
             int methodNumber = method.buffer().getByte(method.offset());
             SocksAuthenticationMethod socksAuthenticationMethod = SocksAuthenticationMethod.valueOf((short) methodNumber);
             switch (socksAuthenticationMethod)
@@ -622,13 +624,17 @@ public final class SocksServerFactory implements StreamFactory
             network.accept(signal.typeId(), signal.buffer(), signal.offset(), signal.sizeof());
         }
 
-        private void doNoAuthenticationRequired(int method){
-            SocksHandshakeReplyFW socksHandshakeReplyFW = socksHandshakeReplyFWRw.wrap(writeBuffer, DataFW.FIELD_OFFSET_PAYLOAD, writeBuffer.capacity())
+        private void doNoAuthenticationRequired(
+            int method)
+        {
+            SocksHandshakeReplyFW socksHandshakeReplyFW = socksHandshakeReplyFWRw.wrap(writeBuffer,
+                                                                                       DataFW.FIELD_OFFSET_PAYLOAD,
+                                                                                       writeBuffer.capacity())
                                                                                  .version(5)
                                                                                  .method(method)
                                                                                  .build();
 
-            doNetworkData(socksHandshakeReplyFW.buffer(), socksHandshakeReplyFW.offset() , socksHandshakeReplyFW.limit());
+            doNetworkData(socksHandshakeReplyFW.buffer(), socksHandshakeReplyFW.offset(), socksHandshakeReplyFW.limit());
         }
     }
 
