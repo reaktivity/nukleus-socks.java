@@ -19,10 +19,13 @@ import static java.util.Objects.requireNonNull;
 
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandType;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandTypeFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksRequestFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeReplyFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeRequestFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksReplyFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksRequestFW;
 
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
@@ -47,8 +50,6 @@ import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.SignalFW;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.SocksBeginExFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.SocksEndExFW;
 
 public final class SocksServerFactory implements StreamFactory
 {
@@ -60,6 +61,7 @@ public final class SocksServerFactory implements StreamFactory
     private final WindowFW windowRO = new WindowFW();
     private final ResetFW resetRO = new ResetFW();
     private final SignalFW signalRO = new SignalFW();
+    private final SocksRequestFW socksRequestFW = new SocksRequestFW();
 
     private final BeginFW.Builder beginRW = new BeginFW.Builder();
     private final DataFW.Builder dataRW = new DataFW.Builder();
@@ -69,12 +71,8 @@ public final class SocksServerFactory implements StreamFactory
     private final ResetFW.Builder resetRW = new ResetFW.Builder();
     private final SignalFW.Builder signalRW = new SignalFW.Builder();
     private final SocksHandshakeReplyFW.Builder socksHandshakeReplyFWRw = new SocksHandshakeReplyFW.Builder();
+    private final SocksReplyFW.Builder socksReplyFw = new SocksReplyFW.Builder();
 
-
-    private final SocksBeginExFW.Builder socksBeginExRW = new SocksBeginExFW.Builder();
-    private final SocksEndExFW.Builder socksEndExRW = new SocksEndExFW.Builder();
-
-    private final SocksHandshakeReplyFW socksHandshakeReplyR0 = new SocksHandshakeReplyFW();
     private final SocksHandshakeRequestFW socksHandshakeRequestR0 = new SocksHandshakeRequestFW();
     private final SocksRequestFW socksRequestR0 = new SocksRequestFW();
 
@@ -213,10 +211,10 @@ public final class SocksServerFactory implements StreamFactory
             this.routeId = routeId;
             this.initialId = initialId;
             this.replyId = replyId;
-            this.decodeState = this::decodeCommandPacket;
+            this.decodeState = this::decodeCommandType;
         }
 
-        private int decodeCommandPacket(
+        private int decodeCommandType(
             SocksCommandType socksCommandType,
             DirectBuffer directBuffer,
             int offset,
@@ -225,7 +223,7 @@ public final class SocksServerFactory implements StreamFactory
             switch (socksCommandType)
             {
                 case CONNECT:
-                    //final SocksBeginExFW socksbeginExFW = socksBeginExRW.wrap(directBuffer, offset, length);
+                    final SocksRequestFW socksRequestFw =
                     //onSocksConnect(socksbeginExFW);
                     break;
                 case BIND:
@@ -248,7 +246,6 @@ public final class SocksServerFactory implements StreamFactory
             int index,
             int length)
         {
-            //System.out.println(msgTypeId);
             switch (msgTypeId)
             {
                 case BeginFW.TYPE_ID:
@@ -384,6 +381,11 @@ public final class SocksServerFactory implements StreamFactory
                     limit = bufferSlot;
                 }
 
+                if (bufferSlot == BufferPool.NO_SLOT)
+                {
+                    bufferSlot = bufferPool.acquire(initialId);
+                }
+
                 if(payload.sizeof() == 3)
                 {
                     final SocksHandshakeRequestFW handshakeRequest = socksHandshakeRequestR0.tryWrap(buffer, offset, limit);
@@ -391,7 +393,7 @@ public final class SocksServerFactory implements StreamFactory
                 }
                 else if (payload.sizeof() == 18)
                 {
-                    final SocksRequestFW socksRequest = socksRequestR0.tryWrap(buffer, offset, limit);
+                    final SocksRequestFW socksRequest = socksRequestR0.wrap(buffer, offset, limit);
                     onSocksRequest(socksRequest);
                 }
             }
@@ -436,8 +438,11 @@ public final class SocksServerFactory implements StreamFactory
                 //refuse the connection
                 //TODO
             }
-
-
+            SocksCommandType commandType = socksRequestFW.command().get();
+            decodeCommandType(commandType,
+                              socksRequestFW.buffer(),
+                              socksRequestFW.offset(),
+                              socksRequestFW.limit());
         }
 
         private void onSocksConnect(
