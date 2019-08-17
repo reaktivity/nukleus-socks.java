@@ -24,6 +24,7 @@ import org.reaktivity.nukleus.socks.internal.types.codec.SocksReplyTypeFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksReplyType;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksAddressFW;
 
+import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 
@@ -362,7 +363,7 @@ public final class SocksServerFactory implements StreamFactory
         private void onSocksReply(
             byte replyFieled,
             SocksAddressFW socksAddressFW,
-            Long port)
+            int port)
         {
             doSocksReply(replyFieled, socksAddressFW, port);
         }
@@ -408,6 +409,7 @@ public final class SocksServerFactory implements StreamFactory
                 else if (payload.sizeof() == 18)
                 {
                     final SocksRequestFW socksRequest = socksRequestR0.wrap(buffer, offset, limit);
+                    System.out.println(socksRequestR0);
                     onSocksRequest(socksRequest);
                 }
             }
@@ -699,28 +701,36 @@ public final class SocksServerFactory implements StreamFactory
         {
             //System.out.println(socksRequestFW);
             SocksAddressFW socksAddressFW = socksRequestFW.address();
-            onSocksReply((byte) 0, socksAddressFW, socksRequestFW.port());
+            System.out.println(socksAddressFW.toString());
+            //onSocksReply((byte) 0, socksAddressFW, socksRequestFW.port());
         }
 
         private void doSocksReply(
             byte replyFieled,
-            SocksAddressFW socksAddressFW,
-            Long port)
+            SocksAddressFW socksAddress,
+            int port)
         {
 
             SocksReplyType socksReplyField = SocksReplyType.valueOf(replyFieled);
-
+            //OctetsFW IPV4Address = socksAddress.domainName();
+            socksAddressRw.ipv4Address(t->t.set(socksAddress.ipv4Address()));
+            OctetsFW socksReplyAddress = socksAddress.ipv4Address();
+            System.out.println(socksReplyAddress.toString());
+            SocksAddressFW.Builder socksAddBuilder = socksAddressRw.ipv4Address(t->t.set(socksAddress.ipv4Address()));
+            System.out.println(socksAddBuilder);
+            Consumer<SocksAddressFW.Builder> mutator = t -> t.ipv4Address(d->d.set(socksAddress.ipv4Address()));
             SocksReplyFW socksReplyFW = socksReplyRw.wrap(writeBuffer,
                                                           DataFW.FIELD_OFFSET_PAYLOAD,
                                                           writeBuffer.capacity())
                                                     .version(5)
                                                     .type(t -> t.set(SocksReplyType.SUCCEEDED))
                                                     .reserved(0)
-                                                    .address(t -> t.domainName(socksAddressFW.domainName().asString()))
-                                                    .port(port)
+                                                    .address(mutator)
+                                                    .port(32767)
                                                     .build();
             System.out.println(socksReplyFW);
             doNetworkData(socksReplyFW.buffer(), socksReplyFW.offset(), socksReplyFW.limit());
+
         }
     }
 

@@ -75,7 +75,6 @@ scope protocol
             uint8 version = 5;
             SocksCommandType command;
             uint8 reserved = 0;
-            uint8 addressType;
             SocksAddress address;
             uint16 port;
         }
@@ -85,7 +84,6 @@ scope protocol
             uint8 version = 5;
             SocksReplyType type;
             uint8 reserved = 0;
-            uint8 addressType;
             SocksAddress address;
             uint16 port;
         }
