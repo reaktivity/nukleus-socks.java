@@ -54,7 +54,7 @@ public class ServerIT
     @Specification({
         "${route}/server/routed.domain/controller",
         "${forward}/connected.domain/server",
-        "${client}/rfc1928/connect/connected.domain/client"
+         "${client}/rfc1928/connect/connected.domain/client"
     })
     public void shouldForwardConnectedDomain() throws Exception
     {

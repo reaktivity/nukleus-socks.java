@@ -127,6 +127,7 @@ public final class SocksController implements Controller
                 .remoteAddress(remoteAddress)
                 .extension(extension.buffer(), extension.offset(), extension.sizeof())
                 .build();
+        System.out.println(130);
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
     }
 }
