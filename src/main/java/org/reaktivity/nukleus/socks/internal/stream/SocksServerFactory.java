@@ -422,7 +422,13 @@ public final class SocksServerFactory implements StreamFactory
                 final SocksServerStream socksServerStream = new SocksServerStream(this, newTarget,
                     newRouteId, newInitialId, newReplyId);
 
-                socksServerStream.doApplicationBeginEx(socksRequest);
+                SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer, 0, extBuffer.capacity())
+                                                                                                .typeId(socksTypeId)
+                                                                                                .address(socksRequest.address().domainName())
+                                                                                                .port(socksRequest.port())
+                                                                                                .build();
+                socksServerStream.doApplicationBeginEx(newTarget, newRouteId, newInitialId, decodeTraceId,
+                socksBeginEx.buffer(), socksBeginEx.offset(), socksBeginEx.limit());
                 correlations.put(newReplyId, socksServerStream);
             }
             //SocksAddressFW socksAddressFW = socksRequest.address();
@@ -506,7 +512,6 @@ public final class SocksServerFactory implements StreamFactory
             int offset,
             int sizeOf)
         {
-            //System.out.println(sizeOf);
 
             final DataFW data = dataRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                 .routeId(routeId)
@@ -519,6 +524,14 @@ public final class SocksServerFactory implements StreamFactory
 
             network.accept(data.typeId(), data.buffer(), data.offset(), data.sizeof());
             router.setThrottle(replyId, this::onNetwork);
+        }
+
+        private void doNetworkReplyData(
+            DirectBuffer buffer,
+            int offset,
+            int sizeOf)
+        {
+            final SocksRequestFW socksRequest = socksRequestR0.wrap(buffer, offset, sizeOf);
         }
 
         private void doNetworkEnd(
@@ -750,7 +763,8 @@ public final class SocksServerFactory implements StreamFactory
         private void onApplicationBegin(
             BeginFW begin)
         {
-            //doApplicationBegin(supplyTraceId.getAsLong());
+            OctetsFW extension = begin.extension();
+            this.receiver.doNetworkReplyData(extension.buffer(), extension.offset(), extension.limit());
         }
 
         private void onApplicationData(
@@ -769,22 +783,22 @@ public final class SocksServerFactory implements StreamFactory
         }
 
         private void doApplicationBeginEx(
-            SocksRequestFW socksRequest)
+            MessageConsumer target,
+            long routeId,
+            long streamId,
+            long traceId,
+            DirectBuffer buffer,
+            int offset,
+            int length)
         {
-            SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer, 0, extBuffer.capacity())
-                .typeId(socksTypeId)
-                .address(socksRequest.address().domainName())
-                .port(socksRequest.port())
-                .build();
 
             final BeginFW begin = beginRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                 .routeId(routeId)
-                .streamId(replyId)
-                .trace(supplyTraceId.getAsLong())
-                .extension(socksBeginEx.buffer(), socksBeginEx.offset(), socksBeginEx.limit())
+                .streamId(streamId)
+                .trace(traceId)
+                .extension(buffer, offset, length)
                 .build();
-            application.accept(begin.typeId(), begin.buffer(), begin.offset(), begin.limit());
-            //router.setThrottle(replyId, this::onApplication);
+            target.accept(begin.typeId(), begin.buffer(), begin.offset(), begin.limit());
         }
 
         private void doApplicationData(
@@ -800,7 +814,6 @@ public final class SocksServerFactory implements StreamFactory
                 .padding(replyPadding)
                 .payload(buffer, offset, sizeOf)
                 .build();
-            //System.out.printf("Line 595 on  application data: %s\n", data);
             application.accept(data.typeId(), data.buffer(), data.offset(), data.sizeof());
             router.setThrottle(replyId, this::onApplication);
         }
