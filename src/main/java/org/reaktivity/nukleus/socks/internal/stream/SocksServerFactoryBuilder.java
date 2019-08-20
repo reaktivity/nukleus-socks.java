@@ -128,6 +128,7 @@ public final class SocksServerFactoryBuilder implements StreamFactoryBuilder
             bufferPool,
             supplyInitialId,
             supplyReplyId,
-            supplyTraceId);
+            supplyTraceId,
+            supplyTypeId);
     }
 }
