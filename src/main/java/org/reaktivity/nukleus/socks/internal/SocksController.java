@@ -103,7 +103,7 @@ public final class SocksController implements Controller
                 final String topic = gson.fromJson(object.get("topic"), String.class);
 
                 routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .build();
+                                   .build();
             }
         }
 
@@ -127,7 +127,7 @@ public final class SocksController implements Controller
                 .remoteAddress(remoteAddress)
                 .extension(extension.buffer(), extension.offset(), extension.sizeof())
                 .build();
-        System.out.println(130);
+
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
     }
 }
