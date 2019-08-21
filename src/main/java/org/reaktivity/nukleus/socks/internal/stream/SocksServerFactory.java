@@ -418,9 +418,7 @@ public final class SocksServerFactory implements StreamFactory
                 final SocksServerStream socksServerStream = new SocksServerStream(this, newTarget,
                     newRouteId, newInitialId, newReplyId);
 
-                SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer,
-                                                            0,
-                                                                  extBuffer.capacity())
+                SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer,0, extBuffer.capacity())
                                                             .typeId(socksTypeId)
                                                             .address(socksRequest.address().domainName())
                                                             .port(socksRequest.port())
@@ -528,10 +526,10 @@ public final class SocksServerFactory implements StreamFactory
             long traceId)
         {
             final EndFW end = endRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .routeId(routeId)
-                .streamId(replyId)
-                .trace(traceId)
-                .build();
+                                   .routeId(routeId)
+                                   .streamId(replyId)
+                                   .trace(traceId)
+                                   .build();
 
             network.accept(end.typeId(), end.buffer(), end.offset(), end.limit());
         }
@@ -540,10 +538,10 @@ public final class SocksServerFactory implements StreamFactory
             long traceId)
         {
             final AbortFW abort = abortRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .routeId(routeId)
-                .streamId(replyId)
-                .trace(traceId)
-                .build();
+                                         .routeId(routeId)
+                                         .streamId(replyId)
+                                         .trace(traceId)
+                                         .build();
 
             network.accept(abort.typeId(), abort.buffer(), abort.offset(), abort.sizeof());
         }
