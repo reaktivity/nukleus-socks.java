@@ -32,7 +32,7 @@ import org.reaktivity.nukleus.socks.internal.types.codec.*;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.*;
 import org.reaktivity.nukleus.stream.StreamFactory;
-import org.reaktivity.nukleus.socks.internal.types.StringFW;
+//import org.reaktivity.nukleus.socks.internal.types.StringFW;
 
 //import java.util.function.Consumer;
 import java.net.InetAddress;
@@ -55,6 +55,7 @@ public final class SocksServerFactory implements StreamFactory
     private final SignalFW signalRO = new SignalFW();
     private final SocksRequestFW socksRequestFW = new SocksRequestFW();
     private final SocksBeginExFW socksBeginExFW = new SocksBeginExFW();
+    private final SocksReplyFW socksReplyFW = new SocksReplyFW();
 
     private final BeginFW.Builder beginRW = new BeginFW.Builder();
     private final DataFW.Builder dataRW = new DataFW.Builder();
@@ -605,7 +606,7 @@ public final class SocksServerFactory implements StreamFactory
                 .method(method)
                 .build();
 
-            doNetworkData(socksHandshakeReplyFW.buffer(), socksHandshakeReplyFW.offset(), socksHandshakeReplyFW.limit());
+            doNetworkData(socksHandshakeReplyFW.buffer(), socksHandshakeReplyFW.offset(), socksHandshakeReplyFW.sizeof());
         }
 
         //private void doSocksBegin
@@ -623,20 +624,20 @@ public final class SocksServerFactory implements StreamFactory
             int port)
         {
             byte[] ipv4Address = lookupName(address).getAddress();
-            SocksAddressFW socksAddress = socksAddressRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+            SocksAddressFW socksAddress = socksAddressRW.wrap(writeBuffer, SocksReplyFW.FIELD_OFFSET_ADDRESS,
+                writeBuffer.capacity())
                 .ipv4Address(t->t.set(ipv4Address))
                 .build();
-            SocksReplyFW socksReplyFW = socksReplyRw.wrap(writeBuffer,
-                                                          DataFW.FIELD_OFFSET_PAYLOAD,
-                                                          writeBuffer.capacity())
-                                                    .version(5)
-                                                    .type(t -> t.set(SocksReplyType.SUCCEEDED))
-                                                    .reserved(0)
-                                                    .address(t -> t.ipv4Address(d->d.set(socksAddress.ipv4Address())))
-                                                    .port(port)
-                                                    .build();
-            doNetworkData(socksReplyFW.buffer(), socksReplyFW.offset(), socksReplyFW.sizeof());
-
+            SocksReplyFW socksReply = socksReplyRw.wrap(writeBuffer,
+                DataFW.FIELD_OFFSET_PAYLOAD,
+                writeBuffer.capacity())
+                .version(5)
+                .type(t -> t.set(SocksReplyType.SUCCEEDED))
+                .reserved(0)
+                .address(a->a.ipv4Address(i->i.set(socksAddress.ipv4Address())))
+                .port(port)
+                .build();
+            doNetworkData(socksReply.buffer(), socksReply.offset(), socksReply.sizeof());
         }
     }
 
@@ -693,10 +694,6 @@ public final class SocksServerFactory implements StreamFactory
                     final EndFW end = endRO.wrap(buffer, index, index + length);
                     onApplicationEnd(end);
                     break;
-                case AbortFW.TYPE_ID:
-                    final AbortFW abort = abortRO.wrap(buffer, index, index + length);
-                    onApplicationkAbort(abort);
-                    break;
                 case WindowFW.TYPE_ID:
                     final WindowFW window = windowRO.wrap(buffer, index, index + length);
                     onApplicationWindow(window);
@@ -705,25 +702,15 @@ public final class SocksServerFactory implements StreamFactory
                     final ResetFW reset = resetRO.wrap(buffer, index, index + length);
                     onApplicationReset(reset);
                     break;
-                case SignalFW.TYPE_ID:
-                    final SignalFW signal = signalRO.wrap(buffer, index, index + length);
-                    onApplicationSignal(signal);
-                    break;
                 default:
                     break;
             }
         }
 
-        private void onApplicationkAbort(
-            AbortFW abort)
-        {
-            //TODO
-        }
-
         private void onApplicationWindow(
             WindowFW window)
         {
-            //
+            //TODO
         }
 
         private void onApplicationReset(
@@ -746,12 +733,15 @@ public final class SocksServerFactory implements StreamFactory
 
             String address = socksBeginEx.address().asString();
             int port = socksBeginEx.port();
-            //SocksServer receiver = new SocksServer(this.receiver, )
+
+
+            //SocksServer receiver = new SocksServer(new, begin.routeId(), this.receiver.initialId ,begin.typeId());
 
             /*byte[] ipv4Address = lookupName(address).getAddress();
             SocksAddressFW socksAddress = socksAddressRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                                                         .ipv4Address(t->t.set(ipv4Address))
                                                         .build();*/
+
 
             this.receiver.doSocksReply(address, port);
         }
@@ -768,7 +758,8 @@ public final class SocksServerFactory implements StreamFactory
         private void onApplicationEnd(
             EndFW end)
         {
-            //TODO
+            final long traceId = end.trace();
+            doApplicationEnd(traceId);
         }
 
         private void doApplicationBeginEx(
@@ -804,7 +795,18 @@ public final class SocksServerFactory implements StreamFactory
                 .payload(buffer, offset, sizeOf)
                 .build();
             application.accept(data.typeId(), data.buffer(), data.offset(), data.sizeof());
-            router.setThrottle(replyId, this::onApplication);
+            //router.setThrottle(replyId, this::onApplication);
+        }
+
+        private void doApplicationEnd(
+            long traceId)
+        {
+            final EndFW end = endRW.wrap(extBuffer, 0, extBuffer.capacity())
+                .routeId(routeId)
+                .streamId(replyId)
+                .trace(traceId)
+                .build();
+            this.receiver.network.accept(end.typeId(), end.buffer(), end.offset(), end.sizeof());
         }
     }
 
