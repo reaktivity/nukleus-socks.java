@@ -20,6 +20,15 @@ import org.agrona.LangUtil;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.Long2ObjectHashMap;
 import org.agrona.concurrent.UnsafeBuffer;
+
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksReplyFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeReplyFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeRequestFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksRequestFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandType;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksReplyType;
+
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.function.MessageFunction;
@@ -28,9 +37,16 @@ import org.reaktivity.nukleus.route.RouteManager;
 import org.reaktivity.nukleus.socks.internal.SocksConfiguration;
 import org.reaktivity.nukleus.socks.internal.SocksNukleus;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.*;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.*;
+import org.reaktivity.nukleus.socks.internal.types.stream.SocksBeginExFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.SignalFW;
+
 import org.reaktivity.nukleus.stream.StreamFactory;
 
 import java.net.InetAddress;
@@ -541,13 +557,13 @@ public final class SocksServerFactory implements StreamFactory
                 initialBudget += initialCredit;
 
                 final WindowFW window = windowRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                    .routeId(routeId)
-                    .streamId(initialId)
-                    .trace(traceId)
-                    .credit(initialCredit)
-                    .padding(initialPadding)
-                    .groupId(0)
-                    .build();
+                                                .routeId(routeId)
+                                                .streamId(initialId)
+                                                .trace(traceId)
+                                                .credit(initialCredit)
+                                                .padding(initialPadding)
+                                                .groupId(0)
+                                                .build();
 
                 network.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
             }
@@ -557,10 +573,10 @@ public final class SocksServerFactory implements StreamFactory
             long traceId)
         {
             final ResetFW reset = resetRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .routeId(routeId)
-                .streamId(initialId)
-                .trace(traceId)
-                .build();
+                                         .routeId(routeId)
+                                         .streamId(initialId)
+                                         .trace(traceId)
+                                         .build();
 
             network.accept(reset.typeId(), reset.buffer(), reset.offset(), reset.sizeof());
         }
@@ -569,10 +585,10 @@ public final class SocksServerFactory implements StreamFactory
             long traceId)
         {
             final SignalFW signal = signalRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .routeId(routeId)
-                .streamId(initialId)
-                .trace(traceId)
-                .build();
+                                            .routeId(routeId)
+                                            .streamId(initialId)
+                                            .trace(traceId)
+                                            .build();
 
             network.accept(signal.typeId(), signal.buffer(), signal.offset(), signal.sizeof());
         }
