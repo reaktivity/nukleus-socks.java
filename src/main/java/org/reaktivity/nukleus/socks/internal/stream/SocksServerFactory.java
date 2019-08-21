@@ -624,17 +624,14 @@ public final class SocksServerFactory implements StreamFactory
             int port)
         {
             byte[] ipv4Address = lookupName(address).getAddress();
-            SocksAddressFW socksAddress = socksAddressRW.wrap(writeBuffer, SocksReplyFW.FIELD_OFFSET_ADDRESS,
-                writeBuffer.capacity())
-                .ipv4Address(t->t.set(ipv4Address))
-                .build();
+
             SocksReplyFW socksReply = socksReplyRw.wrap(writeBuffer,
                 DataFW.FIELD_OFFSET_PAYLOAD,
                 writeBuffer.capacity())
                 .version(5)
                 .type(t -> t.set(SocksReplyType.SUCCEEDED))
                 .reserved(0)
-                .address(a->a.ipv4Address(i->i.set(socksAddress.ipv4Address())))
+                .address(a->a.ipv4Address(i->i.set(ipv4Address)))
                 .port(port)
                 .build();
             doNetworkData(socksReply.buffer(), socksReply.offset(), socksReply.sizeof());
