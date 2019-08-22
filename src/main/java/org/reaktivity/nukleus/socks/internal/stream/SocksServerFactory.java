@@ -186,12 +186,12 @@ public final class SocksServerFactory implements StreamFactory
         final MessageConsumer sender)
     {
         final long replyId = begin.streamId();
-        final SocksServerStream connect = correlations.remove(replyId);
+        final SocksServerStream serverStream = correlations.remove(replyId);
 
         MessageConsumer newStream = null;
-        if (connect != null)
+        if (serverStream != null)
         {
-            newStream = connect::onApplication;
+            newStream = serverStream::onApplication;
         }
         return newStream;
     }
