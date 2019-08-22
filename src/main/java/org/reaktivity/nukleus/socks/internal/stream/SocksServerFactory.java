@@ -318,15 +318,8 @@ public final class SocksServerFactory implements StreamFactory
                     limit = bufferSlot;
                 }
 
-                if (payload.sizeof() == 3)
-                {
-                    final SocksHandshakeRequestFW handshakeRequest = handshakeRequestRO.tryWrap(buffer, offset, limit);
-                    onHandshakeRequest(handshakeRequest);
-                }
-                else
-                {
-                    final SocksCommandRequestFW socksCommandRequest = socksCommandRequestRO.wrap(buffer, offset, limit);
-                    onSocksCommandRequest(socksCommandRequest);
+                while(offset < limit) {
+                    offset += decodeState.decode(buffer, offset, limit);
                 }
             }
             else
