@@ -285,12 +285,6 @@ public final class SocksServerFactory implements StreamFactory
                     final ResetFW reset = resetRO.wrap(buffer, index, index + length);
                     onNetworkReset(reset);
                     break;
-                case SignalFW.TYPE_ID:
-                    final SignalFW signal = signalRO.wrap(buffer, index, index + length);
-                    onNetworkSignal(signal);
-                    break;
-                default:
-                    break;
             }
         }
 
@@ -476,13 +470,6 @@ public final class SocksServerFactory implements StreamFactory
             doReset(traceId);
         }
 
-        private void onNetworkSignal(
-            SignalFW signal)
-        {
-            final long traceId = signal.trace();
-            doSignal(traceId);
-        }
-
         private void onHandshakeRequest(
             SocksHandshakeRequestFW handshakeRequest)
         {
@@ -527,8 +514,6 @@ public final class SocksServerFactory implements StreamFactory
                     break;
                 case TO_XFE_RESERVED_FOR_PRIVATE_METHODS:
                     //todo
-                    break;
-                default:
                     break;
             }
         }
@@ -619,18 +604,6 @@ public final class SocksServerFactory implements StreamFactory
                                          .build();
 
             network.accept(reset.typeId(), reset.buffer(), reset.offset(), reset.sizeof());
-        }
-
-        private void doSignal(
-            long traceId)
-        {
-            final SignalFW signal = signalRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                                            .routeId(routeId)
-                                            .streamId(initialId)
-                                            .trace(traceId)
-                                            .build();
-
-            network.accept(signal.typeId(), signal.buffer(), signal.offset(), signal.sizeof());
         }
 
         private void doSocksHandshakeReply(
@@ -725,8 +698,6 @@ public final class SocksServerFactory implements StreamFactory
                 case ResetFW.TYPE_ID:
                     final ResetFW reset = resetRO.wrap(buffer, index, index + length);
                     onApplicationReset(reset);
-                    break;
-                default:
                     break;
             }
         }
