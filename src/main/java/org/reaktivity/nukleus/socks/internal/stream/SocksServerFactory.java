@@ -221,7 +221,7 @@ public final class SocksServerFactory implements StreamFactory
             this.routeId = routeId;
             this.initialId = initialId;
             this.replyId = replyId;
-            this.decodeState = this :: decodeCommandType;
+            this.decodeState = this :: decodeHandshake;
         }
 
         private int decodeCommandType(
@@ -235,6 +235,21 @@ public final class SocksServerFactory implements StreamFactory
             {
                 progress = commandRequest.limit();
                 onSocksCommandRequest(commandRequest);
+            }
+            return progress;
+        }
+
+        private int decodeHandshake(
+            DirectBuffer buffer,
+            int offset,
+            int limit)
+        {
+            SocksHandshakeRequestFW handshakeRequest = handshakeRequestRO.tryWrap(buffer, offset, limit);
+            int progress = offset;
+            if (handshakeRequest != null)
+            {
+                progress = handshakeRequest.limit();
+                onHandshakeRequest(handshakeRequest);
             }
             return progress;
         }
@@ -273,13 +288,6 @@ public final class SocksServerFactory implements StreamFactory
                     onNetworkReset(reset);
                     break;
             }
-        }
-
-        private void onSocksCommandReply(
-            String socksAddressFW,
-            int port)
-        {
-            doSocksCommandReply(socksAddressFW, port);
         }
 
         private void onNetworkData(
