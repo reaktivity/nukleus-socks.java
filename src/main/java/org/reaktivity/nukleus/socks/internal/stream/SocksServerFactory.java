@@ -175,8 +175,8 @@ public final class SocksServerFactory implements StreamFactory
 
         if (route != null)
         {
-            final SocksServer connection = new SocksServer(sender, routeId, initialId, replyId);
-            newStream = connection::onNetwork;
+            final SocksServer server = new SocksServer(sender, routeId, initialId, replyId);
+            newStream = server::onNetwork;
         }
         return newStream;
     }
