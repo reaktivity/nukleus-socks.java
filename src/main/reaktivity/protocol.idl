@@ -19,7 +19,7 @@ scope protocol
 
     scope codec
     {
-        enum SocksCommandType (int8)
+        enum SocksCommand (int8)
         {
             CONNECT (0x01),
             BIND (0x02),
@@ -73,7 +73,7 @@ scope protocol
         struct SocksCommandRequest
         {
             uint8 version = 5;
-            SocksCommandType command;
+            SocksCommand command;
             uint8 reserved = 0;
             SocksAddress address;
             uint16 port;

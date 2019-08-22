@@ -317,7 +317,8 @@ public final class SocksServerFactory implements StreamFactory
                     limit = bufferSlot;
                 }
 
-                while(offset < limit) {
+                while(offset < limit)
+                {
                     offset += decodeState.decode(buffer, offset, limit);
                 }
             }
