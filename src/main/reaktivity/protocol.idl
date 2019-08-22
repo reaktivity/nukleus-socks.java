@@ -70,7 +70,7 @@ scope protocol
             case 3: string domainName;
         }
 
-        struct SocksRequest
+        struct SocksCommandRequest
         {
             uint8 version = 5;
             SocksCommandType command;

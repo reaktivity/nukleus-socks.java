@@ -21,7 +21,14 @@ import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.Long2ObjectHashMap;
 import org.agrona.concurrent.UnsafeBuffer;
 
-import org.reaktivity.nukleus.socks.internal.types.codec.*;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksReplyFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeReplyFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeRequestFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandRequestFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandType;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksReplyType;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksAddressFW;
 
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageConsumer;
@@ -63,7 +70,7 @@ public final class SocksServerFactory implements StreamFactory
     private final SignalFW signalRO = new SignalFW();
     private final SocksBeginExFW socksBeginExRO = new SocksBeginExFW();
     private final SocksHandshakeRequestFW handshakeRequestRO = new SocksHandshakeRequestFW();
-    private final SocksRequestFW socksRequestRO = new SocksRequestFW();
+    private final SocksCommandRequestFW socksCommandRequestRO = new SocksCommandRequestFW();
     private final SocksAddressFW socksAddressRO = new SocksAddressFW();
     private final OctetsFW octetsRO = new OctetsFW();
 
@@ -229,8 +236,8 @@ public final class SocksServerFactory implements StreamFactory
             switch (socksCommandType)
             {
                 case CONNECT:
-                    final SocksRequestFW socksRequestFw = socksRequestRO.tryWrap(directBuffer, offset, length);
-                    onSocksConnect(socksRequestFw);
+                    final SocksCommandRequestFW socksCommandRequest = socksCommandRequestRO.tryWrap(directBuffer, offset, length);
+                    onSocksConnect(socksCommandRequest);
                     break;
                 case BIND:
                     //TODO
@@ -329,8 +336,8 @@ public final class SocksServerFactory implements StreamFactory
                 }
                 else
                 {
-                    final SocksRequestFW socksRequest = socksRequestRO.wrap(buffer, offset, limit);
-                    onSocksRequest(socksRequest);
+                    final SocksCommandRequestFW socksCommandRequest = socksCommandRequestRO.wrap(buffer, offset, limit);
+                    onSocksCommandRequest(socksCommandRequest);
                 }
             }
             else
@@ -372,25 +379,25 @@ public final class SocksServerFactory implements StreamFactory
             doNetworkWindow(supplyTraceId.getAsLong(), initialCredit);
         }
 
-        private void onSocksRequest(
-            SocksRequestFW socksRequestFW)
+        private void onSocksCommandRequest(
+            SocksCommandRequestFW socksCommandRequest)
         {
-            if (socksRequestFW.version() != 5 && socksRequestFW.reserved() != 0)
+            if (socksCommandRequest.version() != 5 && socksCommandRequest.reserved() != 0)
             {
                 //TODO
             }
 
-            SocksCommandType commandType = socksRequestFW.command().get();
+            SocksCommandType commandType = socksCommandRequest.command().get();
             decodeCommandType(commandType,
-                socksRequestFW.buffer(),
-                socksRequestFW.offset(),
-                socksRequestFW.limit());
+                socksCommandRequest.buffer(),
+                socksCommandRequest.offset(),
+                socksCommandRequest.limit());
         }
 
         private void onSocksConnect(
-            SocksRequestFW socksRequest)
+            SocksCommandRequestFW socksCommandRequest)
         {
-            if (socksRequest == null)
+            if (socksCommandRequest == null)
             {
                 //TODO
             }
@@ -417,16 +424,16 @@ public final class SocksServerFactory implements StreamFactory
 
                 /*SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer,0, extBuffer.capacity())
                                                             .typeId(socksTypeId)
-                                                            .address(socksRequest.address().domainName())
-                                                            .port(socksRequest.port())
+                                                            .address(socksCommandRequest.address().domainName())
+                                                            .port(socksCommandRequest.port())
                                                             .build();*/
-                SocksAddressFW socksAddress = socksRequest.address();
+                SocksAddressFW socksAddress = socksCommandRequest.address();
                 String address = formatSocksAddress(socksAddress);
 
-                SocksBeginExFW socksBegin = socksBeginExRW.wrap(extBuffer,0, extBuffer.capacity())
+                SocksBeginExFW socksBegin = socksBeginExRW.wrap(extBuffer, 0, extBuffer.capacity())
                     .typeId(socksTypeId)
                     .address(address)
-                    .port(socksRequest.port())
+                    .port(socksCommandRequest.port())
                     .build();
 
                 socksServerStream.doApplicationBeginEx(newTarget, newInitialId, decodeTraceId,
