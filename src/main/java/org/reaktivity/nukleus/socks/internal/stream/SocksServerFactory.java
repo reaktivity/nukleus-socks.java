@@ -484,21 +484,25 @@ public final class SocksServerFactory implements StreamFactory
         }
 
         private void onHandshakeRequest(
-            SocksHandshakeRequestFW onHandshakeRequest)
+            SocksHandshakeRequestFW handshakeRequest)
         {
-            if (onHandshakeRequest.version() != 5)
+            OctetsFW ipRO = handshakeRequest.methods();
+            byte[] method = new byte[ipRO.sizeof()];
+            ipRO.buffer().getBytes(ipRO.offset(), method, 0, ipRO.sizeof());
+
+            if (handshakeRequest.version() != 5)
             {
-                //TODO
+                doNetworkEnd(supplyTraceId.getAsLong());
             }
-            int nmethods = onHandshakeRequest.nmethods();
-            OctetsFW method = onHandshakeRequest.methods();
-            if (nmethods != method.limit() - method.offset())
+            else if (method[SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()] == -1)
             {
-                //TODO refuse connection
+                doSocksHandshakeReply(SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS);
+                doNetworkEnd(supplyTraceId.getAsLong());
             }
             else
             {
-                onHandshakeReply(method);
+                doSocksHandshakeReply(SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED);
+                decodeState = this::decodeCommandType;
             }
         }
 
@@ -510,7 +514,7 @@ public final class SocksServerFactory implements StreamFactory
             switch (socksAuthenticationMethod)
             {
                 case NO_AUTHENTICATION_REQUIRED:
-                    doNoAuthenticationRequired(methodNumber);
+                    doSocksHandshakeReply(socksAuthenticationMethod);
                     break;
                 case GSSAPI:
                     //todo
@@ -629,14 +633,14 @@ public final class SocksServerFactory implements StreamFactory
             network.accept(signal.typeId(), signal.buffer(), signal.offset(), signal.sizeof());
         }
 
-        private void doNoAuthenticationRequired(
-            int method)
+        private void doSocksHandshakeReply(
+            SocksAuthenticationMethod method)
         {
             SocksHandshakeReplyFW handshakeReply = handshakeReplyRW.wrap(writeBuffer,
                                                                                      DataFW.FIELD_OFFSET_PAYLOAD,
                                                                                      writeBuffer.capacity())
                                                                                .version(5)
-                                                                               .method(method)
+                                                                               .method(method.value())
                                                                                .build();
 
             doNetworkData(handshakeReply.buffer(), handshakeReply.offset(), handshakeReply.sizeof());
