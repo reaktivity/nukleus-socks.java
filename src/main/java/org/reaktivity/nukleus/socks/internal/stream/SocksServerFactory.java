@@ -386,11 +386,6 @@ public final class SocksServerFactory implements StreamFactory
         private void onSocksConnect(
             SocksCommandRequestFW socksCommandRequest)
         {
-            if (socksCommandRequest == null)
-            {
-                //TODO
-            }
-
             final MessagePredicate filter = (t, b, o, l) ->
             {
                 if (t > 0 && t <= ResetFW.TYPE_ID && o < l)
