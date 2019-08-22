@@ -26,7 +26,7 @@ scope protocol
             UDP_ASSOCIATE (0x03)
         }
 
-        enum SocksReplyType (int8)
+        enum SocksCommandReplyType (int8)
         {
             SUCCEEDED (0x00),
             GENERAL_SOCKS_SERVER_FAILURE (0x01),
@@ -79,10 +79,10 @@ scope protocol
             uint16 port;
         }
 
-        struct SocksReply
+        struct SocksCommandReply
         {
             uint8 version = 5;
-            SocksReplyType type;
+            SocksCommandReplyType type;
             uint8 reserved = 0;
             SocksAddress address;
             uint16 port;

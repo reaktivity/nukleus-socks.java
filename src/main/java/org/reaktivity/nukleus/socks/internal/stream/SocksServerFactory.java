@@ -21,13 +21,13 @@ import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.Long2ObjectHashMap;
 import org.agrona.concurrent.UnsafeBuffer;
 
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksReplyFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeReplyFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeRequestFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandRequestFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandType;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksReplyType;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyType;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksAddressFW;
 
 import org.reaktivity.nukleus.buffer.BufferPool;
@@ -82,7 +82,7 @@ public final class SocksServerFactory implements StreamFactory
     private final ResetFW.Builder resetRW = new ResetFW.Builder();
     private final SignalFW.Builder signalRW = new SignalFW.Builder();
     private final SocksHandshakeReplyFW.Builder handshakeReplyRW = new SocksHandshakeReplyFW.Builder();
-    private final SocksReplyFW.Builder socksReplyRW = new SocksReplyFW.Builder();
+    private final SocksCommandReplyFW.Builder socksCommandReplyRW = new SocksCommandReplyFW.Builder();
     private final SocksBeginExFW.Builder socksBeginExRW = new SocksBeginExFW.Builder();
 
     private final RouteManager router;
@@ -294,11 +294,11 @@ public final class SocksServerFactory implements StreamFactory
             }
         }
 
-        private void onSocksReply(
+        private void onSocksCommandReply(
             String socksAddressFW,
             int port)
         {
-            doSocksReply(socksAddressFW, port);
+            doSocksCommandReply(socksAddressFW, port);
         }
 
         private void onNetworkData(
@@ -484,8 +484,7 @@ public final class SocksServerFactory implements StreamFactory
         }
 
         private void onHandshakeRequest(
-            SocksHandshakeRequestFW onHandshakeRequest
-        )
+            SocksHandshakeRequestFW onHandshakeRequest)
         {
             if (onHandshakeRequest.version() != 5)
             {
@@ -643,22 +642,22 @@ public final class SocksServerFactory implements StreamFactory
             doNetworkData(handshakeReply.buffer(), handshakeReply.offset(), handshakeReply.sizeof());
         }
 
-        private void doSocksReply(
+        private void doSocksCommandReply(
             String address,
             int port)
         {
             byte[] ipv4Address = lookupName(address).getAddress();
-            SocksReplyFW socksReply = socksReplyRW.wrap(writeBuffer,
+            SocksCommandReplyFW socksCommandReply = socksCommandReplyRW.wrap(writeBuffer,
                                                         DataFW.FIELD_OFFSET_PAYLOAD,
                                                         writeBuffer.capacity())
                                                   .version(5)
-                                                  .type(t -> t.set(SocksReplyType.SUCCEEDED))
+                                                  .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
                                                   .reserved(0)
                                                   .address(a->a.ipv4Address(i->i.set(ipv4Address)))
                                                   .port(port)
                                                   .build();
 
-            doNetworkData(socksReply.buffer(), socksReply.offset(), socksReply.sizeof());
+            doNetworkData(socksCommandReply.buffer(), socksCommandReply.offset(), socksCommandReply.sizeof());
         }
     }
 
@@ -757,7 +756,7 @@ public final class SocksServerFactory implements StreamFactory
                 String address = socksBeginEx.address().asString();
                 int port = socksBeginEx.port();
 
-                this.receiver.doSocksReply(address, port);
+                this.receiver.doSocksCommandReply(address, port);
             }
         }
 
