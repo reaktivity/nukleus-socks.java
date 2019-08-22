@@ -25,7 +25,6 @@ import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeReplyFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeRequestFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandRequestFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandType;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyType;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksAddressFW;
@@ -420,8 +419,12 @@ public final class SocksServerFactory implements StreamFactory
                     .port(socksCommandRequest.port())
                     .build();
 
-                socksServerStream.doApplicationBeginEx(newTarget, newInitialId, decodeTraceId,
-                socksBegin.buffer(), socksBegin.offset(), socksBegin.sizeof());
+                socksServerStream.doApplicationBegin(newTarget,
+                                                     newInitialId,
+                                                     decodeTraceId,
+                                                     socksBegin.buffer(),
+                                                     socksBegin.offset(),
+                                                     socksBegin.sizeof());
                 correlations.put(newReplyId, socksServerStream);
             }
         }
@@ -739,7 +742,7 @@ public final class SocksServerFactory implements StreamFactory
             doApplicationEnd(traceId);
         }
 
-        private void doApplicationBeginEx(
+        private void doApplicationBegin(
             MessageConsumer target,
             long streamId,
             long traceId,
