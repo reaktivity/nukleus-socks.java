@@ -453,7 +453,7 @@ public final class SocksServerFactory implements StreamFactory
             ResetFW reset)
         {
             final long traceId = reset.trace();
-            doHandshakeReset(traceId);
+            doNetworkReset(traceId);
         }
 
         private void onHandshakeRequest(
@@ -578,7 +578,7 @@ public final class SocksServerFactory implements StreamFactory
             }
         }
 
-        private void doHandshakeReset(
+        private void doNetworkReset(
             long traceId)
         {
             final ResetFW reset = resetRW.wrap(writeBuffer, 0, writeBuffer.capacity())
