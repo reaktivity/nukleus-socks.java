@@ -46,7 +46,6 @@ import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.SignalFW;
 
 import org.reaktivity.nukleus.stream.StreamFactory;
 
@@ -67,7 +66,6 @@ public final class SocksServerFactory implements StreamFactory
     private final AbortFW abortRO = new AbortFW();
     private final WindowFW windowRO = new WindowFW();
     private final ResetFW resetRO = new ResetFW();
-    private final SignalFW signalRO = new SignalFW();
     private final SocksBeginExFW socksBeginExRO = new SocksBeginExFW();
     private final SocksHandshakeRequestFW handshakeRequestRO = new SocksHandshakeRequestFW();
     private final SocksCommandRequestFW socksCommandRequestRO = new SocksCommandRequestFW();
@@ -80,7 +78,6 @@ public final class SocksServerFactory implements StreamFactory
     private final AbortFW.Builder abortRW = new AbortFW.Builder();
     private final WindowFW.Builder windowRW = new WindowFW.Builder();
     private final ResetFW.Builder resetRW = new ResetFW.Builder();
-    private final SignalFW.Builder signalRW = new SignalFW.Builder();
     private final SocksHandshakeReplyFW.Builder handshakeReplyRW = new SocksHandshakeReplyFW.Builder();
     private final SocksCommandReplyFW.Builder socksCommandReplyRW = new SocksCommandReplyFW.Builder();
     private final SocksBeginExFW.Builder socksBeginExRW = new SocksBeginExFW.Builder();
@@ -224,32 +221,22 @@ public final class SocksServerFactory implements StreamFactory
             this.routeId = routeId;
             this.initialId = initialId;
             this.replyId = replyId;
-            this.decodeState = this::decodeCommandType;
+            this.decodeState = this :: decodeCommandType;
         }
 
         private int decodeCommandType(
-            SocksCommandType socksCommandType,
-            DirectBuffer directBuffer,
+            DirectBuffer buffer,
             int offset,
-            int length)
+            int limit)
         {
-            switch (socksCommandType)
+            SocksCommandRequestFW commandRequest = socksCommandRequestRO.tryWrap(buffer, offset, limit);
+            int progress = offset;
+            if (commandRequest != null)
             {
-                case CONNECT:
-                    final SocksCommandRequestFW socksCommandRequest = socksCommandRequestRO.tryWrap(directBuffer, offset, length);
-                    onSocksConnect(socksCommandRequest);
-                    break;
-                case BIND:
-                    //TODO
-                    break;
-                case UDP_ASSOCIATE:
-                    //TODO
-                    break;
-                default:
-                    //TODO
-                    break;
+                progress = commandRequest.limit();
+                onSocksCommandRequest(commandRequest);
             }
-            return 0;
+            return progress;
         }
 
         private void onNetwork(
@@ -382,10 +369,18 @@ public final class SocksServerFactory implements StreamFactory
             }
 
             SocksCommandType commandType = socksCommandRequest.command().get();
-            decodeCommandType(commandType,
-                socksCommandRequest.buffer(),
-                socksCommandRequest.offset(),
-                socksCommandRequest.limit());
+            switch (commandType)
+            {
+                case CONNECT:
+                    onSocksConnect(socksCommandRequest);
+                    break;
+                case BIND:
+                    //TODO
+                    break;
+                case UDP_ASSOCIATE:
+                    //TODO
+                    break;
+            }
         }
 
         private void onSocksConnect(
@@ -398,7 +393,7 @@ public final class SocksServerFactory implements StreamFactory
 
             final MessagePredicate filter = (t, b, o, l) ->
             {
-                if (t > 0 && t <= SignalFW.TYPE_ID && o < l)
+                if (t > 0 && t <= ResetFW.TYPE_ID && o < l)
                 {
                     return true;
                 }
@@ -819,6 +814,6 @@ public final class SocksServerFactory implements StreamFactory
     @FunctionalInterface
     private interface DecoderState
     {
-        int decode(SocksCommandType commandType, DirectBuffer buffer, int offset, int length);
+        int decode(DirectBuffer buffer, int offset, int length);
     }
 }
