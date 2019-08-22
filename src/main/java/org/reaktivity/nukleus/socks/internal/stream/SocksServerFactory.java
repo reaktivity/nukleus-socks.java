@@ -224,7 +224,7 @@ public final class SocksServerFactory implements StreamFactory
             this.decodeState = this :: decodeHandshake;
         }
 
-        private int decodeCommandType(
+        private int decodeCommand(
             DirectBuffer buffer,
             int offset,
             int limit)
@@ -376,8 +376,7 @@ public final class SocksServerFactory implements StreamFactory
                 //TODO
             }
 
-            SocksCommandType commandType = socksCommandRequest.command().get();
-            switch (commandType)
+            switch (socksCommandRequest.command().get())
             {
                 case CONNECT:
                     onSocksConnect(socksCommandRequest);
@@ -470,7 +469,7 @@ public final class SocksServerFactory implements StreamFactory
             ResetFW reset)
         {
             final long traceId = reset.trace();
-            doReset(traceId);
+            doHandshakeReset(traceId);
         }
 
         private void onHandshakeRequest(
@@ -492,7 +491,7 @@ public final class SocksServerFactory implements StreamFactory
             else
             {
                 doSocksHandshakeReply(SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED);
-                decodeState = this::decodeCommandType;
+                decodeState = this::decodeCommand;
             }
         }
 
@@ -597,7 +596,7 @@ public final class SocksServerFactory implements StreamFactory
             }
         }
 
-        private void doReset(
+        private void doHandshakeReset(
             long traceId)
         {
             final ResetFW reset = resetRW.wrap(writeBuffer, 0, writeBuffer.capacity())
