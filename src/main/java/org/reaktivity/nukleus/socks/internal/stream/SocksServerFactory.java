@@ -435,10 +435,10 @@ public final class SocksServerFactory implements StreamFactory
                     break;
                 case SocksAddressFW.KIND_IPV4_ADDRESS:
                     OctetsFW ipRO = socksAddress.ipv4Address();
-                    address = ((long) ipRO.buffer().getByte(0) & 0xffL) + "." +
-                              ((long) ipRO.buffer().getByte(1) & 0xffL) + "." +
-                              ((long) ipRO.buffer().getByte(2) & 0xffL) + "." +
-                              ((long) ipRO.buffer().getByte(3) & 0xffL);
+                    address = ipRO.buffer().getLong(0) + "." +
+                              ipRO.buffer().getLong(1) + "." +
+                              ipRO.buffer().getLong(2) + "." +
+                              ipRO.buffer().getLong(3);
                     break;
                 case SocksAddressFW.KIND_IPV6_ADDRESS:
                     break;
