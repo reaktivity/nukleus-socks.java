@@ -413,7 +413,7 @@ public final class SocksServerFactory implements StreamFactory
                                                      newInitialId,
                                                      decodeTraceId,
                                                      address,
-                                                     8080);
+                                                     socksCommandRequest.port());
 
                 correlations.put(newReplyId, socksServerStream);
             }
@@ -431,7 +431,7 @@ public final class SocksServerFactory implements StreamFactory
                 case SocksAddressFW.KIND_IPV4_ADDRESS:
                     OctetsFW ipRO = socksAddress.ipv4Address();
                     ipRO.buffer().getBytes(ipRO.offset(), writeBuffer, 0, ipRO.sizeof());
-                    address = ((long) writeBuffer.getByte(0) & 0xffL ) + "." +
+                    address = ((long) writeBuffer.getByte(0) & 0xffL) + "." +
                               ((long) writeBuffer.getByte(1) & 0xffL) + "." +
                               ((long) writeBuffer.getByte(2) & 0xffL) + "." +
                               ((long) writeBuffer.getByte(3) & 0xffL);
