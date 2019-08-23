@@ -80,6 +80,7 @@ public final class SocksServerFactory implements StreamFactory
     private final SocksHandshakeReplyFW.Builder handshakeReplyRW = new SocksHandshakeReplyFW.Builder();
     private final SocksCommandReplyFW.Builder socksCommandReplyRW = new SocksCommandReplyFW.Builder();
     private final SocksBeginExFW.Builder socksBeginExRW = new SocksBeginExFW.Builder();
+    private final OctetsFW.Builder octetsRW = new OctetsFW.Builder();
 
     private final RouteManager router;
     private final MutableDirectBuffer writeBuffer;
@@ -412,7 +413,7 @@ public final class SocksServerFactory implements StreamFactory
                                                      newInitialId,
                                                      decodeTraceId,
                                                      address,
-                                                     socksCommandRequest.port());
+                                                     8080);
 
                 correlations.put(newReplyId, socksServerStream);
             }
@@ -429,12 +430,11 @@ public final class SocksServerFactory implements StreamFactory
                     break;
                 case SocksAddressFW.KIND_IPV4_ADDRESS:
                     OctetsFW ipRO = socksAddress.ipv4Address();
-                    /*byte[] addr = new byte[ipRO.sizeof()];
-                    ipRO.buffer().getBytes(ipRO.offset(), addr, 0, ipRO.sizeof());
-                    address = ((long) addr[0] & 0xffL ) + "." +
-                              ((long) addr[1] & 0xffL) + "." +
-                              ((long) addr[2] & 0xffL) + "." +
-                              ((long) addr[3] & 0xffL);*/
+                    ipRO.buffer().getBytes(ipRO.offset(), writeBuffer, 0, ipRO.sizeof());
+                    address = ((long) writeBuffer.getByte(0) & 0xffL ) + "." +
+                              ((long) writeBuffer.getByte(1) & 0xffL) + "." +
+                              ((long) writeBuffer.getByte(2) & 0xffL) + "." +
+                              ((long) writeBuffer.getByte(3) & 0xffL);
                     break;
                 case SocksAddressFW.KIND_IPV6_ADDRESS:
                     break;
