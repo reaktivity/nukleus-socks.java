@@ -322,9 +322,10 @@ public final class SocksServerFactory implements StreamFactory
                     limit = bufferSlot;
                 }
 
-                while (offset < limit)
+                DecoderState previous = null;
+                while (offset < limit && previous != decodeState)
                 {
-
+                    previous = decodeState;
                     offset += decodeState.decode(buffer, offset, limit);
                 }
             }
