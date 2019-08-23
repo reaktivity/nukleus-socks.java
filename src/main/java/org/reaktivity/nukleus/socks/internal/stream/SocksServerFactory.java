@@ -568,7 +568,7 @@ public final class SocksServerFactory implements StreamFactory
 
                 final WindowFW window = windowRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                                                 .routeId(routeId)
-                                                .streamId(replyId)
+                                                .streamId(initialId)
                                                 .trace(traceId)
                                                 .credit(initialCredit)
                                                 .padding(initialPadding)
@@ -584,7 +584,7 @@ public final class SocksServerFactory implements StreamFactory
         {
             final ResetFW reset = resetRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                                          .routeId(routeId)
-                                         .streamId(replyId)
+                                         .streamId(initialId)
                                          .trace(traceId)
                                          .build();
 
