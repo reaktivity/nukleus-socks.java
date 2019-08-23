@@ -48,6 +48,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 
 import org.reaktivity.nukleus.stream.StreamFactory;
 
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.function.LongSupplier;
@@ -407,6 +408,7 @@ public final class SocksServerFactory implements StreamFactory
                     newRouteId, newInitialId, newReplyId);
 
                 SocksAddressFW socksAddress = socksCommandRequest.address();
+
                 String address = formatSocksAddress(socksAddress);
 
                 socksServerStream.doApplicationBegin(newTarget,
@@ -437,11 +439,29 @@ public final class SocksServerFactory implements StreamFactory
                               ((long) writeBuffer.getByte(3) & 0xffL);
                     break;
                 case SocksAddressFW.KIND_IPV6_ADDRESS:
+                    ipRO = socksAddress.ipv6Address();
+                    ipRO.buffer().getBytes(ipRO.offset(), writeBuffer, 0, ipRO.sizeof());
+                    address = formatIpv6Address();
                     break;
                 default:
                     break;
             }
             return address;
+        }
+
+        private String formatIpv6Address()
+        {
+            String address = "";
+            for(int i = 0; i < 16; i++)
+            {
+                address += Integer.toHexString(writeBuffer.getByte(i) & 0xFF);
+                if (i < 15 && i % 2 == 1)
+                {
+                    address += ":";
+                }
+            }
+
+            return getIpv6Address(address);
         }
 
 
@@ -789,6 +809,22 @@ public final class SocksServerFactory implements StreamFactory
             LangUtil.rethrowUnchecked(ex);
         }
 
+        return address;
+    }
+
+    public static String getIpv6Address(String longAddress)
+    {
+        String address = "";
+        try
+        {
+            longAddress = Inet6Address.getByName(longAddress).getHostAddress();
+            address = longAddress.replaceAll("((?::0\\b){2,}):?(?!\\S*\\b\\1:0\\b)(\\S*)",
+                                                    "::$2");
+        }
+        catch (UnknownHostException ex)
+        {
+            LangUtil.rethrowUnchecked(ex);
+        }
         return address;
     }
 
