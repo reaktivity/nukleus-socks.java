@@ -408,18 +408,12 @@ public final class SocksServerFactory implements StreamFactory
                 SocksAddressFW socksAddress = socksCommandRequest.address();
                 String address = formatSocksAddress(socksAddress);
 
-                SocksBeginExFW socksBegin = socksBeginExRW.wrap(extBuffer, 0, extBuffer.capacity())
-                    .typeId(socksTypeId)
-                    .address(address)
-                    .port(socksCommandRequest.port())
-                    .build();
-
                 socksServerStream.doApplicationBegin(newTarget,
                                                      newInitialId,
                                                      decodeTraceId,
-                                                     socksBegin.buffer(),
-                                                     socksBegin.offset(),
-                                                     socksBegin.sizeof());
+                                                     address,
+                                                     socksCommandRequest.port());
+
                 correlations.put(newReplyId, socksServerStream);
             }
         }
@@ -435,10 +429,12 @@ public final class SocksServerFactory implements StreamFactory
                     break;
                 case SocksAddressFW.KIND_IPV4_ADDRESS:
                     OctetsFW ipRO = socksAddress.ipv4Address();
-                    address = ipRO.buffer().getLong(0) + "." +
-                              ipRO.buffer().getLong(1) + "." +
-                              ipRO.buffer().getLong(2) + "." +
-                              ipRO.buffer().getLong(3);
+                    /*byte[] addr = new byte[ipRO.sizeof()];
+                    ipRO.buffer().getBytes(ipRO.offset(), addr, 0, ipRO.sizeof());
+                    address = ((long) addr[0] & 0xffL ) + "." +
+                              ((long) addr[1] & 0xffL) + "." +
+                              ((long) addr[2] & 0xffL) + "." +
+                              ((long) addr[3] & 0xffL);*/
                     break;
                 case SocksAddressFW.KIND_IPV6_ADDRESS:
                     break;
@@ -609,14 +605,14 @@ public final class SocksServerFactory implements StreamFactory
         {
             byte[] ipv4Address = lookupName(address).getAddress();
             SocksCommandReplyFW socksCommandReply = socksCommandReplyRW.wrap(writeBuffer,
-                                                        DataFW.FIELD_OFFSET_PAYLOAD,
-                                                        writeBuffer.capacity())
-                                                  .version(5)
-                                                  .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
-                                                  .reserved(0)
-                                                  .address(a->a.ipv4Address(i->i.set(ipv4Address)))
-                                                  .port(port)
-                                                  .build();
+                                                                            DataFW.FIELD_OFFSET_PAYLOAD,
+                                                                            writeBuffer.capacity())
+                                                                       .version(5)
+                                                                       .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
+                                                                       .reserved(0)
+                                                                       .address(a->a.ipv4Address(i->i.set(ipv4Address)))
+                                                                       .port(port)
+                                                                       .build();
 
             doNetworkData(socksCommandReply.buffer(), socksCommandReply.offset(), socksCommandReply.sizeof());
         }
@@ -729,16 +725,21 @@ public final class SocksServerFactory implements StreamFactory
             MessageConsumer target,
             long streamId,
             long traceId,
-            DirectBuffer buffer,
-            int offset,
-            int length)
+            String address,
+            int port)
         {
+
+            SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer, 0, extBuffer.capacity())
+                .typeId(socksTypeId)
+                .address(address)
+                .port(port)
+                .build();
 
             final BeginFW begin = beginRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                                          .routeId(this.routeId)
                                          .streamId(streamId)
                                          .trace(traceId)
-                                         .extension(buffer, offset, length)
+                                         .extension(socksBeginEx.buffer(), socksBeginEx.offset(), socksBeginEx.sizeof())
                                          .build();
 
             target.accept(begin.typeId(), begin.buffer(), begin.offset(), begin.limit());
