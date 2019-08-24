@@ -234,7 +234,7 @@ public final class SocksServerFactory implements StreamFactory
             if (handshakeRequest != null)
             {
                 progress = handshakeRequest.limit();
-                onHandshakeRequest(handshakeRequest);
+                handshakeRequest(handshakeRequest);
             }
             return progress;
         }
@@ -249,7 +249,7 @@ public final class SocksServerFactory implements StreamFactory
             if (commandRequest != null)
             {
                 progress = commandRequest.limit();
-                onSocksCommandRequest(commandRequest);
+                onSocksConnect(commandRequest);
             }
             return progress;
         }
@@ -281,10 +281,6 @@ public final class SocksServerFactory implements StreamFactory
                 case WindowFW.TYPE_ID:
                     final WindowFW window = windowRO.wrap(buffer, index, index + length);
                     onNetworkWindow(window);
-                    break;
-                case ResetFW.TYPE_ID:
-                    final ResetFW reset = resetRO.wrap(buffer, index, index + length);
-                    onNetworkReset(reset);
                     break;
             }
         }
@@ -358,28 +354,6 @@ public final class SocksServerFactory implements StreamFactory
             doNetworkWindow(supplyTraceId.getAsLong(), initialCredit);
         }
 
-        private void onSocksCommandRequest(
-            SocksCommandRequestFW socksConnectRequest)
-        {
-            if (socksConnectRequest.version() != 5 && socksConnectRequest.reserved() != 0)
-            {
-                //TODO
-            }
-
-            switch (socksConnectRequest.command().get())
-            {
-                case CONNECT:
-                    onSocksConnect(socksConnectRequest);
-                    break;
-                case BIND:
-                    //TODO
-                    break;
-                case UDP_ASSOCIATE:
-                    //TODO
-                    break;
-            }
-        }
-
         private boolean addressPortMatch(SocksRouteExFW socksRoute, SocksCommandRequestFW socksCommandRequest)
         {
             return socksRoute.address().equals(socksCommandRequest.address().domainName())
@@ -414,7 +388,7 @@ public final class SocksServerFactory implements StreamFactory
 
                 SocksAddressFW socksAddress = socksCommandRequest.address();
 
-                String address = formatSocksAddress(socksAddress);
+                StringFW address = formatSocksAddress(socksAddress);
 
                 socksServerStream.doApplicationBegin(newTarget,
                                                      decodeTraceId,
@@ -425,27 +399,20 @@ public final class SocksServerFactory implements StreamFactory
             }
         }
 
-        private String formatSocksAddress(
+        private StringFW formatSocksAddress(
             SocksAddressFW socksAddress)
         {
-            String address = "";
+            StringFW address = null;
             switch (socksAddress.kind())
             {
                 case SocksAddressFW.KIND_DOMAIN_NAME:
-                    address = socksAddress.domainName().asString();
+                    address = socksAddress.domainName();
                     break;
                 case SocksAddressFW.KIND_IPV4_ADDRESS:
-                    OctetsFW ipRO = socksAddress.ipv4Address();
-                    ipRO.buffer().getBytes(ipRO.offset(), writeBuffer, 0, ipRO.sizeof());
-                    address = ((long) writeBuffer.getByte(0) & 0xffL) + "." +
-                              ((long) writeBuffer.getByte(1) & 0xffL) + "." +
-                              ((long) writeBuffer.getByte(2) & 0xffL) + "." +
-                              ((long) writeBuffer.getByte(3) & 0xffL);
+                    //TODO
                     break;
                 case SocksAddressFW.KIND_IPV6_ADDRESS:
-                    ipRO = socksAddress.ipv6Address();
-                    ipRO.buffer().getBytes(ipRO.offset(), writeBuffer, 0, ipRO.sizeof());
-                    //address = formatIpv6Address();
+                    //TODO
                     break;
                 default:
                     break;
@@ -453,23 +420,15 @@ public final class SocksServerFactory implements StreamFactory
             return address;
         }
 
-        private void onNetworkReset(
-            ResetFW reset)
-        {
-            final long traceId = reset.trace();
-            doNetworkReset(traceId);
-        }
-
-        private void onHandshakeRequest(
+        private void handshakeRequest(
             SocksHandshakeRequestFW handshakeRequest)
         {
             if (handshakeRequest.version() != 5)
             {
                 doNetworkEnd(supplyTraceId.getAsLong());
             }
-            else if (handshakeRequest.methods()
-                                     .buffer()
-                                     .getByte(SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()) == -1)
+            else if (indexOfShort(handshakeRequest.methods().buffer(),
+                SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()) == -1)
             {
                 doSocksHandshakeReply(SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS);
                 doNetworkEnd(supplyTraceId.getAsLong());
@@ -478,31 +437,6 @@ public final class SocksServerFactory implements StreamFactory
             {
                 doSocksHandshakeReply(SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED);
                 decodeState = this::decodeCommand;
-            }
-        }
-
-        private void onHandshakeReply(
-            OctetsFW method)
-        {
-            int methodNumber = method.buffer().getByte(method.offset());
-            SocksAuthenticationMethod socksAuthenticationMethod = SocksAuthenticationMethod.valueOf((short) methodNumber);
-            switch (socksAuthenticationMethod)
-            {
-                case NO_AUTHENTICATION_REQUIRED:
-                    doSocksHandshakeReply(socksAuthenticationMethod);
-                    break;
-                case GSSAPI:
-                    //todo
-                    break;
-                case USERNAME_PASSWORD:
-                    //todo
-                    break;
-                case TO_X7F_IANA_ASSIGNED:
-                    //todo
-                    break;
-                case TO_XFE_RESERVED_FOR_PRIVATE_METHODS:
-                    //todo
-                    break;
             }
         }
 
@@ -732,7 +666,7 @@ public final class SocksServerFactory implements StreamFactory
         private void doApplicationBegin(
             MessageConsumer target,
             long traceId,
-            String address,
+            StringFW address,
             int port)
         {
 
@@ -797,6 +731,15 @@ public final class SocksServerFactory implements StreamFactory
         }
 
         return address;
+    }
+
+    private static int indexOfShort(DirectBuffer buffer, short target)
+    {
+        for(int i = 0; i < buffer.capacity(); i++)
+        {
+            if(target == buffer.getShort(i)) return i;
+        }
+        return -1;
     }
 
     @FunctionalInterface
