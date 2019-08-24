@@ -21,13 +21,7 @@ import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.Long2ObjectHashMap;
 import org.agrona.concurrent.UnsafeBuffer;
 
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeReplyFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeRequestFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandRequestFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyType;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksAddressFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.*;
 
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageConsumer;
@@ -39,6 +33,7 @@ import org.reaktivity.nukleus.socks.internal.SocksNukleus;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.StringFW;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
+import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.SocksBeginExFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
@@ -49,10 +44,8 @@ import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
 
 import org.reaktivity.nukleus.stream.StreamFactory;
 
-import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Base64;
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 import java.util.function.ToIntFunction;
@@ -74,6 +67,7 @@ public final class SocksServerFactory implements StreamFactory
     private final SocksAddressFW socksAddressRO = new SocksAddressFW();
     private final OctetsFW octetsRO = new OctetsFW();
     private final StringFW stringRO = new StringFW();
+    private final SocksRouteExFW socksRouteRO = new SocksRouteExFW();
 
     private final BeginFW.Builder beginRW = new BeginFW.Builder();
     private final DataFW.Builder dataRW = new DataFW.Builder();
@@ -86,6 +80,7 @@ public final class SocksServerFactory implements StreamFactory
     private final SocksBeginExFW.Builder socksBeginExRW = new SocksBeginExFW.Builder();
     private final OctetsFW.Builder octetsRW = new OctetsFW.Builder();
     private final StringFW.Builder stringRW = new StringFW.Builder();
+    private final SocksRouteExFW.Builder socksRouteRW = new SocksRouteExFW.Builder();
 
     private final RouteManager router;
     private final MutableDirectBuffer writeBuffer;
@@ -323,7 +318,7 @@ public final class SocksServerFactory implements StreamFactory
                 }
 
                 DecoderState previous = null;
-                while (offset < limit && previous != decodeState)
+                while (offset <= limit && previous != decodeState)
                 {
                     previous = decodeState;
                     offset += decodeState.decode(buffer, offset, limit);
@@ -385,16 +380,25 @@ public final class SocksServerFactory implements StreamFactory
             }
         }
 
+        private boolean addressPortMatch(SocksRouteExFW socksRoute, SocksCommandRequestFW socksCommandRequest)
+        {
+            return socksRoute.address().equals(socksCommandRequest.address().domainName())
+                   && socksRoute.port() == socksCommandRequest.port();
+        }
+
         private void onSocksConnect(
             SocksCommandRequestFW socksCommandRequest)
         {
             final MessagePredicate filter = (t, b, o, l) ->
             {
-                if (t > 0 && t <= ResetFW.TYPE_ID && o < l)
+                final RouteFW route = routeRO.wrap(b, o, o + l);
+                final OctetsFW extension = route.extension();
+                if(route.extension().sizeof() > 0)
                 {
-                    return true;
+                    final SocksRouteExFW socksRoute = extension.get(socksRouteRO::wrap);
+                    return addressPortMatch(socksRoute, socksCommandRequest);
                 }
-                return false;
+                return true;
             };
 
             final RouteFW route = router.resolve(routeId, this.authorization, filter, wrapRoute);
@@ -433,12 +437,10 @@ public final class SocksServerFactory implements StreamFactory
                 case SocksAddressFW.KIND_IPV4_ADDRESS:
                     OctetsFW ipRO = socksAddress.ipv4Address();
                     ipRO.buffer().getBytes(ipRO.offset(), writeBuffer, 0, ipRO.sizeof());
-                    StringFW addressFW = stringRO.wrap(writeBuffer, 0, writeBuffer.capacity());
-                              /*((long) writeBuffer.getByte(0) & 0xffL) + "." +
+                    address = ((long) writeBuffer.getByte(0) & 0xffL) + "." +
                               ((long) writeBuffer.getByte(1) & 0xffL) + "." +
                               ((long) writeBuffer.getByte(2) & 0xffL) + "." +
-                              ((long) writeBuffer.getByte(3) & 0xffL);*/
-                    address = addressFW.toString();
+                              ((long) writeBuffer.getByte(3) & 0xffL);
                     break;
                 case SocksAddressFW.KIND_IPV6_ADDRESS:
                     ipRO = socksAddress.ipv6Address();
