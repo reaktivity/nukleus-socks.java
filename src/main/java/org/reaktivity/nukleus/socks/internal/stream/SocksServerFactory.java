@@ -411,7 +411,13 @@ public final class SocksServerFactory implements StreamFactory
                     address = requestAddress.domainName();
                     break;
                 case SocksAddressFW.KIND_IPV4_ADDRESS:
-                    //TODO
+                    OctetsFW ipRO = requestAddress.ipv4Address();
+                    ipRO.buffer().getBytes(ipRO.offset(), writeBuffer, 0, ipRO.sizeof());
+                    String addressSt = ((long) writeBuffer.getByte(0) & 0xffL) + "." +
+                        ((long) writeBuffer.getByte(1) & 0xffL) + "." +
+                        ((long) writeBuffer.getByte(2) & 0xffL) + "." +
+                        ((long) writeBuffer.getByte(3) & 0xffL);
+
                     break;
                 case SocksAddressFW.KIND_IPV6_ADDRESS:
                     //TODO
