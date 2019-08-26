@@ -438,7 +438,7 @@ public final class SocksServerFactory implements StreamFactory
             else if (indexOfByte(handshakeRequest.methods().buffer(),
                 handshakeRequest.methods().offset(),
                 handshakeRequest.methods().limit(),
-                (byte) SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()) == -1)
+                SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()) == -1)
             {
                 doSocksHandshakeReply(SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS);
                 doNetworkEnd(supplyTraceId.getAsLong());
@@ -747,7 +747,7 @@ public final class SocksServerFactory implements StreamFactory
         DirectBuffer buffer,
         int offset,
         int limit,
-        byte target)
+        int target)
     {
         int targetAt = -1;
         for (int i = offset; i < limit; i++)
