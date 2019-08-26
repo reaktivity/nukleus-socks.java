@@ -356,15 +356,15 @@ public final class SocksServerFactory implements StreamFactory
 
         private boolean checkPortAndAddress(
             SocksRouteExFW socksRoute,
-            SocksCommandRequestFW socksCommandRequest)
+            SocksCommandRequestFW socksConnectRequest)
         {
             //TODO more cases for ipv4 & ipv6
-            return socksRoute.port() == socksCommandRequest.port()
-                && socksRoute.address().equals(socksCommandRequest.address().domainName());
+            return socksRoute.port() == socksConnectRequest.port()
+                && socksRoute.address().equals(socksConnectRequest.address().domainName());
         }
 
         private void onSocksConnect(
-            SocksCommandRequestFW socksCommandRequest)
+            SocksCommandRequestFW socksConnectRequest)
         {
             final MessagePredicate filter = (t, b, o, l) ->
             {
@@ -373,7 +373,7 @@ public final class SocksServerFactory implements StreamFactory
                 if(route.extension().sizeof() > 0)
                 {
                     final SocksRouteExFW socksRoute = extension.get(socksRouteRO::wrap);
-                    return checkPortAndAddress(socksRoute, socksCommandRequest);
+                    return checkPortAndAddress(socksRoute, socksConnectRequest);
                 }
                 return true;
             };
@@ -389,13 +389,13 @@ public final class SocksServerFactory implements StreamFactory
                 final SocksConnectStream socksConnectStream = new SocksConnectStream(this, newTarget,
                     newRouteId, newInitialId, newReplyId);
 
-                SocksAddressFW socksAddress = socksCommandRequest.address();
+                SocksAddressFW socksAddress = socksConnectRequest.address();
                 StringFW address = formatSocksAddress(socksAddress);
 
                 socksConnectStream.doApplicationBegin(newTarget,
                                                      decodeTraceId,
                                                      address,
-                                                     socksCommandRequest.port());
+                                                     socksConnectRequest.port());
 
                 correlations.put(newReplyId, socksConnectStream);
             }
