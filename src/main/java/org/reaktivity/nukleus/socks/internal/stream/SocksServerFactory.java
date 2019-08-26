@@ -354,6 +354,14 @@ public final class SocksServerFactory implements StreamFactory
             doNetworkWindow(supplyTraceId.getAsLong(), initialCredit);
         }
 
+        private boolean checkPortAndAddress(
+            SocksRouteExFW socksRoute,
+            SocksCommandRequestFW socksCommandRequest)
+        {
+            return socksRoute.port() == socksCommandRequest.port()
+                && socksRoute.address().equals(socksCommandRequest.address().domainName());
+        }
+
         private void onSocksConnect(
             SocksCommandRequestFW socksCommandRequest)
         {
@@ -364,8 +372,7 @@ public final class SocksServerFactory implements StreamFactory
                 if(route.extension().sizeof() > 0)
                 {
                     final SocksRouteExFW socksRoute = extension.get(socksRouteRO::wrap);
-                    if (socksRoute.port() != socksCommandRequest.port()) return false;
-                    return socksRoute.address().equals(socksCommandRequest.address().domainName());
+                    return checkPortAndAddress(socksRoute, socksCommandRequest);
                 }
                 return true;
             };

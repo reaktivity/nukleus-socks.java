@@ -12,7 +12,7 @@ buildNumber.properties
 .settings/
 .checkstyle
 .idea/
+*.iml
 *.ipr
 *.iws
-*.iml
 .DS_Store
