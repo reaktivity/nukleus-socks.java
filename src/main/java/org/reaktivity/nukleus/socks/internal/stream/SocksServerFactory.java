@@ -306,8 +306,8 @@ public final class SocksServerFactory implements StreamFactory
                 DirectBuffer buffer = payload.buffer();
                 int offset = payload.offset();
                 int limit = payload.limit();
-                this.authorization = data.authorization();
-                this.decodeTraceId = data.typeId();
+                authorization = data.authorization();
+                decodeTraceId = data.typeId();
 
                 if (bufferSlot != BufferPool.NO_SLOT)
                 {
@@ -384,7 +384,7 @@ public final class SocksServerFactory implements StreamFactory
                 return true;
             };
 
-            final RouteFW route = router.resolve(routeId, this.authorization, filter, wrapRoute);
+            final RouteFW route = router.resolve(routeId, authorization, filter, wrapRoute);
             if (route != null)
             {
                 final long newRouteId = route.correlationId();
@@ -653,7 +653,7 @@ public final class SocksServerFactory implements StreamFactory
             String address = socksBeginEx.address().asString();
             int port = socksBeginEx.port();
 
-            this.receiver.doSocksCommandReply(address, port);
+            receiver.doSocksCommandReply(address, port);
 
         }
 
