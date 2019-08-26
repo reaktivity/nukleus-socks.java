@@ -737,12 +737,12 @@ public final class SocksServerFactory implements StreamFactory
 
     private static boolean hasAuthenticationMethod(
         OctetsFW methods,
-        SocksAuthenticationMethod socksAuthenticationMethod)
+        SocksAuthenticationMethod method)
     {
         boolean hasMethod = false;
         for (int i = methods.offset(); i < methods.limit(); i++)
         {
-            if (socksAuthenticationMethod.value()
+            if (method.value()
                 == (methods.buffer().getByte(i) & 0xff))
             {
                 hasMethod = true;
