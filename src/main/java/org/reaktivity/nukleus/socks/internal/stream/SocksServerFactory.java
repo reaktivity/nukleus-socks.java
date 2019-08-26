@@ -436,7 +436,9 @@ public final class SocksServerFactory implements StreamFactory
                 doNetworkEnd(supplyTraceId.getAsLong());
             }
             else if (indexOfByte(handshakeRequest.methods().buffer(),
-                SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()) == -1)
+                handshakeRequest.methods().offset(),
+                handshakeRequest.methods().limit(),
+                (byte) SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()) == -1)
             {
                 doSocksHandshakeReply(SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS);
                 doNetworkEnd(supplyTraceId.getAsLong());
@@ -741,18 +743,23 @@ public final class SocksServerFactory implements StreamFactory
         return address;
     }
 
-    private static int indexOfByte(DirectBuffer buffer, short target)
+    private static int indexOfByte(
+        DirectBuffer buffer,
+        int offset,
+        int limit,
+        byte target)
     {
-        for(int i = 0; i < buffer.capacity() - 1; i++)
+        int targetAt = -1;
+        for(int i = offset; i < limit; i++)
         {
-            if((byte)(target & 0xff) == buffer.getByte(i)
-                && (byte)((target >> 8) & 0xff) == buffer.getByte(i + 1))
+            if(target == (buffer.getByte(i) & 0xff))
             {
-                return i;
+                targetAt = i;
+                break;
             }
         }
 
-        return -1;
+        return targetAt;
     }
 
     @FunctionalInterface
