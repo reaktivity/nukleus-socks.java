@@ -376,7 +376,7 @@ public final class SocksServerFactory implements StreamFactory
             {
                 final RouteFW route = routeRO.wrap(b, o, o + l);
                 final OctetsFW extension = route.extension();
-                if(route.extension().sizeof() > 0)
+                if (route.extension().sizeof() > 0)
                 {
                     final SocksRouteExFW socksRoute = extension.get(socksRouteRO::wrap);
                     return checkPortAndAddress(socksRoute, socksConnectRequest);
@@ -436,9 +436,7 @@ public final class SocksServerFactory implements StreamFactory
             {
                 doNetworkEnd(supplyTraceId.getAsLong());
             }
-            else if (indexOfByte(methods.buffer(),
-                methods.offset(),
-                methods.limit(),
+            else if (hasAuthenticationMethod(methods,
                 SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()) == -1)
             {
                 doSocksHandshakeReply(SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS);
@@ -744,16 +742,14 @@ public final class SocksServerFactory implements StreamFactory
         return address;
     }
 
-    private static int indexOfByte(
-        DirectBuffer buffer,
-        int offset,
-        int limit,
+    private static int hasAuthenticationMethod(
+        OctetsFW methods,
         int target)
     {
         int targetAt = -1;
-        for (int i = offset; i < limit; i++)
+        for (int i = methods.offset(); i < methods.limit(); i++)
         {
-            if (target == (buffer.getByte(i) & 0xff))
+            if (target == (methods.buffer().getByte(i) & 0xff))
             {
                 targetAt = i;
                 break;
