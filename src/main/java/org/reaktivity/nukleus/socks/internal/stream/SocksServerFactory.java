@@ -51,6 +51,8 @@ import java.util.function.LongUnaryOperator;
 import java.util.function.ToIntFunction;
 
 import static java.util.Objects.requireNonNull;
+import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED;
+import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS;
 
 public final class SocksServerFactory implements StreamFactory
 {
@@ -282,6 +284,10 @@ public final class SocksServerFactory implements StreamFactory
                     final WindowFW window = windowRO.wrap(buffer, index, index + length);
                     onNetworkWindow(window);
                     break;
+                case ResetFW.TYPE_ID:
+                    final ResetFW reset = resetRO.wrap(buffer, index, index + length);
+                    onNetworkReset(reset);
+                    break;
             }
         }
 
@@ -326,6 +332,13 @@ public final class SocksServerFactory implements StreamFactory
             BeginFW begin)
         {
             doNetworkBegin(supplyTraceId.getAsLong());
+        }
+
+        private void onNetworkReset(
+            ResetFW reset)
+        {
+            final long traceId = reset.trace();
+            doNetworkReset(traceId);
         }
 
         private void onNetworkEnd(
@@ -430,14 +443,14 @@ public final class SocksServerFactory implements StreamFactory
             {
                 doNetworkEnd(supplyTraceId.getAsLong());
             }
-            else if (!hasAuthenticationMethod(methods, SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED))
+            else if (!hasAuthenticationMethod(methods, NO_AUTHENTICATION_REQUIRED))
             {
-                doSocksHandshakeReply(SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS);
+                doSocksHandshakeReply(NO_ACCEPTABLE_METHODS);
                 doNetworkEnd(supplyTraceId.getAsLong());
             }
             else
             {
-                doSocksHandshakeReply(SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED);
+                doSocksHandshakeReply(NO_AUTHENTICATION_REQUIRED);
                 decodeState = this::decodeCommand;
             }
         }
