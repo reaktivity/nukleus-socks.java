@@ -234,7 +234,7 @@ public final class SocksServerFactory implements StreamFactory
             if (handshakeRequest != null)
             {
                 progress = handshakeRequest.limit();
-                handshakeRequest(handshakeRequest);
+                onHandshakeRequest(handshakeRequest);
             }
             return progress;
         }
@@ -422,14 +422,14 @@ public final class SocksServerFactory implements StreamFactory
             return address;
         }
 
-        private void handshakeRequest(
+        private void onHandshakeRequest(
             SocksHandshakeRequestFW handshakeRequest)
         {
             if (handshakeRequest.version() != 5)
             {
                 doNetworkEnd(supplyTraceId.getAsLong());
             }
-            else if (indexOfShort(handshakeRequest.methods().buffer(),
+            else if (indexOfByte(handshakeRequest.methods().buffer(),
                 SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()) == -1)
             {
                 doSocksHandshakeReply(SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS);
@@ -735,11 +735,15 @@ public final class SocksServerFactory implements StreamFactory
         return address;
     }
 
-    private static int indexOfShort(DirectBuffer buffer, short target)
+    private static int indexOfByte(DirectBuffer buffer, short target)
     {
-        for(int i = 0; i < buffer.capacity(); i++)
+        for(int i = 0; i < buffer.capacity() - 1; i++)
         {
-            if(target == buffer.getShort(i)) return i;
+            if((byte)(target & 0xff) == buffer.getByte(i)
+                && (byte)((target >> 8) & 0xff) == buffer.getByte(i + 1))
+            {
+                return i;
+            }
         }
         return -1;
     }
