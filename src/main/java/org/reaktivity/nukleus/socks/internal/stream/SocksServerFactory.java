@@ -21,13 +21,7 @@ import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.Long2ObjectHashMap;
 import org.agrona.concurrent.UnsafeBuffer;
 
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeReplyFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeRequestFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandRequestFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyType;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksAddressFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.*;
 
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageConsumer;
@@ -436,7 +430,7 @@ public final class SocksServerFactory implements StreamFactory
             {
                 doNetworkEnd(supplyTraceId.getAsLong());
             }
-            else if (hasAuthenticationMethod(methods) == -1)
+            else if (!hasAuthenticationMethod(methods, SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED))
             {
                 doSocksHandshakeReply(SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS);
                 doNetworkEnd(supplyTraceId.getAsLong());
@@ -741,21 +735,22 @@ public final class SocksServerFactory implements StreamFactory
         return address;
     }
 
-    private static int hasAuthenticationMethod(
-        OctetsFW methods)
+    private static boolean hasAuthenticationMethod(
+        OctetsFW methods,
+        SocksAuthenticationMethod socksAuthenticationMethod)
     {
-        int targetAt = -1;
+        boolean hasMethod = false;
         for (int i = methods.offset(); i < methods.limit(); i++)
         {
-            if (SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()
+            if (socksAuthenticationMethod.value()
                 == (methods.buffer().getByte(i) & 0xff))
             {
-                targetAt = i;
+                hasMethod = true;
                 break;
             }
         }
 
-        return targetAt;
+        return hasMethod;
     }
 
     @FunctionalInterface
