@@ -751,6 +751,7 @@ public final class SocksServerFactory implements StreamFactory
                 return i;
             }
         }
+
         return -1;
     }
 
