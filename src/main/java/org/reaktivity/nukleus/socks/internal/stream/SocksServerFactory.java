@@ -750,9 +750,9 @@ public final class SocksServerFactory implements StreamFactory
         byte target)
     {
         int targetAt = -1;
-        for(int i = offset; i < limit; i++)
+        for (int i = offset; i < limit; i++)
         {
-            if(target == (buffer.getByte(i) & 0xff))
+            if (target == (buffer.getByte(i) & 0xff))
             {
                 targetAt = i;
                 break;
