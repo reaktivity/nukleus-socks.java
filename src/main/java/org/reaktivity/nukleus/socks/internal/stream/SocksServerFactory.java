@@ -390,7 +390,6 @@ public final class SocksServerFactory implements StreamFactory
                     newRouteId, newInitialId, newReplyId);
 
                 SocksAddressFW socksAddress = socksCommandRequest.address();
-
                 StringFW address = formatSocksAddress(socksAddress);
 
                 socksConnectStream.doApplicationBegin(newTarget,
