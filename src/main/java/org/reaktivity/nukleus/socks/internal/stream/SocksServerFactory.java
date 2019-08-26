@@ -436,8 +436,7 @@ public final class SocksServerFactory implements StreamFactory
             {
                 doNetworkEnd(supplyTraceId.getAsLong());
             }
-            else if (hasAuthenticationMethod(methods,
-                SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()) == -1)
+            else if (hasAuthenticationMethod(methods) == -1)
             {
                 doSocksHandshakeReply(SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS);
                 doNetworkEnd(supplyTraceId.getAsLong());
@@ -743,13 +742,13 @@ public final class SocksServerFactory implements StreamFactory
     }
 
     private static int hasAuthenticationMethod(
-        OctetsFW methods,
-        int target)
+        OctetsFW methods)
     {
         int targetAt = -1;
         for (int i = methods.offset(); i < methods.limit(); i++)
         {
-            if (target == (methods.buffer().getByte(i) & 0xff))
+            if (SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()
+                == (methods.buffer().getByte(i) & 0xff))
             {
                 targetAt = i;
                 break;
