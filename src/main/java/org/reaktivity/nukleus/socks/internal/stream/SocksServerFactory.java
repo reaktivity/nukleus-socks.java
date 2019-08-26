@@ -367,13 +367,13 @@ public final class SocksServerFactory implements StreamFactory
             doNetworkWindow(supplyTraceId.getAsLong(), initialCredit);
         }
 
-        private boolean checkPortAndAddress(
-            SocksRouteExFW socksRoute,
+        private boolean addressPortMatch(
+            SocksRouteExFW socksRouteEx,
             SocksCommandRequestFW socksConnectRequest)
         {
             //TODO more cases for ipv4 & ipv6
-            return socksRoute.port() == socksConnectRequest.port()
-                && socksRoute.address().equals(socksConnectRequest.address().domainName());
+            return socksRouteEx.port() == socksConnectRequest.port()
+                && socksRouteEx.address().equals(socksConnectRequest.address().domainName());
         }
 
         private void onSocksConnect(
@@ -383,12 +383,8 @@ public final class SocksServerFactory implements StreamFactory
             {
                 final RouteFW route = routeRO.wrap(b, o, o + l);
                 final OctetsFW extension = route.extension();
-                if (route.extension().sizeof() > 0)
-                {
-                    final SocksRouteExFW socksRoute = extension.get(socksRouteRO::wrap);
-                    return checkPortAndAddress(socksRoute, socksConnectRequest);
-                }
-                return true;
+                final SocksRouteExFW socksRouteEx = extension.get(socksRouteRO::wrap);
+                return socksRouteEx == null || addressPortMatch(socksRouteEx, socksConnectRequest);
             };
 
             final RouteFW route = router.resolve(routeId, authorization, filter, wrapRoute);
@@ -424,7 +420,7 @@ public final class SocksServerFactory implements StreamFactory
                     address = requestAddress.domainName();
                     break;
                 case SocksAddressFW.KIND_IPV4_ADDRESS:
-                    OctetsFW ipRO = requestAddress.ipv4Address();
+                    //TODO
                     break;
                 case SocksAddressFW.KIND_IPV6_ADDRESS:
                     //TODO
