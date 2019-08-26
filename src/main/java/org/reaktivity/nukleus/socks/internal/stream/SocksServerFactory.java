@@ -358,6 +358,7 @@ public final class SocksServerFactory implements StreamFactory
             SocksRouteExFW socksRoute,
             SocksCommandRequestFW socksCommandRequest)
         {
+            //TODO more cases for ipv4 & ipv6
             return socksRoute.port() == socksCommandRequest.port()
                 && socksRoute.address().equals(socksCommandRequest.address().domainName());
         }
@@ -385,19 +386,19 @@ public final class SocksServerFactory implements StreamFactory
                 final long newReplyId = supplyReplyId.applyAsLong(newInitialId);
 
                 final MessageConsumer newTarget = router.supplyReceiver(newInitialId);
-                final SocksConnectStream socksServerStream = new SocksConnectStream(this, newTarget,
+                final SocksConnectStream socksConnectStream = new SocksConnectStream(this, newTarget,
                     newRouteId, newInitialId, newReplyId);
 
                 SocksAddressFW socksAddress = socksCommandRequest.address();
 
                 StringFW address = formatSocksAddress(socksAddress);
 
-                socksServerStream.doApplicationBegin(newTarget,
+                socksConnectStream.doApplicationBegin(newTarget,
                                                      decodeTraceId,
                                                      address,
                                                      socksCommandRequest.port());
 
-                correlations.put(newReplyId, socksServerStream);
+                correlations.put(newReplyId, socksConnectStream);
             }
         }
 
