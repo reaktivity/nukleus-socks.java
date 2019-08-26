@@ -389,8 +389,8 @@ public final class SocksServerFactory implements StreamFactory
                 final SocksConnectStream socksConnectStream = new SocksConnectStream(this, newTarget,
                     newRouteId, newInitialId, newReplyId);
 
-                SocksAddressFW socksAddress = socksConnectRequest.address();
-                StringFW address = formatSocksAddress(socksAddress);
+                SocksAddressFW requestAddress = socksConnectRequest.address();
+                StringFW address = formatSocksAddress(requestAddress);
 
                 socksConnectStream.doApplicationBegin(newTarget,
                                                      decodeTraceId,
@@ -402,13 +402,13 @@ public final class SocksServerFactory implements StreamFactory
         }
 
         private StringFW formatSocksAddress(
-            SocksAddressFW socksAddress)
+            SocksAddressFW requestAddress)
         {
             StringFW address = null;
-            switch (socksAddress.kind())
+            switch (requestAddress.kind())
             {
                 case SocksAddressFW.KIND_DOMAIN_NAME:
-                    address = socksAddress.domainName();
+                    address = requestAddress.domainName();
                     break;
                 case SocksAddressFW.KIND_IPV4_ADDRESS:
                     //TODO
