@@ -91,7 +91,7 @@ public final class SocksServerFactory implements StreamFactory
     private final LongSupplier supplyTraceId;
     private final SocksConfiguration config;
 
-    private final Long2ObjectHashMap<SocksServerStream> correlations;
+    private final Long2ObjectHashMap<SocksConnectStream> correlations;
     private final MessageFunction<RouteFW> wrapRoute;
 
     private final BufferPool bufferPool;
@@ -183,7 +183,7 @@ public final class SocksServerFactory implements StreamFactory
         final MessageConsumer sender)
     {
         final long replyId = begin.streamId();
-        final SocksServerStream serverStream = correlations.remove(replyId);
+        final SocksConnectStream serverStream = correlations.remove(replyId);
 
         MessageConsumer newStream = null;
         if (serverStream != null)
@@ -385,7 +385,7 @@ public final class SocksServerFactory implements StreamFactory
                 final long newReplyId = supplyReplyId.applyAsLong(newInitialId);
 
                 final MessageConsumer newTarget = router.supplyReceiver(newInitialId);
-                final SocksServerStream socksServerStream = new SocksServerStream(this, newTarget,
+                final SocksConnectStream socksServerStream = new SocksConnectStream(this, newTarget,
                     newRouteId, newInitialId, newReplyId);
 
                 SocksAddressFW socksAddress = socksCommandRequest.address();
@@ -562,7 +562,7 @@ public final class SocksServerFactory implements StreamFactory
         }
     }
 
-    private final class SocksServerStream
+    private final class SocksConnectStream
     {
         private final SocksServer receiver;
         private final MessageConsumer application;
@@ -580,7 +580,7 @@ public final class SocksServerFactory implements StreamFactory
         private int bufferSlot = BufferPool.NO_SLOT;
         private int bufferSlotOffset;
 
-        SocksServerStream(
+        SocksConnectStream(
             SocksServer network,
             MessageConsumer application,
             long routeId,
