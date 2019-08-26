@@ -431,13 +431,14 @@ public final class SocksServerFactory implements StreamFactory
         private void onHandshakeRequest(
             SocksHandshakeRequestFW handshakeRequest)
         {
+            OctetsFW methods = handshakeRequest.methods();
             if (handshakeRequest.version() != 5)
             {
                 doNetworkEnd(supplyTraceId.getAsLong());
             }
-            else if (indexOfByte(handshakeRequest.methods().buffer(),
-                handshakeRequest.methods().offset(),
-                handshakeRequest.methods().limit(),
+            else if (indexOfByte(methods.buffer(),
+                methods.offset(),
+                methods.limit(),
                 SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED.value()) == -1)
             {
                 doSocksHandshakeReply(SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS);
