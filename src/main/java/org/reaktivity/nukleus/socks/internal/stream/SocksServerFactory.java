@@ -21,7 +21,13 @@ import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.Long2ObjectHashMap;
 import org.agrona.concurrent.UnsafeBuffer;
 
-import org.reaktivity.nukleus.socks.internal.types.codec.*;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeReplyFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeRequestFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandRequestFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyType;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksAddressFW;
 
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageConsumer;
