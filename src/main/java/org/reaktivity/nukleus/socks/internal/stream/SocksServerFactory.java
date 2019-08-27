@@ -52,6 +52,7 @@ import org.reaktivity.nukleus.stream.StreamFactory;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.charset.Charset;
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 import java.util.function.ToIntFunction;
@@ -373,15 +374,6 @@ public final class SocksServerFactory implements StreamFactory
             doNetworkWindow(supplyTraceId.getAsLong(), initialCredit);
         }
 
-        private boolean addressPortMatch(
-            SocksRouteExFW socksRouteEx,
-            SocksCommandRequestFW socksConnectRequest)
-        {
-            //TODO more cases for ipv4 & ipv6
-            return socksRouteEx.port() == socksConnectRequest.port()
-                && socksRouteEx.address().equals(socksConnectRequest.address().domainName());
-        }
-
         private void onSocksConnect(
             SocksCommandRequestFW socksConnectRequest)
         {
@@ -390,7 +382,9 @@ public final class SocksServerFactory implements StreamFactory
                 final RouteFW route = routeRO.wrap(b, o, o + l);
                 final OctetsFW extension = route.extension();
                 final SocksRouteExFW socksRouteEx = extension.get(socksRouteRO::wrap);
-                return socksRouteEx == null || addressPortMatch(socksRouteEx, socksConnectRequest);
+                return socksRouteEx == null
+                    || (socksRouteEx.port() == socksConnectRequest.port()
+                    && socksRouteEx.address().equals(socksConnectRequest.address().domainName())) ;
             };
 
             final RouteFW route = router.resolve(routeId, authorization, filter, wrapRoute);
