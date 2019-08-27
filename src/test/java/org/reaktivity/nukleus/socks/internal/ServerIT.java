@@ -129,9 +129,9 @@ public class ServerIT
 
     @Test
     @Specification({
-            "${route}/server/controller",
-            "${forward}/connected.then.server.abort/server",
-            "${client}/rfc1928/connect/connected.then.server.abort/client"
+        "${route}/server/controller",
+        "${forward}/connected.then.server.abort/server",
+        "${client}/rfc1928/connect/connected.then.server.abort/client"
     })
     public void shouldConnectThenServerAbort() throws Exception
     {
@@ -140,9 +140,9 @@ public class ServerIT
 
     @Test
     @Specification({
-            "${route}/server/controller",
-            "${forward}/connected.then.server.close/server",
-            "${client}/rfc1928/connect/connected.then.server.close/client"
+        "${route}/server/controller",
+        "${forward}/connected.then.server.close/server",
+        "${client}/rfc1928/connect/connected.then.server.close/client"
     })
     public void shouldConnectThenServerClose() throws Exception
     {
@@ -151,9 +151,9 @@ public class ServerIT
 
     @Test
     @Specification({
-            "${route}/server/controller",
-            "${forward}/connected.then.server.reset/server",
-            "${client}/rfc1928/connect/connected.then.server.reset/client"
+        "${route}/server/controller",
+        "${forward}/connected.then.server.reset/server",
+        "${client}/rfc1928/connect/connected.then.server.reset/client"
     })
     public void shouldConnectThenServerReset() throws Exception
     {

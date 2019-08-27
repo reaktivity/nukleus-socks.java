@@ -61,22 +61,4 @@ public class ControllerIT
 
         k3po.finish();
     }
-
-    @Test
-    @Specification({
-        "${routeExt}/server/nukleus"
-    })
-    public void shouldRouteServerWithExt() throws Exception
-    {
-        k3po.start();
-
-        final JsonObject extension = new JsonObject();
-        extension.addProperty("topic", "sensor/one");
-
-        reaktor.controller(SocksController.class)
-                .route(SERVER, "socks#0", "target#0", gson.toJson(extension))
-                .get();
-
-        k3po.finish();
-    }
 }
