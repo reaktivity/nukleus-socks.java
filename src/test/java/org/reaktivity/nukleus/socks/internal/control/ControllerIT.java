@@ -16,8 +16,6 @@
 package org.reaktivity.nukleus.socks.internal.control;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-//import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
