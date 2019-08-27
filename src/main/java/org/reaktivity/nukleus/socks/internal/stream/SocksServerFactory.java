@@ -383,7 +383,7 @@ public final class SocksServerFactory implements StreamFactory
                 final SocksRouteExFW socksRouteEx = extension.get(socksRouteRO::wrap);
                 return socksRouteEx == null
                     || (socksRouteEx.port() == socksConnectRequest.port()
-                    && socksRouteEx.address().equals(socksConnectRequest.address().domainName())) ;
+                    && socksRouteEx.address().equals(socksConnectRequest.address().domainName()));
             };
 
             final RouteFW route = router.resolve(routeId, authorization, filter, wrapRoute);
