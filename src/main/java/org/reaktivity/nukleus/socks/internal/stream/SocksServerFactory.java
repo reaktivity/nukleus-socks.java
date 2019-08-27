@@ -381,9 +381,9 @@ public final class SocksServerFactory implements StreamFactory
                 final RouteFW route = routeRO.wrap(b, o, o + l);
                 final OctetsFW extension = route.extension();
                 final SocksRouteExFW socksRouteEx = extension.get(socksRouteRO::wrap);
-                return socksRouteEx == null
-                    || (socksRouteEx.port() == socksConnectRequest.port()
-                    && socksRouteEx.address().equals(socksConnectRequest.address().domainName()));
+                return socksRouteEx == null ||
+                    (socksRouteEx.port() == socksConnectRequest.port() &&
+                    socksRouteEx.address().equals(socksConnectRequest.address().domainName()));
             };
 
             final RouteFW route = router.resolve(routeId, authorization, filter, wrapRoute);
@@ -750,8 +750,7 @@ public final class SocksServerFactory implements StreamFactory
         boolean hasMethod = false;
         for (int i = methods.offset(); i < methods.limit(); i++)
         {
-            if (method.value()
-                == (methods.buffer().getByte(i) & 0xff))
+            if (method.value() == (methods.buffer().getByte(i) & 0xff))
             {
                 hasMethod = true;
                 break;
