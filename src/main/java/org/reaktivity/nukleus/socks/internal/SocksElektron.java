@@ -34,7 +34,7 @@ final class SocksElektron implements Elektron
         SocksConfiguration config)
     {
         final EnumMap<RouteKind, StreamFactoryBuilder> buildersByKind = new EnumMap<>(RouteKind.class);
-        // TODO
+        //buildersByKind.put(CLIENT, new MqttClientFactoryBuilder(config));
         buildersByKind.put(SERVER, new SocksServerFactoryBuilder(config));
         this.buildersByKind = buildersByKind;
     }

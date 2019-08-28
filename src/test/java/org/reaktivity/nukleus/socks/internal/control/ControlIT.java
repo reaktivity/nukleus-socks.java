@@ -127,13 +127,11 @@ public class ControlIT
 
     @Test
     @Specification({
-        "${unroute}/server/controller",
-        "${unroute}/server/nukleus"
+        "${route}/server/routed.domain/controller",
+        "${unroute}/server/controller"
     })
     public void shouldUnrouteServer() throws Exception
     {
-        k3po.start();
-        k3po.notifyBarrier("ROUTED_SERVER");
         k3po.finish();
     }
 
@@ -149,37 +147,31 @@ public class ControlIT
 
     @Test
     @Specification({
-        "${unroute}/client/controller",
-        "${unroute}/client/nukleus"
+        "${route}/client/routed.domain/controller",
+        "${unroute}/client/controller"
     })
     public void shouldUnrouteClient() throws Exception
     {
-        k3po.start();
-        k3po.notifyBarrier("ROUTED_CLIENT");
         k3po.finish();
     }
 
     @Test
     @Specification({
-        "${unroute}/server.reverse/controller",
-        "${unroute}/server.reverse/nukleus"
+        "${route}/server.reverse/routed.domain/controller",
+        "${unroute}/server.reverse/controller"
     })
     public void shouldUnrouteReverseServer() throws Exception
     {
-        k3po.start();
-        k3po.notifyBarrier("ROUTED_SERVER_REVERSE");
         k3po.finish();
     }
 
     @Test
     @Specification({
-        "${unroute}/client.reverse/nukleus",
+        "${route}/client.reverse/routed.domain/controller",
         "${unroute}/client.reverse/controller"
     })
     public void shouldUnrouteReverseClient() throws Exception
     {
-        k3po.start();
-        k3po.notifyBarrier("ROUTED_CLIENT_REVERSE");
         k3po.finish();
     }
 }

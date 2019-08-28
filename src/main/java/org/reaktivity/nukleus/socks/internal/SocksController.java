@@ -13,39 +13,47 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
 package org.reaktivity.nukleus.socks.internal;
+
+import static java.nio.ByteBuffer.allocateDirect;
+import static java.nio.ByteOrder.nativeOrder;
+
+import java.util.concurrent.CompletableFuture;
+
+import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
+import org.reaktivity.nukleus.Controller;
+import org.reaktivity.nukleus.ControllerSpi;
+
+import org.reaktivity.nukleus.route.RouteKind;
+import org.reaktivity.nukleus.socks.internal.types.Flyweight;
+import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
+import org.reaktivity.nukleus.socks.internal.types.control.Role;
+import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
+import org.reaktivity.nukleus.socks.internal.types.control.UnrouteFW;
+import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.agrona.MutableDirectBuffer;
-import org.agrona.concurrent.UnsafeBuffer;
-import org.reaktivity.nukleus.Controller;
-import org.reaktivity.nukleus.ControllerSpi;
-import org.reaktivity.nukleus.route.RouteKind;
-import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
-import org.reaktivity.nukleus.socks.internal.types.Flyweight;
-import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
-import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
-import org.reaktivity.nukleus.socks.internal.types.control.Role;
-import java.util.concurrent.CompletableFuture;
-
-import static java.nio.ByteBuffer.allocateDirect;
-import static java.nio.ByteOrder.nativeOrder;
 
 public final class SocksController implements Controller
 {
     private static final int MAX_SEND_LENGTH = 1024;
+
+    private final RouteFW.Builder routeRW = new RouteFW.Builder();
+    private final UnrouteFW.Builder unrouteRW = new UnrouteFW.Builder();
+
+    private final SocksRouteExFW.Builder routeExRW = new SocksRouteExFW.Builder();
+
+    private final OctetsFW extensionRO = new OctetsFW().wrap(new UnsafeBuffer(new byte[0]), 0, 0);
+
     private final ControllerSpi controllerSpi;
     private final MutableDirectBuffer commandBuffer;
     private final MutableDirectBuffer extensionBuffer;
-    private final SocksRouteExFW.Builder routeExRW = new SocksRouteExFW.Builder();
-
     private final Gson gson;
-
-    private final RouteFW.Builder routeRw = new RouteFW.Builder();
-    private final OctetsFW extensionRO = new OctetsFW().wrap(new UnsafeBuffer(new byte[0]), 0, 0);
 
     public SocksController(
         ControllerSpi controllerSpi)
@@ -55,11 +63,7 @@ public final class SocksController implements Controller
         this.extensionBuffer = new UnsafeBuffer(allocateDirect(MAX_SEND_LENGTH).order(nativeOrder()));
         this.gson = new Gson();
     }
-    @Override
-    public String name()
-    {
-        return SocksNukleus.NAME;
-    }
+
     @Override
     public int process()
     {
@@ -77,6 +81,13 @@ public final class SocksController implements Controller
     {
         return SocksController.class;
     }
+
+    @Override
+    public String name()
+    {
+        return SocksNukleus.NAME;
+    }
+
     public CompletableFuture<Long> route(
         RouteKind kind,
         String localAddress,
@@ -100,14 +111,30 @@ public final class SocksController implements Controller
             if (element.isJsonObject())
             {
                 final JsonObject object = (JsonObject) element;
-                final String topic = gson.fromJson(object.get("topic"), String.class);
+                final String address = gson.fromJson(object.get("address"), String.class);
+                final Integer port = gson.fromJson(object.get("port"), Integer.class);
 
                 routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
+                                   .address(address)
+                                   .port(port)
                                    .build();
             }
         }
-
         return doRoute(kind, localAddress, remoteAddress, routeEx);
+    }
+
+    public CompletableFuture<Void> unroute(
+        long routeId)
+    {
+        final long correlationId = controllerSpi.nextCorrelationId();
+
+        final UnrouteFW unroute = unrouteRW.wrap(commandBuffer, 0, commandBuffer.capacity())
+            .correlationId(correlationId)
+            .nukleus(name())
+            .routeId(routeId)
+            .build();
+
+        return controllerSpi.doUnroute(unroute.typeId(), unroute.buffer(), unroute.offset(), unroute.sizeof());
     }
 
     private CompletableFuture<Long> doRoute(
@@ -119,14 +146,14 @@ public final class SocksController implements Controller
         final long correlationId = controllerSpi.nextCorrelationId();
         final Role role = Role.valueOf(kind.ordinal());
 
-        final RouteFW route = routeRw.wrap(commandBuffer, 0, commandBuffer.capacity())
-                .correlationId(correlationId)
-                .nukleus(name())
-                .role(b -> b.set(role))
-                .localAddress(localAddress)
-                .remoteAddress(remoteAddress)
-                .extension(extension.buffer(), extension.offset(), extension.sizeof())
-                .build();
+        final RouteFW route = routeRW.wrap(commandBuffer, 0, commandBuffer.capacity())
+            .correlationId(correlationId)
+            .nukleus(name())
+            .role(b -> b.set(role))
+            .localAddress(localAddress)
+            .remoteAddress(remoteAddress)
+            .extension(extension.buffer(), extension.offset(), extension.sizeof())
+            .build();
 
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
     }
