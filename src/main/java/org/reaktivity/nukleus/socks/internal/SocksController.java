@@ -88,13 +88,13 @@ public final class SocksController implements Controller
         return SocksNukleus.NAME;
     }
 
-    public CompletableFuture<Long> route(
+    /*public CompletableFuture<Long> route(
         RouteKind kind,
         String localAddress,
         String remoteAddress)
     {
         return route(kind, localAddress, remoteAddress, null);
-    }
+    }*/
 
     public CompletableFuture<Long> route(
         RouteKind kind,
@@ -112,7 +112,7 @@ public final class SocksController implements Controller
             {
                 final JsonObject object = (JsonObject) element;
                 final String address = gson.fromJson(object.get("address"), String.class);
-                final Integer port = gson.fromJson(object.get("port"), Integer.class);
+                final int port = gson.fromJson(object.get("port"), Integer.class);
 
                 routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
                                    .address(address)

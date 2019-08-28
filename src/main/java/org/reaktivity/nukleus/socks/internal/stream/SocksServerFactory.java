@@ -282,13 +282,13 @@ public final class SocksServerFactory implements StreamFactory
                     final EndFW end = endRO.wrap(buffer, index, index + length);
                     onNetworkEnd(end);
                     break;
-                case AbortFW.TYPE_ID:
-                    final AbortFW abort = abortRO.wrap(buffer, index, index + length);
-                    onNetworkAbort(abort);
-                    break;
                 case WindowFW.TYPE_ID:
                     final WindowFW window = windowRO.wrap(buffer, index, index + length);
                     onNetworkWindow(window);
+                    break;
+                case AbortFW.TYPE_ID:
+                    final AbortFW abort = abortRO.wrap(buffer, index, index + length);
+                    onNetworkAbort(abort);
                     break;
                 case ResetFW.TYPE_ID:
                     final ResetFW reset = resetRO.wrap(buffer, index, index + length);
@@ -347,18 +347,18 @@ public final class SocksServerFactory implements StreamFactory
             doNetworkReset(traceId);
         }
 
-        private void onNetworkEnd(
-            EndFW end)
-        {
-            final long traceId = end.trace();
-            doNetworkEnd(traceId);
-        }
-
         private void onNetworkAbort(
             AbortFW abort)
         {
             final long traceId = abort.trace();
             doNetworkAbort(traceId);
+        }
+
+        private void onNetworkEnd(
+            EndFW end)
+        {
+            final long traceId = end.trace();
+            doNetworkEnd(traceId);
         }
 
         private void onNetworkWindow(
@@ -445,8 +445,8 @@ public final class SocksServerFactory implements StreamFactory
             }
             else
             {
-                doSocksHandshakeReply(NO_AUTHENTICATION_REQUIRED);
-                decodeState = this::decodeCommand;
+            doSocksHandshakeReply(NO_AUTHENTICATION_REQUIRED);
+            decodeState = this::decodeCommand;
             }
         }
 
@@ -529,7 +529,7 @@ public final class SocksServerFactory implements StreamFactory
         private void doNetworkReset(
             long traceId)
         {
-            final ResetFW reset = resetRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+           final ResetFW reset = resetRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                                          .routeId(routeId)
                                          .streamId(initialId)
                                          .trace(traceId)
@@ -614,13 +614,13 @@ public final class SocksServerFactory implements StreamFactory
                     final BeginFW begin = beginRO.wrap(buffer, index, index + length);
                     onApplicationBegin(begin);
                     break;
-                case DataFW.TYPE_ID:
-                    final DataFW data = dataRO.wrap(buffer, index, index + length);
-                    onApplicationData(data);
-                    break;
                 case EndFW.TYPE_ID:
                     final EndFW end = endRO.wrap(buffer, index, index + length);
                     onApplicationEnd(end);
+                    break;
+                case DataFW.TYPE_ID:
+                    final DataFW data = dataRO.wrap(buffer, index, index + length);
+                    onApplicationData(data);
                     break;
                 case WindowFW.TYPE_ID:
                     final WindowFW window = windowRO.wrap(buffer, index, index + length);
@@ -726,7 +726,7 @@ public final class SocksServerFactory implements StreamFactory
         }
     }
 
-    private static InetAddress lookupName(
+    public static InetAddress lookupName(
         String host)
     {
         InetAddress address = null;

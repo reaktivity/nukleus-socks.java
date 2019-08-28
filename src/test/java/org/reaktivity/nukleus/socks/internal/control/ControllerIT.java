@@ -17,49 +17,187 @@ package org.reaktivity.nukleus.socks.internal.control;
 
 import com.google.gson.Gson;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
+import org.junit.rules.RuleChain;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
+import org.reaktivity.nukleus.route.RouteKind;
 import org.reaktivity.nukleus.socks.internal.SocksController;
 import org.reaktivity.reaktor.test.ReaktorRule;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.reaktivity.nukleus.route.RouteKind.SERVER;
+import java.util.concurrent.TimeUnit;
 
 public class ControllerIT
 {
     private final K3poRule k3po = new K3poRule()
         .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
         .addScriptRoot("unroute", "org/reaktivity/specification/nukleus/socks/control/unroute");
+    private final TestRule timeout;
+    private final ReaktorRule reaktor;
+    private final Gson gson;
 
-    private final TestRule timeout = new DisableOnDebug(new Timeout(5, SECONDS));
+    @Rule
+    public final TestRule chain;
 
-    private final ReaktorRule reaktor = new ReaktorRule()
-        .directory("target/nukleus-itests")
-        .commandBufferCapacity(1024)
-        .responseBufferCapacity(1024)
-        .counterValuesBufferCapacity(4096)
-        .controller("socks"::equals);
+    public ControllerIT()
+    {
+        this.timeout = new DisableOnDebug(new Timeout(5L, TimeUnit.SECONDS));
+        this.reaktor = (new ReaktorRule()).directory("target/nukleus-itests")
+                                          .commandBufferCapacity(1024)
+                                          .responseBufferCapacity(1024)
+                                          .counterValuesBufferCapacity(4096)
+                                          .controller("socks"::equals);
+        this.chain = RuleChain.outerRule(this.k3po).around(this.timeout).around(this.reaktor);
+        this.gson = new Gson();
+    }
 
-    private final Gson gson = new Gson();
+    @Test
+    @Specification({"${route}/server/routed.domain/nukleus"})
+    public void shouldRouteServerWithDomainAddress() throws Exception
+    {
+        this.k3po.start();
+        String addressPort = "{\"address\":\"example.com\", \"port\": 8080}";
+        this.reaktor.controller(SocksController.class).route(RouteKind.SERVER,
+            "socks#0", "target#0", addressPort).get();
+        this.k3po.finish();
+    }
+
+    @Test
+    @Specification({"${route}/server/routed.ipv4/nukleus"})
+    public void shouldRouteServerWithIpv4Address() throws Exception
+    {
+        this.k3po.start();
+        String addressPort = "{\"address\":\"192.168.0.1\", \"port\": 8080}";
+        this.reaktor.controller(SocksController.class).route(RouteKind.SERVER,
+            "socks#0", "target#0", addressPort).get();
+        this.k3po.finish();
+    }
+
+    @Test
+    @Specification({"${route}/server/routed.ipv6/nukleus"})
+    public void shouldRouteServerWithIpv6Address() throws Exception
+    {
+        this.k3po.start();
+        String addressPort = "{\"address\":\"fd12:3456:789a:1::c6a8:1\", \"port\": 8080}";
+        this.reaktor.controller(SocksController.class).route(RouteKind.SERVER,
+            "socks#0", "target#0", addressPort).get();
+        this.k3po.finish();
+    }
+
+    @Test
+    @Specification({"${route}/server/routed.domain/nukleus", "${unroute}/server/nukleus"})
+    public void shouldUnrouteServerWithDomainAddress() throws Exception
+    {
+        this.k3po.start();
+        String addressPort = "{\"address\":\"example.com\", \"port\": 8080}";
+        long routeId = this.reaktor.controller(SocksController.class).route(RouteKind.SERVER,
+            "socks#0", "target#0", addressPort).get();
+        this.k3po.notifyBarrier("ROUTED_SERVER");
+        this.reaktor.controller(SocksController.class).unroute(routeId).get();
+        this.k3po.finish();
+    }
+
+    @Test
+    @Specification({"${route}/server/routed.ipv4/nukleus", "${unroute}/server/nukleus"})
+    public void shouldUnrouteServerWithIpv4Address() throws Exception
+    {
+        this.k3po.start();
+        String addressPort = "{\"address\":\"192.168.0.1\", \"port\": 8080}";
+        long routeId = this.reaktor.controller(SocksController.class).route(RouteKind.SERVER,
+            "socks#0", "target#0", addressPort).get();
+        this.k3po.notifyBarrier("ROUTED_SERVER");
+        this.reaktor.controller(SocksController.class).unroute(routeId).get();
+        this.k3po.finish();
+    }
+
+    @Test
+    @Specification({"${route}/server/routed.ipv6/nukleus", "${unroute}/server/nukleus"})
+    public void shouldUnrouteServerWithIpv6Address() throws Exception
+    {
+        this.k3po.start();
+        String addressPort = "{\"address\":\"fd12:3456:789a:1::c6a8:1\", \"port\": 8080}";
+        long routeId = this.reaktor.controller(SocksController.class).route(RouteKind.SERVER,
+            "socks#0", "target#0", addressPort).get();
+        this.k3po.notifyBarrier("ROUTED_SERVER");
+        this.reaktor.controller(SocksController.class).unroute(routeId).get();
+        this.k3po.finish();
+    }
+
+    @Test
+    @Specification({"${route}/client/routed.domain/nukleus"})
+    public void shouldRouteClientWithDomainAddress() throws Exception
+    {
+        this.k3po.start();
+        String addressPort = "{\"address\":\"example.com\", \"port\": 8080}";
+        this.reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
+            "socks#0", "target#0", addressPort).get();
+        this.k3po.finish();
+    }
+
+    @Test
+    @Specification({"${route}/client/routed.ipv4/nukleus"})
+    public void shouldRouteClientWithIpv4Address() throws Exception
+    {
+        this.k3po.start();
+        String addressPort = "{\"address\":\"192.168.0.1\", \"port\": 8080}";
+        this.reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
+            "socks#0", "target#0", addressPort).get();
+        this.k3po.finish();
+    }
 
     @Ignore
     @Test
-    @Specification({
-        "${route}/server/nukleus"
-    })
-    public void shouldRouteServer() throws Exception
+    @Specification({"${route}/client/routed.ipv6/nukleus"})
+    public void shouldRouteClientWithIpv6Address() throws Exception
     {
-        k3po.start();
-
-        reaktor.controller(SocksController.class)
-                .route(SERVER, "socks#0", "target#0")
-                .get();
-
-        k3po.finish();
+        this.k3po.start();
+        String addressPort = "{\"address\":\"fd12:3456:789a:1::c6a8:1\", \"port\": 8080}";
+        this.reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
+            "socks#0", "target#0", addressPort).get();
+        this.k3po.finish();
     }
 
+    @Test
+    @Specification({"${route}/client/routed.domain/nukleus", "${unroute}/client/nukleus"})
+    public void shouldUnrouteClientWithDomainAddress() throws Exception
+    {
+        this.k3po.start();
+        String addressPort = "{\"address\":\"example.com\", \"port\": 8080}";
+        long routeId = this.reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
+            "socks#0", "target#0", addressPort).get();
+        this.k3po.notifyBarrier("ROUTED_CLIENT");
+        this.reaktor.controller(SocksController.class).unroute(routeId).get();
+        this.k3po.finish();
+    }
+
+    @Test
+    @Specification({"${route}/client/routed.ipv4/nukleus", "${unroute}/client/nukleus"})
+    public void shouldUnrouteClientWithIpv4Address() throws Exception
+    {
+        this.k3po.start();
+        String addressPort = "{\"address\":\"192.168.0.1\", \"port\": 8080}";
+        long routeId = this.reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
+            "socks#0", "target#0", addressPort).get();
+        this.k3po.notifyBarrier("ROUTED_CLIENT");
+        this.reaktor.controller(SocksController.class).unroute(routeId).get();
+        this.k3po.finish();
+    }
+
+    @Ignore
+    @Test
+    @Specification({"${route}/client/routed.ipv6/nukleus", "${unroute}/client/nukleus"})
+    public void shouldUnrouteClientWithIpv6Address() throws Exception
+    {
+        this.k3po.start();
+        String addressPort = "{\"address\":\"fd12:3456:789a:1::c6a8:1\", \"port\": 8080}";
+        long routeId = this.reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
+            "socks#0", "target#0", addressPort).get();
+        this.k3po.notifyBarrier("ROUTED_CLIENT");
+        this.reaktor.controller(SocksController.class).unroute(routeId).get();
+        this.k3po.finish();
+    }
 }

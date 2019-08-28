@@ -74,6 +74,15 @@ public class ControlIT
 
     @Test
     @Specification({
+        "${route}/client/routed.domain/controller"
+    })
+    public void shouldRouteClientWithDomainAddress() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
         "${route}/client/routed.ipv4/controller"
     })
     public void shouldRouteClientWithIPv4Address() throws Exception
@@ -95,6 +104,24 @@ public class ControlIT
         "${route}/server.reverse/routed.domain/controller"
     })
     public void shouldRouteReverseServerWithDomainAddress() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server.reverse/routed.ipv4/controller"
+    })
+    public void shouldRouteReverseServerWithIpv4Address() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server.reverse/routed.ipv6/controller"
+    })
+    public void shouldRouteReverseServerWithIpv6Address() throws Exception
     {
         k3po.finish();
     }
@@ -131,7 +158,27 @@ public class ControlIT
         "${route}/server/routed.domain/controller",
         "${unroute}/server/controller"
     })
-    public void shouldUnrouteServer() throws Exception
+    public void shouldUnrouteServerWithDomainAddress() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/routed.ipv4/controller",
+        "${unroute}/server/controller"
+    })
+    public void shouldUnrouteServerWithIPV4Address() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server/routed.ipv6/controller",
+        "${unroute}/server/controller"
+    })
+    public void shouldUnrouteServerWithIPV6Address() throws Exception
     {
         k3po.finish();
     }
@@ -151,7 +198,27 @@ public class ControlIT
         "${route}/client/routed.domain/controller",
         "${unroute}/client/controller"
     })
-    public void shouldUnrouteClient() throws Exception
+    public void shouldUnrouteClientWithDomainAddress() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/client/routed.ipv4/controller",
+        "${unroute}/client/controller"
+    })
+    public void shouldUnrouteClientWithIpv4Address() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/client/routed.ipv6/controller",
+        "${unroute}/client/controller"
+    })
+    public void shouldUnrouteClientWithIpv6Address() throws Exception
     {
         k3po.finish();
     }
@@ -161,7 +228,27 @@ public class ControlIT
         "${route}/server.reverse/routed.domain/controller",
         "${unroute}/server.reverse/controller"
     })
-    public void shouldUnrouteReverseServer() throws Exception
+    public void shouldUnrouteReverseServerWithDomainAddress() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server.reverse/routed.ipv4/controller",
+        "${unroute}/server.reverse/controller"
+    })
+    public void shouldUnrouteReverseServerWithIpv4Address() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "${route}/server.reverse/routed.ipv6/controller",
+        "${unroute}/server.reverse/controller"
+    })
+    public void shouldUnrouteReverseServerWithIpv6Address() throws Exception
     {
         k3po.finish();
     }
