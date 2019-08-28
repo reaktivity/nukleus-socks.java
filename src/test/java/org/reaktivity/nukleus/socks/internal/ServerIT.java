@@ -20,6 +20,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.rules.RuleChain.outerRule;
 import static org.reaktivity.reaktor.test.ReaktorRule.EXTERNAL_AFFINITY_MASK;
 
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
@@ -60,7 +61,8 @@ public class ServerIT
     {
         k3po.finish();
     }
-    /*
+
+    @Ignore
     @Test
     @Specification({
         "${route}/server/routed.ipv4/controller",
@@ -72,6 +74,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/routed.ipv6/controller",
@@ -83,6 +86,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
@@ -94,6 +98,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
@@ -105,6 +110,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
@@ -116,6 +122,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
@@ -127,6 +134,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
@@ -138,6 +146,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
@@ -149,6 +158,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
@@ -160,6 +170,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
@@ -171,6 +182,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
@@ -181,6 +193,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
@@ -191,6 +204,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/controller",
@@ -200,5 +214,4 @@ public class ServerIT
     {
         k3po.finish();
     }
-     */
 }
