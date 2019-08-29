@@ -15,8 +15,9 @@
  */
 package org.reaktivity.nukleus.socks.internal.control;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
+import static org.reaktivity.nukleus.route.RouteKind.CLIENT;
+import static org.reaktivity.nukleus.route.RouteKind.SERVER;
+
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -26,11 +27,12 @@ import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
-import org.reaktivity.nukleus.route.RouteKind;
 import org.reaktivity.nukleus.socks.internal.SocksController;
 import org.reaktivity.reaktor.test.ReaktorRule;
-
 import java.util.concurrent.TimeUnit;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 public class ControllerIT
 {
@@ -47,10 +49,10 @@ public class ControllerIT
         .counterValuesBufferCapacity(4096)
         .controller("socks"::equals);
 
-    private final Gson gson = new Gson();
-
     @Rule
     public final TestRule chain = RuleChain.outerRule(k3po).around(timeout).around(reaktor);
+
+    private final Gson gson = new Gson();
 
     @Test
     @Specification({"${route}/server/routed.domain/nukleus"})
@@ -62,8 +64,9 @@ public class ControllerIT
         extension.addProperty("address", "example.com");
         extension.addProperty("port", "8080");
 
-        reaktor.controller(SocksController.class).route(RouteKind.SERVER,
-            "socks#0", "target#0", gson.toJson(extension)).get();
+        reaktor.controller(SocksController.class)
+               .route(SERVER, "socks#0", "target#0", gson.toJson(extension))
+               .get();
 
         k3po.finish();
     }
@@ -78,8 +81,9 @@ public class ControllerIT
         extension.addProperty("address", "192.168.0.1");
         extension.addProperty("port", "8080");
 
-        reaktor.controller(SocksController.class).route(RouteKind.SERVER,
-            "socks#0", "target#0", gson.toJson(extension)).get();
+        reaktor.controller(SocksController.class)
+               .route(SERVER, "socks#0", "target#0", gson.toJson(extension))
+               .get();
 
         k3po.finish();
     }
@@ -94,8 +98,9 @@ public class ControllerIT
         extension.addProperty("address", "fd12:3456:789a:1::c6a8:1");
         extension.addProperty("port", "8080");
 
-        reaktor.controller(SocksController.class).route(RouteKind.SERVER,
-            "socks#0", "target#0", gson.toJson(extension)).get();
+        reaktor.controller(SocksController.class)
+               .route(SERVER, "socks#0", "target#0", gson.toJson(extension))
+               .get();
 
         k3po.finish();
     }
@@ -112,12 +117,15 @@ public class ControllerIT
         extension.addProperty("address", "example.com");
         extension.addProperty("port", "8080");
 
-        long routeId = reaktor.controller(SocksController.class).route(RouteKind.SERVER,
-            "socks#0", "target#0", gson.toJson(extension)).get();
+        long routeId = reaktor.controller(SocksController.class)
+                              .route(SERVER, "socks#0", "target#0", gson.toJson(extension))
+                              .get();
 
         k3po.notifyBarrier("ROUTED_SERVER");
 
-        reaktor.controller(SocksController.class).unroute(routeId).get();
+        reaktor.controller(SocksController.class)
+               .unroute(routeId)
+               .get();
 
         k3po.finish();
     }
@@ -134,11 +142,15 @@ public class ControllerIT
         extension.addProperty("address", "192.168.0.1");
         extension.addProperty("port", "8080");
 
-        long routeId = reaktor.controller(SocksController.class).route(RouteKind.SERVER,
-            "socks#0", "target#0", gson.toJson(extension)).get();
+        long routeId = reaktor.controller(SocksController.class)
+                              .route(SERVER, "socks#0", "target#0", gson.toJson(extension))
+                              .get();
+
         k3po.notifyBarrier("ROUTED_SERVER");
 
-        reaktor.controller(SocksController.class).unroute(routeId).get();
+        reaktor.controller(SocksController.class)
+               .unroute(routeId)
+               .get();
 
         k3po.finish();
     }
@@ -155,12 +167,15 @@ public class ControllerIT
         extension.addProperty("address", "fd12:3456:789a:1::c6a8:1");
         extension.addProperty("port", "8080");
 
-        long routeId = reaktor.controller(SocksController.class).route(RouteKind.SERVER,
-            "socks#0", "target#0", gson.toJson(extension)).get();
+        long routeId = reaktor.controller(SocksController.class)
+                              .route(SERVER, "socks#0", "target#0", gson.toJson(extension))
+                              .get();
 
         k3po.notifyBarrier("ROUTED_SERVER");
 
-        reaktor.controller(SocksController.class).unroute(routeId).get();
+        reaktor.controller(SocksController.class)
+               .unroute(routeId)
+               .get();
 
         k3po.finish();
     }
@@ -175,8 +190,9 @@ public class ControllerIT
         extension.addProperty("address", "example.com");
         extension.addProperty("port", "8080");
 
-        reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
-            "socks#0", "target#0", gson.toJson(extension)).get();
+        reaktor.controller(SocksController.class)
+               .route(CLIENT, "socks#0", "target#0", gson.toJson(extension))
+               .get();
 
         k3po.finish();
     }
@@ -191,8 +207,9 @@ public class ControllerIT
         extension.addProperty("address", "192.168.0.1");
         extension.addProperty("port", "8080");
 
-        reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
-            "socks#0", "target#0", gson.toJson(extension)).get();
+        reaktor.controller(SocksController.class)
+               .route(CLIENT, "socks#0", "target#0", gson.toJson(extension))
+               .get();
 
         k3po.finish();
     }
@@ -208,8 +225,9 @@ public class ControllerIT
         extension.addProperty("address", "fd12:3456:789a:1::c6a8:1");
         extension.addProperty("port", "8080");
 
-        reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
-            "socks#0", "target#0", gson.toJson(extension)).get();
+        reaktor.controller(SocksController.class)
+               .route(CLIENT, "socks#0", "target#0", gson.toJson(extension))
+               .get();
 
         k3po.finish();
     }
@@ -226,12 +244,15 @@ public class ControllerIT
         extension.addProperty("address", "example.com");
         extension.addProperty("port", "8080");
 
-        long routeId = reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
-            "socks#0", "target#0", gson.toJson(extension)).get();
+        long routeId = reaktor.controller(SocksController.class)
+                              .route(CLIENT, "socks#0", "target#0", gson.toJson(extension))
+                              .get();
 
         k3po.notifyBarrier("ROUTED_CLIENT");
 
-        reaktor.controller(SocksController.class).unroute(routeId).get();
+        reaktor.controller(SocksController.class)
+               .unroute(routeId)
+               .get();
 
         k3po.finish();
     }
@@ -248,12 +269,15 @@ public class ControllerIT
         extension.addProperty("address", "192.168.0.1");
         extension.addProperty("port", "8080");
 
-        long routeId = reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
-            "socks#0", "target#0", gson.toJson(extension)).get();
+        long routeId = reaktor.controller(SocksController.class)
+                              .route(CLIENT, "socks#0", "target#0", gson.toJson(extension))
+                              .get();
 
         k3po.notifyBarrier("ROUTED_CLIENT");
 
-        reaktor.controller(SocksController.class).unroute(routeId).get();
+        reaktor.controller(SocksController.class)
+               .unroute(routeId)
+               .get();
 
         k3po.finish();
     }
@@ -271,12 +295,15 @@ public class ControllerIT
         extension.addProperty("address", "fd12:3456:789a:1::c6a8:1");
         extension.addProperty("port", "8080");
 
-        long routeId = reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
-            "socks#0", "target#0", gson.toJson(extension)).get();
+        long routeId = reaktor.controller(SocksController.class)
+                              .route(CLIENT, "socks#0", "target#0", gson.toJson(extension))
+                              .get();
 
         k3po.notifyBarrier("ROUTED_CLIENT");
 
-        reaktor.controller(SocksController.class).unroute(routeId).get();
+        reaktor.controller(SocksController.class)
+               .unroute(routeId)
+               .get();
 
         k3po.finish();
     }
