@@ -45,9 +45,9 @@ final class SocksElektron implements Elektron
         return buildersByKind.get(kind);
     }
 
-    /*@Override
+    @Override
     public String toString()
     {
         return String.format("%s %s", getClass().getSimpleName(), buildersByKind);
-    }*/
+    }
 }
