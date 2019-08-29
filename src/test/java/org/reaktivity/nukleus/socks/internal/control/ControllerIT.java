@@ -89,7 +89,9 @@ public class ControllerIT
     }
 
     @Test
-    @Specification({"${route}/server/routed.domain/nukleus", "${unroute}/server/nukleus"})
+    @Specification({
+        "${route}/server/routed.domain/nukleus",
+        "${unroute}/server/nukleus"})
     public void shouldUnrouteServerWithDomainAddress() throws Exception
     {
         this.k3po.start();
@@ -102,7 +104,9 @@ public class ControllerIT
     }
 
     @Test
-    @Specification({"${route}/server/routed.ipv4/nukleus", "${unroute}/server/nukleus"})
+    @Specification({
+        "${route}/server/routed.ipv4/nukleus",
+        "${unroute}/server/nukleus"})
     public void shouldUnrouteServerWithIpv4Address() throws Exception
     {
         this.k3po.start();
@@ -115,7 +119,9 @@ public class ControllerIT
     }
 
     @Test
-    @Specification({"${route}/server/routed.ipv6/nukleus", "${unroute}/server/nukleus"})
+    @Specification({
+        "${route}/server/routed.ipv6/nukleus",
+        "${unroute}/server/nukleus"})
     public void shouldUnrouteServerWithIpv6Address() throws Exception
     {
         this.k3po.start();
@@ -162,7 +168,9 @@ public class ControllerIT
     }
 
     @Test
-    @Specification({"${route}/client/routed.domain/nukleus", "${unroute}/client/nukleus"})
+    @Specification({
+        "${route}/client/routed.domain/nukleus",
+        "${unroute}/client/nukleus"})
     public void shouldUnrouteClientWithDomainAddress() throws Exception
     {
         this.k3po.start();
@@ -175,7 +183,9 @@ public class ControllerIT
     }
 
     @Test
-    @Specification({"${route}/client/routed.ipv4/nukleus", "${unroute}/client/nukleus"})
+    @Specification({
+        "${route}/client/routed.ipv4/nukleus",
+        "${unroute}/client/nukleus"})
     public void shouldUnrouteClientWithIpv4Address() throws Exception
     {
         this.k3po.start();
@@ -189,7 +199,9 @@ public class ControllerIT
 
     @Ignore
     @Test
-    @Specification({"${route}/client/routed.ipv6/nukleus", "${unroute}/client/nukleus"})
+    @Specification({
+        "${route}/client/routed.ipv6/nukleus",
+        "${unroute}/client/nukleus"})
     public void shouldUnrouteClientWithIpv6Address() throws Exception
     {
         this.k3po.start();
