@@ -581,7 +581,7 @@ public final class SocksServerFactory implements StreamFactory
         private int initialBudget;
         private int initialPadding;
         private int replyBudget;
-        private int   replyPadding;
+        private int replyPadding;
 
         private long decodeTraceId;
         private DecoderState decodeState;
