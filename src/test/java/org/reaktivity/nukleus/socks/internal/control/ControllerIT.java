@@ -36,24 +36,16 @@ public class ControllerIT
     private final K3poRule k3po = new K3poRule()
         .addScriptRoot("route", "org/reaktivity/specification/nukleus/socks/control/route")
         .addScriptRoot("unroute", "org/reaktivity/specification/nukleus/socks/control/unroute");
-    private final TestRule timeout;
-    private final ReaktorRule reaktor;
-    private final Gson gson;
+    private final TestRule timeout = new DisableOnDebug(new Timeout(5L, TimeUnit.SECONDS));
+    private final ReaktorRule reaktor = (new ReaktorRule()).directory("target/nukleus-itests")
+        .commandBufferCapacity(1024)
+        .responseBufferCapacity(1024)
+        .counterValuesBufferCapacity(4096)
+        .controller("socks"::equals);
+    private final Gson gson = new Gson();
 
     @Rule
-    public final TestRule chain;
-
-    public ControllerIT()
-    {
-        this.timeout = new DisableOnDebug(new Timeout(5L, TimeUnit.SECONDS));
-        this.reaktor = (new ReaktorRule()).directory("target/nukleus-itests")
-                                          .commandBufferCapacity(1024)
-                                          .responseBufferCapacity(1024)
-                                          .counterValuesBufferCapacity(4096)
-                                          .controller("socks"::equals);
-        this.chain = RuleChain.outerRule(this.k3po).around(this.timeout).around(this.reaktor);
-        this.gson = new Gson();
-    }
+    public final TestRule chain = RuleChain.outerRule(this.k3po).around(this.timeout).around(this.reaktor);
 
     @Test
     @Specification({"${route}/server/routed.domain/nukleus"})

@@ -88,13 +88,13 @@ public final class SocksController implements Controller
         return SocksNukleus.NAME;
     }
 
-    /*public CompletableFuture<Long> route(
+    public CompletableFuture<Long> route(
         RouteKind kind,
         String localAddress,
         String remoteAddress)
     {
         return route(kind, localAddress, remoteAddress, null);
-    }*/
+    }
 
     public CompletableFuture<Long> route(
         RouteKind kind,
