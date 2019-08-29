@@ -53,12 +53,12 @@ public class ControllerIT
     public void shouldRouteServerWithDomainAddress() throws Exception
     {
         this.k3po.start();
-        final JsonObject addressPort = new JsonObject();
-        addressPort.addProperty("address", "example.com");
-        addressPort.addProperty("port", "8080");
+        final JsonObject extension = new JsonObject();
+        extension.addProperty("address", "example.com");
+        extension.addProperty("port", "8080");
 
         this.reaktor.controller(SocksController.class).route(RouteKind.SERVER,
-            "socks#0", "target#0", gson.toJson(addressPort)).get();
+            "socks#0", "target#0", gson.toJson(extension)).get();
         this.k3po.finish();
     }
 
@@ -67,12 +67,12 @@ public class ControllerIT
     public void shouldRouteServerWithIpv4Address() throws Exception
     {
         this.k3po.start();
-        final JsonObject addressPort = new JsonObject();
-        addressPort.addProperty("address", "192.168.0.1");
-        addressPort.addProperty("port", "8080");
+        final JsonObject extension = new JsonObject();
+        extension.addProperty("address", "192.168.0.1");
+        extension.addProperty("port", "8080");
 
         this.reaktor.controller(SocksController.class).route(RouteKind.SERVER,
-            "socks#0", "target#0", gson.toJson(addressPort)).get();
+            "socks#0", "target#0", gson.toJson(extension)).get();
         this.k3po.finish();
     }
 
@@ -81,12 +81,12 @@ public class ControllerIT
     public void shouldRouteServerWithIpv6Address() throws Exception
     {
         this.k3po.start();
-        final JsonObject addressPort = new JsonObject();
-        addressPort.addProperty("address", "fd12:3456:789a:1::c6a8:1");
-        addressPort.addProperty("port", "8080");
+        final JsonObject extension = new JsonObject();
+        extension.addProperty("address", "fd12:3456:789a:1::c6a8:1");
+        extension.addProperty("port", "8080");
 
         this.reaktor.controller(SocksController.class).route(RouteKind.SERVER,
-            "socks#0", "target#0", gson.toJson(addressPort)).get();
+            "socks#0", "target#0", gson.toJson(extension)).get();
         this.k3po.finish();
     }
 
@@ -97,12 +97,12 @@ public class ControllerIT
     public void shouldUnrouteServerWithDomainAddress() throws Exception
     {
         this.k3po.start();
-        final JsonObject addressPort = new JsonObject();
-        addressPort.addProperty("address", "example.com");
-        addressPort.addProperty("port", "8080");
+        final JsonObject extension = new JsonObject();
+        extension.addProperty("address", "example.com");
+        extension.addProperty("port", "8080");
 
         long routeId = this.reaktor.controller(SocksController.class).route(RouteKind.SERVER,
-            "socks#0", "target#0", gson.toJson(addressPort)).get();
+            "socks#0", "target#0", gson.toJson(extension)).get();
         this.k3po.notifyBarrier("ROUTED_SERVER");
         this.reaktor.controller(SocksController.class).unroute(routeId).get();
         this.k3po.finish();
@@ -115,12 +115,12 @@ public class ControllerIT
     public void shouldUnrouteServerWithIpv4Address() throws Exception
     {
         this.k3po.start();
-        final JsonObject addressPort = new JsonObject();
-        addressPort.addProperty("address", "192.168.0.1");
-        addressPort.addProperty("port", "8080");
+        final JsonObject extension = new JsonObject();
+        extension.addProperty("address", "192.168.0.1");
+        extension.addProperty("port", "8080");
 
         long routeId = this.reaktor.controller(SocksController.class).route(RouteKind.SERVER,
-            "socks#0", "target#0", gson.toJson(addressPort)).get();
+            "socks#0", "target#0", gson.toJson(extension)).get();
         this.k3po.notifyBarrier("ROUTED_SERVER");
         this.reaktor.controller(SocksController.class).unroute(routeId).get();
         this.k3po.finish();
@@ -133,12 +133,12 @@ public class ControllerIT
     public void shouldUnrouteServerWithIpv6Address() throws Exception
     {
         this.k3po.start();
-        final JsonObject addressPort = new JsonObject();
-        addressPort.addProperty("address", "fd12:3456:789a:1::c6a8:1");
-        addressPort.addProperty("port", "8080");
+        final JsonObject extension = new JsonObject();
+        extension.addProperty("address", "fd12:3456:789a:1::c6a8:1");
+        extension.addProperty("port", "8080");
 
         long routeId = this.reaktor.controller(SocksController.class).route(RouteKind.SERVER,
-            "socks#0", "target#0", gson.toJson(addressPort)).get();
+            "socks#0", "target#0", gson.toJson(extension)).get();
         this.k3po.notifyBarrier("ROUTED_SERVER");
         this.reaktor.controller(SocksController.class).unroute(routeId).get();
         this.k3po.finish();
@@ -149,12 +149,12 @@ public class ControllerIT
     public void shouldRouteClientWithDomainAddress() throws Exception
     {
         this.k3po.start();
-        final JsonObject addressPort = new JsonObject();
-        addressPort.addProperty("address", "example.com");
-        addressPort.addProperty("port", "8080");
+        final JsonObject extension = new JsonObject();
+        extension.addProperty("address", "example.com");
+        extension.addProperty("port", "8080");
 
         this.reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
-            "socks#0", "target#0", gson.toJson(addressPort)).get();
+            "socks#0", "target#0", gson.toJson(extension)).get();
         this.k3po.finish();
     }
 
@@ -163,12 +163,12 @@ public class ControllerIT
     public void shouldRouteClientWithIpv4Address() throws Exception
     {
         this.k3po.start();
-        final JsonObject addressPort = new JsonObject();
-        addressPort.addProperty("address", "192.168.0.1");
-        addressPort.addProperty("port", "8080");
+        final JsonObject extension = new JsonObject();
+        extension.addProperty("address", "192.168.0.1");
+        extension.addProperty("port", "8080");
 
         this.reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
-            "socks#0", "target#0", gson.toJson(addressPort)).get();
+            "socks#0", "target#0", gson.toJson(extension)).get();
         this.k3po.finish();
     }
 
@@ -178,12 +178,12 @@ public class ControllerIT
     public void shouldRouteClientWithIpv6Address() throws Exception
     {
         this.k3po.start();
-        final JsonObject addressPort = new JsonObject();
-        addressPort.addProperty("address", "fd12:3456:789a:1::c6a8:1");
-        addressPort.addProperty("port", "8080");
+        final JsonObject extension = new JsonObject();
+        extension.addProperty("address", "fd12:3456:789a:1::c6a8:1");
+        extension.addProperty("port", "8080");
 
         this.reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
-            "socks#0", "target#0", gson.toJson(addressPort)).get();
+            "socks#0", "target#0", gson.toJson(extension)).get();
         this.k3po.finish();
     }
 
@@ -194,12 +194,12 @@ public class ControllerIT
     public void shouldUnrouteClientWithDomainAddress() throws Exception
     {
         this.k3po.start();
-        final JsonObject addressPort = new JsonObject();
-        addressPort.addProperty("address", "example.com");
-        addressPort.addProperty("port", "8080");
+        final JsonObject extension = new JsonObject();
+        extension.addProperty("address", "example.com");
+        extension.addProperty("port", "8080");
 
         long routeId = this.reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
-            "socks#0", "target#0", gson.toJson(addressPort)).get();
+            "socks#0", "target#0", gson.toJson(extension)).get();
         this.k3po.notifyBarrier("ROUTED_CLIENT");
         this.reaktor.controller(SocksController.class).unroute(routeId).get();
         this.k3po.finish();
@@ -212,12 +212,12 @@ public class ControllerIT
     public void shouldUnrouteClientWithIpv4Address() throws Exception
     {
         this.k3po.start();
-        final JsonObject addressPort = new JsonObject();
-        addressPort.addProperty("address", "192.168.0.1");
-        addressPort.addProperty("port", "8080");
+        final JsonObject extension = new JsonObject();
+        extension.addProperty("address", "192.168.0.1");
+        extension.addProperty("port", "8080");
 
         long routeId = this.reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
-            "socks#0", "target#0", gson.toJson(addressPort)).get();
+            "socks#0", "target#0", gson.toJson(extension)).get();
         this.k3po.notifyBarrier("ROUTED_CLIENT");
         this.reaktor.controller(SocksController.class).unroute(routeId).get();
         this.k3po.finish();
@@ -231,12 +231,12 @@ public class ControllerIT
     public void shouldUnrouteClientWithIpv6Address() throws Exception
     {
         this.k3po.start();
-        final JsonObject addressPort = new JsonObject();
-        addressPort.addProperty("address", "fd12:3456:789a:1::c6a8:1");
-        addressPort.addProperty("port", "8080");
+        final JsonObject extension = new JsonObject();
+        extension.addProperty("address", "fd12:3456:789a:1::c6a8:1");
+        extension.addProperty("port", "8080");
 
         long routeId = this.reaktor.controller(SocksController.class).route(RouteKind.CLIENT,
-            "socks#0", "target#0", gson.toJson(addressPort)).get();
+            "socks#0", "target#0", gson.toJson(extension)).get();
         this.k3po.notifyBarrier("ROUTED_CLIENT");
         this.reaktor.controller(SocksController.class).unroute(routeId).get();
         this.k3po.finish();
