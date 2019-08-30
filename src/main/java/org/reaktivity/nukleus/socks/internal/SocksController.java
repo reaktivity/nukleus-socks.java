@@ -19,7 +19,10 @@ package org.reaktivity.nukleus.socks.internal;
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteOrder.nativeOrder;
 
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
@@ -33,11 +36,13 @@ import org.reaktivity.nukleus.socks.internal.types.control.Role;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.control.UnrouteFW;
 import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
+import org.reaktivity.nukleus.socks.internal.types.SocksAddressFW.Builder;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import static org.reaktivity.nukleus.socks.internal.stream.SocksServerFactory.lookupName;
 
 public final class SocksController implements Controller
 {
@@ -113,9 +118,8 @@ public final class SocksController implements Controller
                 final JsonObject object = (JsonObject) element;
                 final String address = gson.fromJson(object.get("address"), String.class);
                 final int port = gson.fromJson(object.get("port"), Integer.class);
-
                 routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                                   .address(address)
+                                   .address(addressBuilder(lookupName((address))))
                                    .port(port)
                                    .build();
             }
@@ -156,5 +160,15 @@ public final class SocksController implements Controller
             .build();
 
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
+    }
+
+    public static Consumer<Builder> addressBuilder(
+        InetAddress inet)
+    {
+        byte[] ip = inet.getAddress();
+        Consumer<Builder> addressBuilder = inet instanceof Inet4Address ?
+            b -> b.ipv4Address(s -> s.put(ip)):
+            b -> b.ipv6Address(s -> s.put(ip));
+        return addressBuilder;
     }
 }

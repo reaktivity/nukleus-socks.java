@@ -52,6 +52,7 @@ import org.reaktivity.nukleus.stream.StreamFactory;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.net.InetSocketAddress;
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 import java.util.function.ToIntFunction;
@@ -59,6 +60,8 @@ import java.util.function.ToIntFunction;
 import static java.util.Objects.requireNonNull;
 import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED;
 import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS;
+import static org.reaktivity.nukleus.socks.internal.SocksController.addressBuilder;
+import static java.util.Arrays.copyOfRange;
 
 public final class SocksServerFactory implements StreamFactory
 {
@@ -379,11 +382,14 @@ public final class SocksServerFactory implements StreamFactory
             final MessagePredicate filter = (t, b, o, l) ->
             {
                 final RouteFW route = routeRO.wrap(b, o, o + l);
+
                 final OctetsFW extension = route.extension();
                 final SocksRouteExFW socksRouteEx = extension.get(socksRouteRO::wrap);
-                return socksRouteEx == null ||
-                    (socksRouteEx.port() == socksConnectRequest.port() &&
-                    socksRouteEx.address().equals(socksConnectRequest.address().domainName()));
+                byte[] ipv4address = lookupName(socksConnectRequest.address().domainName().asString()).getAddress();
+                ipv4address.equals(copyOfRange(socksRouteEx.address().buffer().byteArray(),
+                    socksRouteEx.address().offset(),
+                    socksRouteEx.address().limit()));
+                return true;
             };
 
             final RouteFW route = router.resolve(routeId, authorization, filter, wrapRoute);
@@ -398,36 +404,14 @@ public final class SocksServerFactory implements StreamFactory
                     newRouteId, newInitialId, newReplyId);
 
                 SocksAddressFW requestAddress = socksConnectRequest.address();
-                StringFW address = formatSocksAddress(requestAddress);
 
                 socksConnectStream.doApplicationBegin(newTarget,
                     decodeTraceId,
-                    address,
+                    requestAddress.domainName(),
                     socksConnectRequest.port());
 
                 correlations.put(newReplyId, socksConnectStream);
             }
-        }
-
-        private StringFW formatSocksAddress(
-            SocksAddressFW requestAddress)
-        {
-            StringFW address = null;
-            switch (requestAddress.kind())
-            {
-                case SocksAddressFW.KIND_DOMAIN_NAME:
-                    address = requestAddress.domainName();
-                    break;
-                case SocksAddressFW.KIND_IPV4_ADDRESS:
-                    //TODO
-                    break;
-                case SocksAddressFW.KIND_IPV6_ADDRESS:
-                    //TODO
-                    break;
-                default:
-                    break;
-            }
-            return address;
         }
 
         private void onHandshakeRequest(
@@ -652,7 +636,7 @@ public final class SocksServerFactory implements StreamFactory
             OctetsFW extension = begin.extension();
             SocksBeginExFW socksBeginEx = extension.get(socksBeginExRO::wrap);
 
-            String address = socksBeginEx.address().asString();
+            String address = socksBeginEx.address().domainName().asString();
             int port = socksBeginEx.port();
 
             receiver.doSocksCommandReply(address, port);
@@ -679,10 +663,9 @@ public final class SocksServerFactory implements StreamFactory
             StringFW address,
             int port)
         {
-
             SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer, 0, extBuffer.capacity())
                 .typeId(socksTypeId)
-                .address(address)
+                .address(addressBuilder(lookupName((address.asString()))))
                 .port(port)
                 .build();
 
@@ -726,7 +709,7 @@ public final class SocksServerFactory implements StreamFactory
         }
     }
 
-    private static InetAddress lookupName(
+    public static InetAddress lookupName(
         String host)
     {
         InetAddress address = null;
