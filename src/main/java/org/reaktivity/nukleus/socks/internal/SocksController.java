@@ -23,6 +23,7 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
@@ -118,10 +119,31 @@ public final class SocksController implements Controller
                 final JsonObject object = (JsonObject) element;
                 final String address = gson.fromJson(object.get("address"), String.class);
                 final int port = gson.fromJson(object.get("port"), Integer.class);
-                routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                                   .address(addressBuilder(lookupName((address))))
-                                   .port(port)
-                                   .build();
+                /*if (vaildateIpv4(address))
+                {
+                    routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
+                        .address(b -> b.ipv4Address(s -> s.put(lookupName(address).getAddress())))
+                        .port(port)
+                        .build();
+                }
+                else if (vaildateIpv6(address))
+                {
+                    routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
+                        .address(b -> b.ipv6Address(s -> s.put(lookupName(address).getAddress())))
+                        .port(port)
+                        .build();
+                }
+                else
+                {
+                    routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
+                        .address(b -> b.domainName(address))
+                        .port(port)
+                        .build();
+                }*/
+                routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
+                    .address(b -> b.domainName(address))
+                    .port(port)
+                    .build();
             }
         }
         return doRoute(kind, localAddress, remoteAddress, routeEx);
@@ -170,5 +192,19 @@ public final class SocksController implements Controller
             b -> b.ipv4Address(s -> s.put(ip)):
             b -> b.ipv6Address(s -> s.put(ip));
         return addressBuilder;
+    }
+
+    public static boolean vaildateIpv4(String address)
+    {
+        return Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$")
+            .matcher(address)
+            .matches();
+    }
+
+    public static boolean vaildateIpv6(String address)
+    {
+        return Pattern.compile("([0-9a-f]{1,4}:){7}([0-9a-f]){1,4}")
+            .matcher(address)
+            .matches();
     }
 }

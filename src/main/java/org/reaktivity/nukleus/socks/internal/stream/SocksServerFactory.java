@@ -47,6 +47,7 @@ import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
+//import org.reaktivity.nukleus.socks.internal.types.SocksAddressFW;
 
 import org.reaktivity.nukleus.stream.StreamFactory;
 
@@ -61,7 +62,7 @@ import static java.util.Objects.requireNonNull;
 import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED;
 import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS;
 import static org.reaktivity.nukleus.socks.internal.SocksController.addressBuilder;
-import static java.util.Arrays.copyOfRange;
+//import static java.util.Arrays.copyOfRange;
 
 public final class SocksServerFactory implements StreamFactory
 {
@@ -384,12 +385,13 @@ public final class SocksServerFactory implements StreamFactory
                 final RouteFW route = routeRO.wrap(b, o, o + l);
 
                 final OctetsFW extension = route.extension();
-                final SocksRouteExFW socksRouteEx = extension.get(socksRouteRO::wrap);
-                byte[] ipv4address = lookupName(socksConnectRequest.address().domainName().asString()).getAddress();
-                ipv4address.equals(copyOfRange(socksRouteEx.address().buffer().byteArray(),
-                    socksRouteEx.address().offset(),
-                    socksRouteEx.address().limit()));
-                return true;
+                final SocksRouteExFW socksRoute = extension.get(socksRouteRO::wrap);
+                final SocksAddressFW requestAddress =  socksConnectRequest.address();
+                final SocksAddressFW routedAddress = socksAddressRO.wrap(socksRoute.address().buffer(),
+                                                                         socksRoute.address().offset(),
+                                                                         socksRoute.address().limit());
+                return true; //socksRoute.port() == socksConnectRequest.port()
+                    //&& requestAddress.equals(routedAddress);
             };
 
             final RouteFW route = router.resolve(routeId, authorization, filter, wrapRoute);
