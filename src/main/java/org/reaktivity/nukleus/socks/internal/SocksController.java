@@ -19,10 +19,7 @@ package org.reaktivity.nukleus.socks.internal;
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteOrder.nativeOrder;
 
-import java.net.Inet4Address;
-import java.net.InetAddress;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 import org.agrona.MutableDirectBuffer;
@@ -37,13 +34,11 @@ import org.reaktivity.nukleus.socks.internal.types.control.Role;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.control.UnrouteFW;
 import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
-import org.reaktivity.nukleus.socks.internal.types.SocksAddressFW.Builder;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import static org.reaktivity.nukleus.socks.internal.stream.SocksServerFactory.lookupName;
 
 public final class SocksController implements Controller
 {
@@ -119,31 +114,22 @@ public final class SocksController implements Controller
                 final JsonObject object = (JsonObject) element;
                 final String address = gson.fromJson(object.get("address"), String.class);
                 final int port = gson.fromJson(object.get("port"), Integer.class);
-                /*if (vaildateIpv4(address))
+
+                if(vaildateIpv4(address))
                 {
-                    routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(b -> b.ipv4Address(s -> s.put(lookupName(address).getAddress())))
-                        .port(port)
-                        .build();
+                    //TODO
                 }
-                else if (vaildateIpv6(address))
+                else if(vaildateIpv6(address))
                 {
-                    routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(b -> b.ipv6Address(s -> s.put(lookupName(address).getAddress())))
-                        .port(port)
-                        .build();
+                    //TODO
                 }
                 else
                 {
-                    routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(b -> b.domainName(address))
+                    routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
+                        .address(t -> t.domainName(address))
                         .port(port)
                         .build();
-                }*/
-                routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                    .address(b -> b.domainName(address))
-                    .port(port)
-                    .build();
+                }
             }
         }
         return doRoute(kind, localAddress, remoteAddress, routeEx);
@@ -182,16 +168,6 @@ public final class SocksController implements Controller
             .build();
 
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
-    }
-
-    public static Consumer<Builder> addressBuilder(
-        InetAddress inet)
-    {
-        byte[] ip = inet.getAddress();
-        Consumer<Builder> addressBuilder = inet instanceof Inet4Address ?
-            b -> b.ipv4Address(s -> s.put(ip)):
-            b -> b.ipv6Address(s -> s.put(ip));
-        return addressBuilder;
     }
 
     public static boolean vaildateIpv4(String address)

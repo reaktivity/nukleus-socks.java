@@ -61,7 +61,6 @@ import java.util.function.ToIntFunction;
 import static java.util.Objects.requireNonNull;
 import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED;
 import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS;
-import static org.reaktivity.nukleus.socks.internal.SocksController.addressBuilder;
 //import static java.util.Arrays.copyOfRange;
 
 public final class SocksServerFactory implements StreamFactory
@@ -667,7 +666,7 @@ public final class SocksServerFactory implements StreamFactory
         {
             SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer, 0, extBuffer.capacity())
                 .typeId(socksTypeId)
-                .address(addressBuilder(lookupName((address.asString()))))
+                .address(t->t.domainName(address.asString()))
                 .port(port)
                 .build();
 
