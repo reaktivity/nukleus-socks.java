@@ -383,8 +383,8 @@ public final class SocksServerFactory implements StreamFactory
                 final SocksAddressFW routedAddress = socksAddressRO.wrap(socksRoute.address().buffer(),
                                                                          socksRoute.address().offset(),
                                                                          socksRoute.address().limit());
-                return  socksRoute.port() == socksConnectRequest.port()
-                    && requestAddress.equals(routedAddress);
+                return socksRoute.port() == socksConnectRequest.port() &&
+                    requestAddress.equals(routedAddress);
             };
 
             final RouteFW route = router.resolve(routeId, authorization, filter, wrapRoute);
