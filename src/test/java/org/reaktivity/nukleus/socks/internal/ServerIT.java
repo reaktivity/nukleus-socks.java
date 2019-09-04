@@ -62,6 +62,7 @@ public class ServerIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/server/routed.ipv4/controller",

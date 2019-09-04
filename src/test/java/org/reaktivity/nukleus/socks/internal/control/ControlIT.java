@@ -15,6 +15,7 @@
  */
 package org.reaktivity.nukleus.socks.internal.control;
 
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
@@ -253,6 +254,7 @@ public class ControlIT
         k3po.finish();
     }
 
+    @Ignore
     @Test
     @Specification({
         "${route}/client.reverse/routed.domain/controller",

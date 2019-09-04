@@ -16,7 +16,6 @@
 package org.reaktivity.nukleus.socks.internal.stream;
 
 import org.agrona.DirectBuffer;
-import org.agrona.LangUtil;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.Long2ObjectHashMap;
 import org.agrona.concurrent.UnsafeBuffer;
@@ -47,13 +46,9 @@ import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
-//import org.reaktivity.nukleus.socks.internal.types.SocksAddressFW;
 
 import org.reaktivity.nukleus.stream.StreamFactory;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-//import java.net.InetSocketAddress;
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 import java.util.function.ToIntFunction;
@@ -61,7 +56,6 @@ import java.util.function.ToIntFunction;
 import static java.util.Objects.requireNonNull;
 import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED;
 import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS;
-//import static java.util.Arrays.copyOfRange;
 
 public final class SocksServerFactory implements StreamFactory
 {
@@ -540,14 +534,13 @@ public final class SocksServerFactory implements StreamFactory
             SocksAddressFW address,
             int port)
         {
-            //System.out.println(address);
             SocksCommandReplyFW socksCommandReply = socksCommandReplyRW.wrap(writeBuffer,
                 DataFW.FIELD_OFFSET_PAYLOAD,
                 writeBuffer.capacity())
                 .version(5)
                 .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
                 .reserved(0)
-                .address()
+                .address(s->s.ipv4Address(i -> i.set(address.ipv4Address())))
                 .port(port)
                 .build();
 
@@ -710,23 +703,6 @@ public final class SocksServerFactory implements StreamFactory
 
             application.accept(end.typeId(), end.buffer(), end.offset(), end.limit());
         }
-    }
-
-    public static InetAddress lookupName(
-        String host)
-    {
-        InetAddress address = null;
-
-        try
-        {
-            address = InetAddress.getByName(host);
-        }
-        catch (UnknownHostException ex)
-        {
-            LangUtil.rethrowUnchecked(ex);
-        }
-
-        return address;
     }
 
     private static boolean hasAuthenticationMethod(

@@ -121,20 +121,23 @@ public final class SocksController implements Controller
                 if(vaildateIpv4(address))
                 {
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(t -> t.ipv4Address(s -> s.put(lookupName(address).getAddress())))
-                        .port(port)
-                        .build();
+                                       .address(t -> t.ipv4Address(s -> s.put(lookupName(address).getAddress())))
+                                       .port(port)
+                                       .build();
                 }
                 else if(vaildateIpv6(address))
                 {
-                    //TODO
+                    routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
+                                       .address(t -> t.ipv6Address(s -> s.put(lookupName(address).getAddress())))
+                                       .port(port)
+                                       .build();
                 }
                 else
                 {
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(t -> t.domainName(address))
-                        .port(port)
-                        .build();
+                                       .address(t -> t.domainName(address))
+                                       .port(port)
+                                       .build();
                 }
             }
         }
@@ -179,15 +182,15 @@ public final class SocksController implements Controller
     public static boolean vaildateIpv4(String address)
     {
         return Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$")
-            .matcher(address)
-            .matches();
+                      .matcher(address)
+                      .matches();
     }
 
     public static boolean vaildateIpv6(String address)
     {
         return Pattern.compile("([0-9a-f]{1,4}:){7}([0-9a-f]){1,4}")
-            .matcher(address)
-            .matches();
+                      .matcher(address)
+                      .matches();
     }
 
     public static InetAddress lookupName(
