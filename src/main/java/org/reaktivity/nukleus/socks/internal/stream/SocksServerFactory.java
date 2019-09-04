@@ -376,13 +376,13 @@ public final class SocksServerFactory implements StreamFactory
             final MessagePredicate filter = (t, b, o, l) ->
             {
                 final RouteFW route = routeRO.wrap(b, o, o + l);
-
                 final OctetsFW extension = route.extension();
                 final SocksRouteExFW socksRoute = extension.get(socksRouteRO::wrap);
-                final SocksAddressFW requestAddress =  socksConnectRequest.address();
+                final SocksAddressFW requestAddress = socksConnectRequest.address();
                 final SocksAddressFW routedAddress = socksAddressRO.wrap(socksRoute.address().buffer(),
                                                                          socksRoute.address().offset(),
                                                                          socksRoute.address().limit());
+
                 return socksRoute.port() == socksConnectRequest.port() &&
                     requestAddress.equals(routedAddress);
             };
@@ -401,9 +401,9 @@ public final class SocksServerFactory implements StreamFactory
                 SocksAddressFW requestAddress = socksConnectRequest.address();
 
                 socksConnectStream.doApplicationBegin(newTarget,
-                    decodeTraceId,
-                    requestAddress.domainName(),
-                    socksConnectRequest.port());
+                                                      decodeTraceId,
+                                                      requestAddress.domainName(),
+                                                      socksConnectRequest.port());
 
                 correlations.put(newReplyId, socksConnectStream);
             }
