@@ -389,8 +389,8 @@ public final class SocksServerFactory implements StreamFactory
                 final SocksAddressFW routedAddress = socksAddressRO.wrap(socksRoute.address().buffer(),
                                                                          socksRoute.address().offset(),
                                                                          socksRoute.address().limit());
-                return true; //socksRoute.port() == socksConnectRequest.port()
-                    //&& requestAddress.equals(routedAddress);
+                return  socksRoute.port() == socksConnectRequest.port()
+                    && requestAddress.equals(routedAddress);
             };
 
             final RouteFW route = router.resolve(routeId, authorization, filter, wrapRoute);
@@ -537,17 +537,17 @@ public final class SocksServerFactory implements StreamFactory
         }
 
         private void doSocksCommandReply(
-            String address,
+            SocksAddressFW address,
             int port)
         {
-            byte[] ipv4Address = lookupName(address).getAddress();
+            //System.out.println(address);
             SocksCommandReplyFW socksCommandReply = socksCommandReplyRW.wrap(writeBuffer,
                 DataFW.FIELD_OFFSET_PAYLOAD,
                 writeBuffer.capacity())
                 .version(5)
                 .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
                 .reserved(0)
-                .address(a->a.ipv4Address(i->i.set(ipv4Address)))
+                .address()
                 .port(port)
                 .build();
 
@@ -637,10 +637,12 @@ public final class SocksServerFactory implements StreamFactory
             OctetsFW extension = begin.extension();
             SocksBeginExFW socksBeginEx = extension.get(socksBeginExRO::wrap);
 
-            String address = socksBeginEx.address().domainName().asString();
+            SocksAddressFW replyAddress = socksAddressRO.wrap(socksBeginEx.address().buffer(),
+                socksBeginEx.address().offset(),
+                socksBeginEx.address().limit());
             int port = socksBeginEx.port();
 
-            receiver.doSocksCommandReply(address, port);
+            receiver.doSocksCommandReply(replyAddress, port);
 
         }
 

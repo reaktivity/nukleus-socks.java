@@ -19,9 +19,12 @@ package org.reaktivity.nukleus.socks.internal;
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteOrder.nativeOrder;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 
+import org.agrona.LangUtil;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.reaktivity.nukleus.Controller;
@@ -117,7 +120,10 @@ public final class SocksController implements Controller
 
                 if(vaildateIpv4(address))
                 {
-                    //TODO
+                    routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
+                        .address(t -> t.ipv4Address(s -> s.put(lookupName(address).getAddress())))
+                        .port(port)
+                        .build();
                 }
                 else if(vaildateIpv6(address))
                 {
@@ -182,5 +188,22 @@ public final class SocksController implements Controller
         return Pattern.compile("([0-9a-f]{1,4}:){7}([0-9a-f]){1,4}")
             .matcher(address)
             .matches();
+    }
+
+    public static InetAddress lookupName(
+        String host)
+    {
+        InetAddress address = null;
+
+        try
+        {
+            address = InetAddress.getByName(host);
+        }
+        catch (UnknownHostException ex)
+        {
+            LangUtil.rethrowUnchecked(ex);
+        }
+
+        return address;
     }
 }
