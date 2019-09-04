@@ -433,10 +433,10 @@ public final class SocksServerFactory implements StreamFactory
             long traceId)
         {
             final BeginFW begin = beginRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .routeId(routeId)
-                .streamId(replyId)
-                .trace(traceId)
-                .build();
+                                         .routeId(routeId)
+                                         .streamId(replyId)
+                                         .trace(traceId)
+                                         .build();
 
             network.accept(begin.typeId(), begin.buffer(), begin.offset(), begin.sizeof());
             router.setThrottle(replyId, this::onNetwork);
@@ -448,13 +448,13 @@ public final class SocksServerFactory implements StreamFactory
             int sizeOf)
         {
             final DataFW data = dataRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .routeId(routeId)
-                .streamId(replyId)
-                .trace(supplyTraceId.getAsLong())
-                .groupId(0)
-                .padding(replyPadding)
-                .payload(buffer, offset, sizeOf)
-                .build();
+                                      .routeId(routeId)
+                                      .streamId(replyId)
+                                      .trace(supplyTraceId.getAsLong())
+                                      .groupId(0)
+                                      .padding(replyPadding)
+                                      .payload(buffer, offset, sizeOf)
+                                      .build();
 
             network.accept(data.typeId(), data.buffer(), data.offset(), data.sizeof());
             router.setThrottle(replyId, this::onNetwork);
@@ -464,10 +464,10 @@ public final class SocksServerFactory implements StreamFactory
             long traceId)
         {
             final EndFW end = endRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .routeId(routeId)
-                .streamId(replyId)
-                .trace(traceId)
-                .build();
+                                   .routeId(routeId)
+                                   .streamId(replyId)
+                                   .trace(traceId)
+                                   .build();
 
             network.accept(end.typeId(), end.buffer(), end.offset(), end.limit());
         }
@@ -476,10 +476,10 @@ public final class SocksServerFactory implements StreamFactory
             long traceId)
         {
             final AbortFW abort = abortRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .routeId(routeId)
-                .streamId(replyId)
-                .trace(traceId)
-                .build();
+                                         .routeId(routeId)
+                                         .streamId(replyId)
+                                         .trace(traceId)
+                                         .build();
 
             network.accept(abort.typeId(), abort.buffer(), abort.offset(), abort.sizeof());
         }
@@ -493,13 +493,13 @@ public final class SocksServerFactory implements StreamFactory
                 initialBudget += initialCredit;
 
                 final WindowFW window = windowRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                    .routeId(routeId)
-                    .streamId(initialId)
-                    .trace(traceId)
-                    .credit(initialCredit)
-                    .padding(initialPadding)
-                    .groupId(0)
-                    .build();
+                                                .routeId(routeId)
+                                                .streamId(initialId)
+                                                .trace(traceId)
+                                                .credit(initialCredit)
+                                                .padding(initialPadding)
+                                                .groupId(0)
+                                                .build();
 
                 network.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
             }
@@ -509,10 +509,10 @@ public final class SocksServerFactory implements StreamFactory
             long traceId)
         {
             final ResetFW reset = resetRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .routeId(routeId)
-                .streamId(initialId)
-                .trace(traceId)
-                .build();
+                                         .routeId(routeId)
+                                         .streamId(initialId)
+                                         .trace(traceId)
+                                         .build();
 
             network.accept(reset.typeId(), reset.buffer(), reset.offset(), reset.sizeof());
         }
@@ -521,11 +521,11 @@ public final class SocksServerFactory implements StreamFactory
             SocksAuthenticationMethod method)
         {
             SocksHandshakeReplyFW handshakeReply = handshakeReplyRW.wrap(writeBuffer,
-                DataFW.FIELD_OFFSET_PAYLOAD,
-                writeBuffer.capacity())
-                .version(5)
-                .method(method.value())
-                .build();
+                                                                         DataFW.FIELD_OFFSET_PAYLOAD,
+                                                                         writeBuffer.capacity())
+                                                                   .version(5)
+                                                                   .method(method.value())
+                                                                   .build();
 
             doNetworkData(handshakeReply.buffer(), handshakeReply.offset(), handshakeReply.sizeof());
         }
@@ -535,14 +535,14 @@ public final class SocksServerFactory implements StreamFactory
             int port)
         {
             SocksCommandReplyFW socksCommandReply = socksCommandReplyRW.wrap(writeBuffer,
-                DataFW.FIELD_OFFSET_PAYLOAD,
-                writeBuffer.capacity())
-                .version(5)
-                .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
-                .reserved(0)
-                .address(s->s.ipv4Address(i -> i.set(address.ipv4Address())))
-                .port(port)
-                .build();
+                                                                             DataFW.FIELD_OFFSET_PAYLOAD,
+                                                                             writeBuffer.capacity())
+                                                                       .version(5)
+                                                                       .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
+                                                                       .reserved(0)
+                                                                       .address(s->s.ipv4Address(i -> i.set(address.ipv4Address())))
+                                                                       .port(port)
+                                                                       .build();
 
             doNetworkData(socksCommandReply.buffer(), socksCommandReply.offset(), socksCommandReply.sizeof());
         }
@@ -660,17 +660,17 @@ public final class SocksServerFactory implements StreamFactory
             int port)
         {
             SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer, 0, extBuffer.capacity())
-                .typeId(socksTypeId)
-                .address(t->t.domainName(address.asString()))
-                .port(port)
-                .build();
+                                                        .typeId(socksTypeId)
+                                                        .address(t->t.domainName(address.asString()))
+                                                        .port(port)
+                                                        .build();
 
             final BeginFW begin = beginRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .routeId(routeId)
-                .streamId(initialId)
-                .trace(traceId)
-                .extension(socksBeginEx.buffer(), socksBeginEx.offset(), socksBeginEx.sizeof())
-                .build();
+                                         .routeId(routeId)
+                                         .streamId(initialId)
+                                         .trace(traceId)
+                                         .extension(socksBeginEx.buffer(), socksBeginEx.offset(), socksBeginEx.sizeof())
+                                         .build();
 
             target.accept(begin.typeId(), begin.buffer(), begin.offset(), begin.limit());
         }
@@ -681,13 +681,13 @@ public final class SocksServerFactory implements StreamFactory
             int sizeOf)
         {
             final DataFW data = dataRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .routeId(routeId)
-                .streamId(initialId)
-                .trace(supplyTraceId.getAsLong())
-                .groupId(0)
-                .padding(replyPadding)
-                .payload(buffer, offset, sizeOf)
-                .build();
+                                      .routeId(routeId)
+                                      .streamId(initialId)
+                                      .trace(supplyTraceId.getAsLong())
+                                      .groupId(0)
+                                      .padding(replyPadding)
+                                      .payload(buffer, offset, sizeOf)
+                                      .build();
 
             application.accept(data.typeId(), data.buffer(), data.offset(), data.sizeof());
         }
@@ -696,10 +696,10 @@ public final class SocksServerFactory implements StreamFactory
             long traceId)
         {
             final EndFW end = endRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                .routeId(routeId)
-                .streamId(initialId)
-                .trace(traceId)
-                .build();
+                                   .routeId(routeId)
+                                   .streamId(initialId)
+                                   .trace(traceId)
+                                   .build();
 
             application.accept(end.typeId(), end.buffer(), end.offset(), end.limit());
         }

@@ -58,6 +58,10 @@ public final class SocksController implements Controller
     private final MutableDirectBuffer commandBuffer;
     private final MutableDirectBuffer extensionBuffer;
     private final Gson gson;
+    private static final Pattern IPV4_ADDRESS_PATTERN =
+        Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
+    private static final Pattern IPV6_ADDRESS_PATTERN =
+        Pattern.compile("([0-9a-f]{1,4}:){7}([0-9a-f]){1,4}");
 
     public SocksController(
         ControllerSpi controllerSpi)
@@ -118,17 +122,17 @@ public final class SocksController implements Controller
                 final String address = gson.fromJson(object.get("address"), String.class);
                 final int port = gson.fromJson(object.get("port"), Integer.class);
 
-                if(vaildateIpv4(address))
+                if (vaildateIpv4(address))
                 {
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                                       .address(t -> t.ipv4Address(s -> s.put(lookupName(address).getAddress())))
+                                       .address(t -> t.ipv4Address(s -> s.set(lookupName(address).getAddress())))
                                        .port(port)
                                        .build();
                 }
-                else if(vaildateIpv6(address))
+                else if (vaildateIpv6(address))
                 {
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                                       .address(t -> t.ipv6Address(s -> s.put(lookupName(address).getAddress())))
+                                       .address(t -> t.ipv6Address(s -> s.set(lookupName(address).getAddress())))
                                        .port(port)
                                        .build();
                 }
@@ -150,10 +154,10 @@ public final class SocksController implements Controller
         final long correlationId = controllerSpi.nextCorrelationId();
 
         final UnrouteFW unroute = unrouteRW.wrap(commandBuffer, 0, commandBuffer.capacity())
-            .correlationId(correlationId)
-            .nukleus(name())
-            .routeId(routeId)
-            .build();
+                                           .correlationId(correlationId)
+                                           .nukleus(name())
+                                           .routeId(routeId)
+                                           .build();
 
         return controllerSpi.doUnroute(unroute.typeId(), unroute.buffer(), unroute.offset(), unroute.sizeof());
     }
@@ -168,29 +172,25 @@ public final class SocksController implements Controller
         final Role role = Role.valueOf(kind.ordinal());
 
         final RouteFW route = routeRW.wrap(commandBuffer, 0, commandBuffer.capacity())
-            .correlationId(correlationId)
-            .nukleus(name())
-            .role(b -> b.set(role))
-            .localAddress(localAddress)
-            .remoteAddress(remoteAddress)
-            .extension(extension.buffer(), extension.offset(), extension.sizeof())
-            .build();
+                                     .correlationId(correlationId)
+                                     .nukleus(name())
+                                     .role(b -> b.set(role))
+                                     .localAddress(localAddress)
+                                     .remoteAddress(remoteAddress)
+                                     .extension(extension.buffer(), extension.offset(), extension.sizeof())
+                                     .build();
 
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
     }
 
     public static boolean vaildateIpv4(String address)
     {
-        return Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$")
-                      .matcher(address)
-                      .matches();
+        return IPV4_ADDRESS_PATTERN.matcher(address).matches();
     }
 
     public static boolean vaildateIpv6(String address)
     {
-        return Pattern.compile("([0-9a-f]{1,4}:){7}([0-9a-f]){1,4}")
-                      .matcher(address)
-                      .matches();
+        return IPV6_ADDRESS_PATTERN.matcher(address).matches();
     }
 
     public static InetAddress lookupName(
