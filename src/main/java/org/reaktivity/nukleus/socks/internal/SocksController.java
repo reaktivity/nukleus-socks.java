@@ -132,6 +132,7 @@ public final class SocksController implements Controller
 
                 if (IPV4_ADDRESS_MATCHER.get().reset(address).matches())
                 {
+
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
                                        .address(t -> t.ipv4Address(s -> s.set(lookupName(address).getAddress())))
                                        .port(port)
