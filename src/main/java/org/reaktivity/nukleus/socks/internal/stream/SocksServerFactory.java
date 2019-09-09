@@ -15,20 +15,21 @@
  */
 package org.reaktivity.nukleus.socks.internal.stream;
 
+import static java.util.Objects.requireNonNull;
+import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS;
+import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.function.LongSupplier;
+import java.util.function.LongUnaryOperator;
+import java.util.function.ToIntFunction;
+
 import org.agrona.DirectBuffer;
 import org.agrona.LangUtil;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.Long2ObjectHashMap;
 import org.agrona.concurrent.UnsafeBuffer;
-
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeReplyFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeRequestFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandRequestFW;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyType;
-import org.reaktivity.nukleus.socks.internal.types.codec.SocksAddressFW;
-
 import org.reaktivity.nukleus.buffer.BufferPool;
 import org.reaktivity.nukleus.function.MessageConsumer;
 import org.reaktivity.nukleus.function.MessageFunction;
@@ -38,27 +39,23 @@ import org.reaktivity.nukleus.socks.internal.SocksConfiguration;
 import org.reaktivity.nukleus.socks.internal.SocksNukleus;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.StringFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksAddressFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyType;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandRequestFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeReplyFW;
+import org.reaktivity.nukleus.socks.internal.types.codec.SocksHandshakeRequestFW;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.SocksBeginExFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.AbortFW;
-import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.BeginFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.DataFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.EndFW;
 import org.reaktivity.nukleus.socks.internal.types.stream.ResetFW;
-
+import org.reaktivity.nukleus.socks.internal.types.stream.SocksBeginExFW;
+import org.reaktivity.nukleus.socks.internal.types.stream.WindowFW;
 import org.reaktivity.nukleus.stream.StreamFactory;
-
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.function.LongSupplier;
-import java.util.function.LongUnaryOperator;
-import java.util.function.ToIntFunction;
-
-import static java.util.Objects.requireNonNull;
-import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED;
-import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS;
 
 public final class SocksServerFactory implements StreamFactory
 {
@@ -270,30 +267,30 @@ public final class SocksServerFactory implements StreamFactory
         {
             switch (msgTypeId)
             {
-                case BeginFW.TYPE_ID:
-                    final BeginFW begin = beginRO.wrap(buffer, index, index + length);
-                    onNetworkBegin(begin);
-                    break;
-                case DataFW.TYPE_ID:
-                    final DataFW data = dataRO.wrap(buffer, index, index + length);
-                    onNetworkData(data);
-                    break;
-                case EndFW.TYPE_ID:
-                    final EndFW end = endRO.wrap(buffer, index, index + length);
-                    onNetworkEnd(end);
-                    break;
-                case AbortFW.TYPE_ID:
-                    final AbortFW abort = abortRO.wrap(buffer, index, index + length);
-                    onNetworkAbort(abort);
-                    break;
-                case WindowFW.TYPE_ID:
-                    final WindowFW window = windowRO.wrap(buffer, index, index + length);
-                    onNetworkWindow(window);
-                    break;
-                case ResetFW.TYPE_ID:
-                    final ResetFW reset = resetRO.wrap(buffer, index, index + length);
-                    onNetworkReset(reset);
-                    break;
+            case BeginFW.TYPE_ID:
+                final BeginFW begin = beginRO.wrap(buffer, index, index + length);
+                onNetworkBegin(begin);
+                break;
+            case DataFW.TYPE_ID:
+                final DataFW data = dataRO.wrap(buffer, index, index + length);
+                onNetworkData(data);
+                break;
+            case EndFW.TYPE_ID:
+                final EndFW end = endRO.wrap(buffer, index, index + length);
+                onNetworkEnd(end);
+                break;
+            case AbortFW.TYPE_ID:
+                final AbortFW abort = abortRO.wrap(buffer, index, index + length);
+                onNetworkAbort(abort);
+                break;
+            case WindowFW.TYPE_ID:
+                final WindowFW window = windowRO.wrap(buffer, index, index + length);
+                onNetworkWindow(window);
+                break;
+            case ResetFW.TYPE_ID:
+                final ResetFW reset = resetRO.wrap(buffer, index, index + length);
+                onNetworkReset(reset);
+                break;
             }
         }
 
@@ -415,17 +412,17 @@ public final class SocksServerFactory implements StreamFactory
             StringFW address = null;
             switch (requestAddress.kind())
             {
-                case SocksAddressFW.KIND_DOMAIN_NAME:
-                    address = requestAddress.domainName();
-                    break;
-                case SocksAddressFW.KIND_IPV4_ADDRESS:
-                    //TODO
-                    break;
-                case SocksAddressFW.KIND_IPV6_ADDRESS:
-                    //TODO
-                    break;
-                default:
-                    break;
+            case SocksAddressFW.KIND_DOMAIN_NAME:
+                address = requestAddress.domainName();
+                break;
+            case SocksAddressFW.KIND_IPV4_ADDRESS:
+                //TODO
+                break;
+            case SocksAddressFW.KIND_IPV6_ADDRESS:
+                //TODO
+                break;
+            default:
+                break;
             }
             return address;
         }
@@ -610,26 +607,26 @@ public final class SocksServerFactory implements StreamFactory
         {
             switch(msgTypeId)
             {
-                case BeginFW.TYPE_ID:
-                    final BeginFW begin = beginRO.wrap(buffer, index, index + length);
-                    onApplicationBegin(begin);
-                    break;
-                case DataFW.TYPE_ID:
-                    final DataFW data = dataRO.wrap(buffer, index, index + length);
-                    onApplicationData(data);
-                    break;
-                case EndFW.TYPE_ID:
-                    final EndFW end = endRO.wrap(buffer, index, index + length);
-                    onApplicationEnd(end);
-                    break;
-                case WindowFW.TYPE_ID:
-                    final WindowFW window = windowRO.wrap(buffer, index, index + length);
-                    onApplicationWindow(window);
-                    break;
-                case ResetFW.TYPE_ID:
-                    final ResetFW reset = resetRO.wrap(buffer, index, index + length);
-                    onApplicationReset(reset);
-                    break;
+            case BeginFW.TYPE_ID:
+                final BeginFW begin = beginRO.wrap(buffer, index, index + length);
+                onApplicationBegin(begin);
+                break;
+            case DataFW.TYPE_ID:
+                final DataFW data = dataRO.wrap(buffer, index, index + length);
+                onApplicationData(data);
+                break;
+            case EndFW.TYPE_ID:
+                final EndFW end = endRO.wrap(buffer, index, index + length);
+                onApplicationEnd(end);
+                break;
+            case WindowFW.TYPE_ID:
+                final WindowFW window = windowRO.wrap(buffer, index, index + length);
+                onApplicationWindow(window);
+                break;
+            case ResetFW.TYPE_ID:
+                final ResetFW reset = resetRO.wrap(buffer, index, index + length);
+                onApplicationReset(reset);
+                break;
             }
         }
 

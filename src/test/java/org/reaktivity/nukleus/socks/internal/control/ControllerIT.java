@@ -18,6 +18,8 @@ package org.reaktivity.nukleus.socks.internal.control;
 import static org.reaktivity.nukleus.route.RouteKind.CLIENT;
 import static org.reaktivity.nukleus.route.RouteKind.SERVER;
 
+import java.util.concurrent.TimeUnit;
+
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -29,7 +31,6 @@ import org.kaazing.k3po.junit.annotation.Specification;
 import org.kaazing.k3po.junit.rules.K3poRule;
 import org.reaktivity.nukleus.socks.internal.SocksController;
 import org.reaktivity.reaktor.test.ReaktorRule;
-import java.util.concurrent.TimeUnit;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;

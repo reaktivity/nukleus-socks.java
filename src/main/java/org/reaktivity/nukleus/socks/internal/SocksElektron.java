@@ -23,8 +23,8 @@ import java.util.Map;
 
 import org.reaktivity.nukleus.Elektron;
 import org.reaktivity.nukleus.route.RouteKind;
-import org.reaktivity.nukleus.stream.StreamFactoryBuilder;
 import org.reaktivity.nukleus.socks.internal.stream.SocksServerFactoryBuilder;
+import org.reaktivity.nukleus.stream.StreamFactoryBuilder;
 
 final class SocksElektron implements Elektron
 {
