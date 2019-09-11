@@ -30,14 +30,13 @@ import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.reaktivity.nukleus.Controller;
 import org.reaktivity.nukleus.ControllerSpi;
-
 import org.reaktivity.nukleus.route.RouteKind;
 import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.control.Role;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
-import org.reaktivity.nukleus.socks.internal.types.control.UnrouteFW;
 import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
+import org.reaktivity.nukleus.socks.internal.types.control.UnrouteFW;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
