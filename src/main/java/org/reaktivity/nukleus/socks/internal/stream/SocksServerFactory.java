@@ -540,7 +540,8 @@ public final class SocksServerFactory implements StreamFactory
                                                                        .version(5)
                                                                        .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
                                                                        .reserved(0)
-                                                                       .address(s->s.ipv4Address(i -> i.set(address.ipv4Address())))
+                                                                       .address(s->s.ipv4Address(i ->
+                                                                           i.set(address.ipv4Address())))
                                                                        .port(port)
                                                                        .build();
 
