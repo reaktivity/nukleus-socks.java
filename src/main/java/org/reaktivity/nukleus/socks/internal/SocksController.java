@@ -158,9 +158,9 @@ public final class SocksController implements Controller
                         ipv4AddressBytes[i] = (byte) Integer.parseInt(ipv4Matcher.group(i + 1));
                     }
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(b -> b.ipv4Address(s -> s.set(ipv4AddressBytes)))
-                        .port(port)
-                        .build();
+                                       .address(b -> b.ipv4Address(s -> s.set(ipv4AddressBytes)))
+                                       .port(port)
+                                       .build();
                 }
                 else if (IPV6_STD_ADDRESS_MATCHER.get().reset(address).matches())
                 {
@@ -172,25 +172,25 @@ public final class SocksController implements Controller
                         fillInBytes(addressBytes, i, ipv6Group);
                     }
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(b -> b.ipv6Address(s -> s.set(addressBytes)))
-                        .port(port)
-                        .build();
+                                       .address(b -> b.ipv6Address(s -> s.set(addressBytes)))
+                                       .port(port)
+                                       .build();
                 }
                 else if (IPV6_HEX_COMPRESSED_VALIDATE_MATCHER.get().reset(address).matches())
                 {
                     final byte[] addressBytes = IPV6_ADDRESS_BYTES.get();
                     fillInIpv6HexCompressed(address, addressBytes);
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(b -> b.ipv6Address(s -> s.set(addressBytes)))
-                        .port(port)
-                        .build();
+                                       .address(b -> b.ipv6Address(s -> s.set(addressBytes)))
+                                       .port(port)
+                                       .build();
                 }
                 else
                 {
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(b -> b.domainName(address))
-                        .port(port)
-                        .build();
+                                       .address(b -> b.domainName(address))
+                                       .port(port)
+                                       .build();
                 }
             }
         }
