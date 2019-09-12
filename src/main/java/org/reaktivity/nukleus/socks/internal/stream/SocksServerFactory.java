@@ -19,8 +19,6 @@ import static java.util.Objects.requireNonNull;
 import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS;
 import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 import java.util.function.ToIntFunction;
