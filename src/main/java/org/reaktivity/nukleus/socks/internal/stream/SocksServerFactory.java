@@ -559,7 +559,7 @@ public final class SocksServerFactory implements StreamFactory
                 .version(5)
                 .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
                 .reserved(0)
-                .address(a->a.ipv4Address(i->i.set(ipv4Address)))
+                .address(a -> a.ipv4Address(i -> i.set(ipv4Address)))
                 .port(port)
                 .build();
 
@@ -605,7 +605,7 @@ public final class SocksServerFactory implements StreamFactory
             int index,
             int length)
         {
-            switch(msgTypeId)
+            switch (msgTypeId)
             {
             case BeginFW.TYPE_ID:
                 final BeginFW begin = beginRO.wrap(buffer, index, index + length);
