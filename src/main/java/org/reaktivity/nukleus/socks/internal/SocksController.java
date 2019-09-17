@@ -73,7 +73,7 @@ public final class SocksController implements Controller
     private static final Pattern IPV6_HEX_COMPRESSED_MATCH_PATTERN =
         Pattern.compile("(?:([0-9a-f]{1,4})\\:?)?(?:([0-9a-f]{1,4})\\:?)?" +
             "(?:([0-9a-f]{1,4})\\:?)?(?:([0-9a-f]{1,4})\\:?)?" +
-            "(?:([0-9a-f]{1,4})\\:?)?(?:([0-9a-f]{1,4})\\:?)?"+
+            "(?:([0-9a-f]{1,4})\\:?)?(?:([0-9a-f]{1,4})\\:?)?" +
             "([0-9a-f]{1,4})?(::)" +
             "(?:(?:([0-9a-f]{1,4})\\:?)??)(?:(?:([0-9a-f]{1,4})\\:?)??)" +
             "(?:(?:([0-9a-f]{1,4})\\:?)??)(?:(?:([0-9a-f]{1,4})\\:?)??)" +
@@ -242,7 +242,7 @@ public final class SocksController implements Controller
         }
         else
         {
-            int mid = ipv6GroupLength/2;
+            int mid = ipv6GroupLength / 2;
             addressBytes[2 * index] = (byte) Integer.parseInt(ipv6Group.substring(0, mid), 16);
             addressBytes[2 * index + 1] =
                 (byte) Integer.parseInt(ipv6Group.substring(mid, ipv6GroupLength), 16);
@@ -283,8 +283,8 @@ public final class SocksController implements Controller
         }
         for (int i = startIndex; i < endIndex + 1; i++)
         {
-            addressBytes[2*i] = 0;
-            addressBytes[2*i + 1] = 0;
+            addressBytes[2 * i] = 0;
+            addressBytes[2 * i + 1] = 0;
         }
     }
 }

@@ -532,15 +532,14 @@ public final class SocksServerFactory implements StreamFactory
             int port)
         {
             SocksCommandReplyFW socksCommandReply = socksCommandReplyRW.wrap(writeBuffer,
-                                                                             DataFW.FIELD_OFFSET_PAYLOAD,
-                                                                             writeBuffer.capacity())
-                                                                       .version(5)
-                                                                       .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
-                                                                       .reserved(0)
-                                                                       .address(s->s.ipv4Address(i ->
-                                                                           i.set(address.ipv4Address())))
-                                                                       .port(port)
-                                                                       .build();
+                DataFW.FIELD_OFFSET_PAYLOAD,
+                writeBuffer.capacity())
+                .version(5)
+                .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
+                .reserved(0)
+                .address(s -> s.ipv4Address(i -> i.set(address.ipv4Address())))
+                .port(port)
+                .build();
 
             doNetworkData(socksCommandReply.buffer(), socksCommandReply.offset(), socksCommandReply.sizeof());
         }
@@ -584,7 +583,7 @@ public final class SocksServerFactory implements StreamFactory
             int index,
             int length)
         {
-            switch(msgTypeId)
+            switch (msgTypeId)
             {
             case BeginFW.TYPE_ID:
                 final BeginFW begin = beginRO.wrap(buffer, index, index + length);
@@ -659,7 +658,7 @@ public final class SocksServerFactory implements StreamFactory
         {
             SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer, 0, extBuffer.capacity())
                                                         .typeId(socksTypeId)
-                                                        .address(t->t.domainName(address.asString()))
+                                                        .address(t -> t.domainName(address.asString()))
                                                         .port(port)
                                                         .build();
 
