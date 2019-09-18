@@ -18,8 +18,6 @@ package org.reaktivity.nukleus.socks.internal;
 
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteOrder.nativeOrder;
-import static org.reaktivity.specification.socks.internal.SocksFunctions.parseByte;
-import static org.reaktivity.specification.socks.internal.SocksFunctions.parseShort;
 
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
@@ -288,5 +286,21 @@ public final class SocksController implements Controller
         {
             ipv4AddressBytes[group - 1] = parseByte(ipv4Matcher.group(group), 10);
         }
+    }
+
+    static byte parseByte(
+        String s,
+        int radix)
+    {
+        assert s.length() > 0 && s.length() <= 3;
+        return (byte) Integer.parseInt(s, radix);
+    }
+
+    static short parseShort(
+        String s,
+        int radix)
+    {
+        assert s.length() > 0 && s.length() <= 4;
+        return (short) Integer.parseInt(s, radix);
     }
 }
