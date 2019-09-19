@@ -19,11 +19,16 @@ package org.reaktivity.nukleus.socks.internal;
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteOrder.nativeOrder;
 
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.agrona.LangUtil;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.reaktivity.nukleus.Controller;
@@ -31,6 +36,7 @@ import org.reaktivity.nukleus.ControllerSpi;
 import org.reaktivity.nukleus.route.RouteKind;
 import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
+import org.reaktivity.nukleus.socks.internal.types.SocksAddressFW.Builder;
 import org.reaktivity.nukleus.socks.internal.types.control.Role;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
@@ -203,10 +209,10 @@ public final class SocksController implements Controller
         final long correlationId = controllerSpi.nextCorrelationId();
 
         final UnrouteFW unroute = unrouteRW.wrap(commandBuffer, 0, commandBuffer.capacity())
-                                           .correlationId(correlationId)
-                                           .nukleus(name())
-                                           .routeId(routeId)
-                                           .build();
+            .correlationId(correlationId)
+            .nukleus(name())
+            .routeId(routeId)
+            .build();
 
         return controllerSpi.doUnroute(unroute.typeId(), unroute.buffer(), unroute.offset(), unroute.sizeof());
     }
@@ -221,13 +227,13 @@ public final class SocksController implements Controller
         final Role role = Role.valueOf(kind.ordinal());
 
         final RouteFW route = routeRW.wrap(commandBuffer, 0, commandBuffer.capacity())
-                                     .correlationId(correlationId)
-                                     .nukleus(name())
-                                     .role(b -> b.set(role))
-                                     .localAddress(localAddress)
-                                     .remoteAddress(remoteAddress)
-                                     .extension(extension.buffer(), extension.offset(), extension.sizeof())
-                                     .build();
+            .correlationId(correlationId)
+            .nukleus(name())
+            .role(b -> b.set(role))
+            .localAddress(localAddress)
+            .remoteAddress(remoteAddress)
+            .extension(extension.buffer(), extension.offset(), extension.sizeof())
+            .build();
 
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
     }
@@ -302,5 +308,31 @@ public final class SocksController implements Controller
     {
         assert s.length() > 0 && s.length() <= 4;
         return (short) Integer.parseInt(s, radix);
+    }
+
+    public static Consumer<Builder> addressBuilder(
+        InetAddress inet)
+    {
+        Consumer<Builder> addressBuilder = inet instanceof Inet4Address ?
+            b -> b.ipv4Address(s -> s.put(inet.getAddress())) :
+            b -> b.ipv6Address(s -> s.put(inet.getAddress()));
+        return addressBuilder;
+    }
+
+    private static InetAddress lookupName(
+        String host)
+    {
+        InetAddress address = null;
+
+        try
+        {
+            address = InetAddress.getByName(host);
+        }
+        catch (UnknownHostException ex)
+        {
+            LangUtil.rethrowUnchecked(ex);
+        }
+
+        return address;
     }
 }
