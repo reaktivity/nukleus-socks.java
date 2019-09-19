@@ -61,27 +61,8 @@ public final class SocksController implements Controller
     private final MutableDirectBuffer commandBuffer;
     private final MutableDirectBuffer extensionBuffer;
     private final Gson gson;
-    private static final Pattern IPV4_ADDRESS_PATTERN =
-        Pattern.compile("(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)" +
-            "\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)" +
-            "\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)" +
-            "\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)");
-    private static final Pattern IPV6_STD_ADDRESS_PATTERN =
-        Pattern.compile("([0-9a-f]{1,4})\\:([0-9a-f]{1,4})\\:" +
-            "([0-9a-f]{1,4})\\:([0-9a-f]{1,4})\\:" +
-            "([0-9a-f]{1,4})\\:([0-9a-f]{1,4})\\:" +
-            "([0-9a-f]{1,4})\\:([0-9a-f]{1,4})");
-    private static final Pattern IPV6_HEX_COMPRESSED_VALIDATE_PATTERN =
-        Pattern.compile("^((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)" +
-            "::((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)$");
     private static final Pattern DOMAIN_NAME_MATCH_PATTERN =
         Pattern.compile("^[a-zA-Z]([a-zA-Z0-9-\\.]{0,62}[a-zA-Z0-9])?$");
-    private static final ThreadLocal<Matcher> IPV4_ADDRESS_MATCHER =
-        ThreadLocal.withInitial(() -> IPV4_ADDRESS_PATTERN.matcher(""));
-    private static final ThreadLocal<Matcher> IPV6_STD_ADDRESS_MATCHER =
-        ThreadLocal.withInitial(() -> IPV6_STD_ADDRESS_PATTERN.matcher(""));
-    private static final ThreadLocal<Matcher> IPV6_HEX_COMPRESSED_VALIDATE_MATCHER =
-        ThreadLocal.withInitial(() -> IPV6_HEX_COMPRESSED_VALIDATE_PATTERN.matcher(""));
     private static final ThreadLocal<Matcher> DOMAIN_NAME_MATCHER =
         ThreadLocal.withInitial(() -> DOMAIN_NAME_MATCH_PATTERN.matcher(""));
 
@@ -147,16 +128,16 @@ public final class SocksController implements Controller
                 if (DOMAIN_NAME_MATCHER.get().reset(address).matches())
                 {
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(b -> b.domainName(address))
-                        .port(port)
-                        .build();
+                                       .address(b -> b.domainName(address))
+                                       .port(port)
+                                       .build();
                 }
                 else
                 {
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(addressBuilder(lookupName(address)))
-                        .port(port)
-                        .build();
+                                       .address(addressBuilder(lookupName(address)))
+                                       .port(port)
+                                       .build();
                 }
             }
         }
