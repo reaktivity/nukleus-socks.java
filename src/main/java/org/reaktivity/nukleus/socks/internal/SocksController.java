@@ -22,7 +22,6 @@ import static java.nio.ByteOrder.nativeOrder;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -75,15 +74,6 @@ public final class SocksController implements Controller
     private static final Pattern IPV6_HEX_COMPRESSED_VALIDATE_PATTERN =
         Pattern.compile("^((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)" +
             "::((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)$");
-    private static final Pattern IPV6_HEX_COMPRESSED_MATCH_PATTERN =
-        Pattern.compile("(?:([0-9a-f]{1,4})\\:?)?(?:([0-9a-f]{1,4})\\:?)?" +
-            "(?:([0-9a-f]{1,4})\\:?)?(?:([0-9a-f]{1,4})\\:?)?" +
-            "(?:([0-9a-f]{1,4})\\:?)?(?:([0-9a-f]{1,4})\\:?)?" +
-            "([0-9a-f]{1,4})?(::)" +
-            "(?:(?:([0-9a-f]{1,4})\\:?)??)(?:(?:([0-9a-f]{1,4})\\:?)??)" +
-            "(?:(?:([0-9a-f]{1,4})\\:?)??)(?:(?:([0-9a-f]{1,4})\\:?)??)" +
-            "(?:(?:([0-9a-f]{1,4})\\:?)??)(?:(?:([0-9a-f]{1,4})\\:?)??)" +
-            "(?:(?:([0-9a-f]{1,4})?))");
     private static final Pattern DOMAIN_NAME_MATCH_PATTERN =
         Pattern.compile("^[a-zA-Z]([a-zA-Z0-9-\\.]{0,62}[a-zA-Z0-9])?$");
     private static final ThreadLocal<Matcher> IPV4_ADDRESS_MATCHER =
@@ -92,14 +82,8 @@ public final class SocksController implements Controller
         ThreadLocal.withInitial(() -> IPV6_STD_ADDRESS_PATTERN.matcher(""));
     private static final ThreadLocal<Matcher> IPV6_HEX_COMPRESSED_VALIDATE_MATCHER =
         ThreadLocal.withInitial(() -> IPV6_HEX_COMPRESSED_VALIDATE_PATTERN.matcher(""));
-    private static final ThreadLocal<Matcher> IPV6_HEX_COMPRESSED_MATCHER =
-        ThreadLocal.withInitial(() -> IPV6_HEX_COMPRESSED_MATCH_PATTERN.matcher(""));
     private static final ThreadLocal<Matcher> DOMAIN_NAME_MATCHER =
         ThreadLocal.withInitial(() -> DOMAIN_NAME_MATCH_PATTERN.matcher(""));
-    private static final ThreadLocal<byte[]> IPV4_ADDRESS_BYTES =
-        ThreadLocal.withInitial(() -> new byte[4]);
-    private static final ThreadLocal<byte[]> IPV6_ADDRESS_BYTES =
-        ThreadLocal.withInitial(() -> new byte[16]);
 
     public SocksController(
         ControllerSpi controllerSpi)
@@ -160,34 +144,12 @@ public final class SocksController implements Controller
                 final String address = gson.fromJson(object.get("address"), String.class);
                 final int port = gson.fromJson(object.get("port"), Integer.class);
 
-                if (IPV4_ADDRESS_MATCHER.get().reset(address).matches())
-                {
-                    final Matcher ipv4Matcher = IPV4_ADDRESS_MATCHER.get();
-                    final byte[] ipv4AddressBytes = IPV4_ADDRESS_BYTES.get();
-                    encodeIpv4AddressBytes(ipv4Matcher, ipv4AddressBytes);
-                    routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(b -> b.ipv4Address(s -> s.set(ipv4AddressBytes)))
-                        .port(port)
-                        .build();
-                }
-                else if (IPV6_STD_ADDRESS_MATCHER.get().reset(address).matches())
-                {
-                    final byte[] addressBytes = IPV6_ADDRESS_BYTES.get();
-                    final Matcher ipv6Matcher = IPV6_STD_ADDRESS_MATCHER.get();
-                    encodeStandardIpv6AddressBytes(ipv6Matcher, addressBytes);
-                    routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(b -> b.ipv6Address(s -> s.set(addressBytes)))
-                        .port(port)
-                        .build();
-                }
-                else if (IPV6_HEX_COMPRESSED_MATCHER.get().reset(address).matches() &&
+                if (IPV4_ADDRESS_MATCHER.get().reset(address).matches() ||
+                    IPV6_STD_ADDRESS_MATCHER.get().reset(address).matches() ||
                     IPV6_HEX_COMPRESSED_VALIDATE_MATCHER.get().reset(address).matches())
                 {
-                    final byte[] addressBytes = IPV6_ADDRESS_BYTES.get();
-                    final Matcher ipv6Matcher = IPV6_HEX_COMPRESSED_MATCHER.get();
-                    encodeCompressedIpv6AddressBytes(ipv6Matcher, addressBytes);
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(b -> b.ipv6Address(s -> s.set(addressBytes)))
+                        .address(addressBuilder(lookupName(address)))
                         .port(port)
                         .build();
                 }
@@ -236,78 +198,6 @@ public final class SocksController implements Controller
             .build();
 
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
-    }
-
-    private static void fillInBytes(
-        byte[] addressBytes,
-        int index,
-        String groupHex)
-    {
-        short groupBytes = parseShort(groupHex, 16);
-        addressBytes[index++] = (byte) ((groupBytes >> 8) & 0xff);
-        addressBytes[index] = (byte) (groupBytes & 0xff);
-    }
-
-    private static void encodeCompressedIpv6AddressBytes(
-        Matcher ipv6Matcher,
-        byte[] addressBytes)
-    {
-        Arrays.fill(addressBytes, (byte) 0);
-        for (int group = 1; group < 8; group++)
-        {
-            String groupHex = ipv6Matcher.group(group);
-            if (groupHex == null)
-            {
-                break;
-            }
-            fillInBytes(addressBytes, 2 * (group - 1), groupHex);
-        }
-        for (int group = 15; group > 8; group--)
-        {
-            String groupHex = ipv6Matcher.group(group);
-            if (groupHex == null)
-            {
-                break;
-            }
-            fillInBytes(addressBytes, 2 * (group - 8), groupHex);
-        }
-    }
-
-    private static void encodeStandardIpv6AddressBytes(
-        Matcher ipv6Matcher,
-        byte[] addressBytes)
-    {
-        for (int group = 1; group < ipv6Matcher.groupCount() + 1; group++)
-        {
-            String groupHex = ipv6Matcher.group(group);
-            fillInBytes(addressBytes, 2 * (group - 1), groupHex);
-        }
-    }
-
-    private static void encodeIpv4AddressBytes(
-        Matcher ipv4Matcher,
-        byte[] ipv4AddressBytes)
-    {
-        for (int group = 1; group < ipv4AddressBytes.length + 1; group++)
-        {
-            ipv4AddressBytes[group - 1] = parseByte(ipv4Matcher.group(group), 10);
-        }
-    }
-
-    static byte parseByte(
-        String s,
-        int radix)
-    {
-        assert s.length() > 0 && s.length() <= 3;
-        return (byte) Integer.parseInt(s, radix);
-    }
-
-    static short parseShort(
-        String s,
-        int radix)
-    {
-        assert s.length() > 0 && s.length() <= 4;
-        return (short) Integer.parseInt(s, radix);
     }
 
     public static Consumer<Builder> addressBuilder(
