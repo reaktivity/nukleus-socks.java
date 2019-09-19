@@ -123,7 +123,6 @@ public final class SocksController implements Controller
                 final JsonObject object = (JsonObject) element;
                 final String address = gson.fromJson(object.get("address"), String.class);
                 final int port = gson.fromJson(object.get("port"), Integer.class);
-                InetAddress inet = lookupName(address);
 
                 if (DOMAIN_NAME_MATCHER.get().reset(address).matches())
                 {
@@ -132,19 +131,23 @@ public final class SocksController implements Controller
                                        .port(port)
                                        .build();
                 }
-                else if (inet instanceof Inet4Address)
-                {
-                    routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                                       .address(b -> b.ipv4Address(s -> s.put(inet.getAddress())))
-                                       .port(port)
-                                       .build();
-                }
                 else
                 {
-                    routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                                       .address(b -> b.ipv6Address(s -> s.put(inet.getAddress())))
-                                       .port(port)
-                                       .build();
+                    InetAddress inet = lookupName(address);
+                    if (inet instanceof Inet4Address)
+                    {
+                        routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
+                                           .address(b -> b.ipv4Address(s -> s.put(inet.getAddress())))
+                                           .port(port)
+                                           .build();
+                    }
+                    else
+                    {
+                        routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
+                                           .address(b -> b.ipv6Address(s -> s.put(inet.getAddress())))
+                                           .port(port)
+                                           .build();
+                    }
                 }
             }
         }
