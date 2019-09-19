@@ -23,7 +23,6 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,7 +34,6 @@ import org.reaktivity.nukleus.ControllerSpi;
 import org.reaktivity.nukleus.route.RouteKind;
 import org.reaktivity.nukleus.socks.internal.types.Flyweight;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
-import org.reaktivity.nukleus.socks.internal.types.SocksAddressFW.Builder;
 import org.reaktivity.nukleus.socks.internal.types.control.Role;
 import org.reaktivity.nukleus.socks.internal.types.control.RouteFW;
 import org.reaktivity.nukleus.socks.internal.types.control.SocksRouteExFW;
@@ -125,6 +123,7 @@ public final class SocksController implements Controller
                 final JsonObject object = (JsonObject) element;
                 final String address = gson.fromJson(object.get("address"), String.class);
                 final int port = gson.fromJson(object.get("port"), Integer.class);
+                InetAddress inet = lookupName(address);
 
                 if (DOMAIN_NAME_MATCHER.get().reset(address).matches())
                 {
@@ -133,10 +132,17 @@ public final class SocksController implements Controller
                                        .port(port)
                                        .build();
                 }
+                else if (inet instanceof Inet4Address)
+                {
+                    routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
+                                       .address(b -> b.ipv4Address(s -> s.put(inet.getAddress())))
+                                       .port(port)
+                                       .build();
+                }
                 else
                 {
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                                       .address(addressBuilder(lookupName(address)))
+                                       .address(b -> b.ipv6Address(s -> s.put(inet.getAddress())))
                                        .port(port)
                                        .build();
                 }
@@ -178,15 +184,6 @@ public final class SocksController implements Controller
                                      .build();
 
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
-    }
-
-    public static Consumer<Builder> addressBuilder(
-        InetAddress inet)
-    {
-        Consumer<Builder> addressBuilder = inet instanceof Inet4Address ?
-            b -> b.ipv4Address(s -> s.put(inet.getAddress())) :
-            b -> b.ipv6Address(s -> s.put(inet.getAddress()));
-        return addressBuilder;
     }
 
     private static InetAddress lookupName(
