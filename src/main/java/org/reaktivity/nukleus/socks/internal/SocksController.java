@@ -144,21 +144,19 @@ public final class SocksController implements Controller
                 final String address = gson.fromJson(object.get("address"), String.class);
                 final int port = gson.fromJson(object.get("port"), Integer.class);
 
-                if (IPV4_ADDRESS_MATCHER.get().reset(address).matches() ||
-                    IPV6_STD_ADDRESS_MATCHER.get().reset(address).matches() ||
-                    IPV6_HEX_COMPRESSED_VALIDATE_MATCHER.get().reset(address).matches())
+                if (DOMAIN_NAME_MATCHER.get().reset(address).matches())
                 {
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                                       .address(addressBuilder(lookupName(address)))
-                                       .port(port)
-                                       .build();
+                        .address(b -> b.domainName(address))
+                        .port(port)
+                        .build();
                 }
-                else if (DOMAIN_NAME_MATCHER.get().reset(address).matches())
+                else
                 {
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                                       .address(b -> b.domainName(address))
-                                       .port(port)
-                                       .build();
+                        .address(addressBuilder(lookupName(address)))
+                        .port(port)
+                        .build();
                 }
             }
         }
