@@ -149,16 +149,16 @@ public final class SocksController implements Controller
                     IPV6_HEX_COMPRESSED_VALIDATE_MATCHER.get().reset(address).matches())
                 {
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(addressBuilder(lookupName(address)))
-                        .port(port)
-                        .build();
+                                       .address(addressBuilder(lookupName(address)))
+                                       .port(port)
+                                       .build();
                 }
                 else if (DOMAIN_NAME_MATCHER.get().reset(address).matches())
                 {
                     routeEx = routeExRW.wrap(extensionBuffer, 0, extensionBuffer.capacity())
-                        .address(b -> b.domainName(address))
-                        .port(port)
-                        .build();
+                                       .address(b -> b.domainName(address))
+                                       .port(port)
+                                       .build();
                 }
             }
         }
@@ -171,10 +171,10 @@ public final class SocksController implements Controller
         final long correlationId = controllerSpi.nextCorrelationId();
 
         final UnrouteFW unroute = unrouteRW.wrap(commandBuffer, 0, commandBuffer.capacity())
-            .correlationId(correlationId)
-            .nukleus(name())
-            .routeId(routeId)
-            .build();
+                                           .correlationId(correlationId)
+                                           .nukleus(name())
+                                           .routeId(routeId)
+                                           .build();
 
         return controllerSpi.doUnroute(unroute.typeId(), unroute.buffer(), unroute.offset(), unroute.sizeof());
     }
@@ -189,13 +189,13 @@ public final class SocksController implements Controller
         final Role role = Role.valueOf(kind.ordinal());
 
         final RouteFW route = routeRW.wrap(commandBuffer, 0, commandBuffer.capacity())
-            .correlationId(correlationId)
-            .nukleus(name())
-            .role(b -> b.set(role))
-            .localAddress(localAddress)
-            .remoteAddress(remoteAddress)
-            .extension(extension.buffer(), extension.offset(), extension.sizeof())
-            .build();
+                                     .correlationId(correlationId)
+                                     .nukleus(name())
+                                     .role(b -> b.set(role))
+                                     .localAddress(localAddress)
+                                     .remoteAddress(remoteAddress)
+                                     .extension(extension.buffer(), extension.offset(), extension.sizeof())
+                                     .build();
 
         return controllerSpi.doRoute(route.typeId(), route.buffer(), route.offset(), route.sizeof());
     }
