@@ -532,14 +532,14 @@ public final class SocksServerFactory implements StreamFactory
             int port)
         {
             SocksCommandReplyFW socksCommandReply = socksCommandReplyRW.wrap(writeBuffer,
-                DataFW.FIELD_OFFSET_PAYLOAD,
-                writeBuffer.capacity())
-                .version(5)
-                .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
-                .reserved(0)
-                .address(s -> s.ipv4Address(i -> i.set(address.ipv4Address())))
-                .port(port)
-                .build();
+                                                                             DataFW.FIELD_OFFSET_PAYLOAD,
+                                                                             writeBuffer.capacity())
+                                                                       .version(5)
+                                                                       .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
+                                                                       .reserved(0)
+                                                                       .address(s -> s.ipv4Address(i -> i.set(address.ipv4Address())))
+                                                                       .port(port)
+                                                                       .build();
 
             doNetworkData(socksCommandReply.buffer(), socksCommandReply.offset(), socksCommandReply.sizeof());
         }

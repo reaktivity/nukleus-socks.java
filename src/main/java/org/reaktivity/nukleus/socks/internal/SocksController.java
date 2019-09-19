@@ -119,6 +119,7 @@ public final class SocksController implements Controller
         {
             final JsonParser parser = new JsonParser();
             final JsonElement element = parser.parse(extension);
+
             if (element.isJsonObject())
             {
                 final JsonObject object = (JsonObject) element;
