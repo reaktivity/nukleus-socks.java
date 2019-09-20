@@ -35,6 +35,7 @@ import org.reaktivity.nukleus.route.RouteManager;
 import org.reaktivity.nukleus.socks.internal.SocksConfiguration;
 import org.reaktivity.nukleus.socks.internal.SocksNukleus;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
+import org.reaktivity.nukleus.socks.internal.types.SocksAddressFW;
 import org.reaktivity.nukleus.socks.internal.types.StringFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyFW;
@@ -376,9 +377,10 @@ public final class SocksServerFactory implements StreamFactory
                 final OctetsFW extension = route.extension();
                 final SocksRouteExFW socksRoute = extension.get(socksRouteRO::wrap);
                 final SocksNetworkAddressFW requestAddress = socksConnectRequest.address();
-                final SocksNetworkAddressFW routedAddress = socksNetworkAddressRO.wrap(socksRoute.address().buffer(),
-                                                                         socksRoute.address().offset(),
-                                                                         socksRoute.address().limit());
+                final SocksAddressFW socksRouteAddress = socksRoute.address();
+                final SocksNetworkAddressFW routedAddress = socksNetworkAddressRO.wrap(socksRouteAddress.buffer(),
+                                                                                       socksRouteAddress.offset(),
+                                                                                       socksRouteAddress.limit());
 
                 return socksRoute.port() == socksConnectRequest.port() &&
                     requestAddress.equals(routedAddress);
@@ -627,9 +629,10 @@ public final class SocksServerFactory implements StreamFactory
             OctetsFW extension = begin.extension();
             SocksBeginExFW socksBeginEx = extension.get(socksBeginExRO::wrap);
 
-            SocksNetworkAddressFW replyAddress = socksNetworkAddressRO.wrap(socksBeginEx.address().buffer(),
-                socksBeginEx.address().offset(),
-                socksBeginEx.address().limit());
+            SocksAddressFW socksBeginAddress = socksBeginEx.address();
+            SocksNetworkAddressFW replyAddress = socksNetworkAddressRO.wrap(socksBeginAddress.buffer(),
+                socksBeginAddress.offset(),
+                socksBeginAddress.limit());
             int port = socksBeginEx.port();
 
             receiver.doSocksCommandReply(replyAddress, port);
