@@ -63,7 +63,7 @@ scope protocol
             uint8 method;
         }
 
-        union SocksAddress switch (uint8)
+        union SocksNetworkAddress switch (uint8)
         {
             case 1: octets[4] ipv4Address;
             case 4: octets[16] ipv6Address;
@@ -75,7 +75,7 @@ scope protocol
             uint8 version = 5;
             SocksCommand command;
             uint8 reserved = 0;
-            SocksAddress address;
+            SocksNetworkAddress address;
             uint16 port;
         }
 
@@ -84,7 +84,7 @@ scope protocol
             uint8 version = 5;
             SocksCommandReplyType type;
             uint8 reserved = 0;
-            SocksAddress address;
+            SocksNetworkAddress address;
             uint16 port;
         }
     }
