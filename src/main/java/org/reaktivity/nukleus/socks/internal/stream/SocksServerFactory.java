@@ -401,7 +401,7 @@ public final class SocksServerFactory implements StreamFactory
 
                 socksConnectStream.doApplicationBegin(newTarget,
                                                       decodeTraceId,
-                                                      requestAddress.domainName(),
+                                                      requestAddress,
                                                       socksConnectRequest.port());
 
                 correlations.put(newReplyId, socksConnectStream);
@@ -656,12 +656,12 @@ public final class SocksServerFactory implements StreamFactory
         private void doApplicationBegin(
             MessageConsumer target,
             long traceId,
-            StringFW address,
+            SocksNetworkAddressFW address,
             int port)
         {
             SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer, 0, extBuffer.capacity())
                                                         .typeId(socksTypeId)
-                                                        .address(t -> t.domainName(address.asString()))
+                                                        .address(t -> t.ipv4Address(a -> a.set(address.ipv4Address())))
                                                         .port(port)
                                                         .build();
 
