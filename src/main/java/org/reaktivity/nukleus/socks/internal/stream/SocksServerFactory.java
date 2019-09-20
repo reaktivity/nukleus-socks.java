@@ -661,7 +661,7 @@ public final class SocksServerFactory implements StreamFactory
         {
             SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer, 0, extBuffer.capacity())
                                                         .typeId(socksTypeId)
-                                                        .address(t -> t.ipv4Address(a -> a.set(address.ipv4Address())))
+                                                        .address(t -> t.domainName(address.domainName().asString()))
                                                         .port(port)
                                                         .build();
 
