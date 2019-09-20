@@ -18,7 +18,11 @@ package org.reaktivity.nukleus.socks.internal.stream;
 import static java.util.Objects.requireNonNull;
 import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_ACCEPTABLE_METHODS;
 import static org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod.NO_AUTHENTICATION_REQUIRED;
+import static org.reaktivity.nukleus.socks.internal.types.codec.SocksNetworkAddressFW.KIND_DOMAIN_NAME;
+import static org.reaktivity.nukleus.socks.internal.types.codec.SocksNetworkAddressFW.KIND_IPV4_ADDRESS;
+import static org.reaktivity.nukleus.socks.internal.types.codec.SocksNetworkAddressFW.KIND_IPV6_ADDRESS;
 
+import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 import java.util.function.ToIntFunction;
@@ -381,7 +385,6 @@ public final class SocksServerFactory implements StreamFactory
                 final SocksNetworkAddressFW routedAddress = socksNetworkAddressRO.wrap(socksRouteAddress.buffer(),
                                                                                        socksRouteAddress.offset(),
                                                                                        socksRouteAddress.limit());
-
                 return socksRoute.port() == socksConnectRequest.port() &&
                     requestAddress.equals(routedAddress);
             };
@@ -539,7 +542,7 @@ public final class SocksServerFactory implements StreamFactory
                 .version(5)
                 .type(t -> t.set(SocksCommandReplyType.SUCCEEDED))
                 .reserved(0)
-                .address(s -> s.ipv4Address(i -> i.set(address.ipv4Address())))
+                .address(networkAddressBuilder(address))
                 .port(port)
                 .build();
 
@@ -661,7 +664,7 @@ public final class SocksServerFactory implements StreamFactory
         {
             SocksBeginExFW socksBeginEx = socksBeginExRW.wrap(extBuffer, 0, extBuffer.capacity())
                                                         .typeId(socksTypeId)
-                                                        .address(t -> t.domainName(address.domainName().asString()))
+                                                        .address(addressBuilder(address))
                                                         .port(port)
                                                         .build();
 
@@ -720,6 +723,44 @@ public final class SocksServerFactory implements StreamFactory
         }
 
         return hasMethod;
+    }
+
+    private static Consumer<SocksNetworkAddressFW.Builder> networkAddressBuilder(
+        SocksNetworkAddressFW address)
+    {
+        Consumer<SocksNetworkAddressFW.Builder> networkAddressBuilder = null;
+        switch (address.kind())
+        {
+        case KIND_IPV4_ADDRESS:
+            networkAddressBuilder = t -> t.ipv4Address(i -> i.set(address.ipv4Address()));
+            break;
+        case KIND_IPV6_ADDRESS:
+            networkAddressBuilder = t -> t.ipv6Address(i -> i.set(address.ipv6Address()));
+            break;
+        case KIND_DOMAIN_NAME:
+            networkAddressBuilder = t -> t.domainName(address.domainName().asString());
+            break;
+        }
+        return networkAddressBuilder;
+    }
+
+    private static Consumer<SocksAddressFW.Builder>  addressBuilder(
+        SocksNetworkAddressFW address)
+    {
+        Consumer<SocksAddressFW.Builder> addressBuilder = null;
+        switch (address.kind())
+        {
+        case KIND_IPV4_ADDRESS:
+            addressBuilder = t -> t.ipv4Address(i -> i.set(address.ipv4Address()));
+            break;
+        case KIND_IPV6_ADDRESS:
+            addressBuilder = t -> t.ipv6Address(i -> i.set(address.ipv6Address()));
+            break;
+        case KIND_DOMAIN_NAME:
+            addressBuilder = t -> t.domainName(address.domainName().asString());
+            break;
+        }
+        return addressBuilder;
     }
 
     @FunctionalInterface
