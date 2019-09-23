@@ -20,7 +20,6 @@ import static org.reaktivity.nukleus.route.RouteKind.SERVER;
 
 import java.util.concurrent.TimeUnit;
 
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
@@ -215,7 +214,6 @@ public class ControllerIT
         k3po.finish();
     }
 
-    @Ignore
     @Test
     @Specification({"${route}/client/routed.ipv6/nukleus"})
     public void shouldRouteClientWithIpv6Address() throws Exception
@@ -283,7 +281,6 @@ public class ControllerIT
         k3po.finish();
     }
 
-    @Ignore
     @Test
     @Specification({
         "${route}/client/routed.ipv6/nukleus",
