@@ -299,14 +299,14 @@ public final class SocksServerFactory implements StreamFactory
         private void onNetworkData(
             DataFW data)
         {
-            final OctetsFW payload = data.payload();
-            initialBudget -= Math.max(data.length(), 0) + data.padding();
+            initialBudget -= data.reserved();
             if (initialBudget < 0)
             {
                 doNetworkReset(data.trace());
             }
-            else if (payload != null)
+            else
             {
+                final OctetsFW payload = data.payload();
                 decodeTraceId = data.trace();
                 DirectBuffer buffer = payload.buffer();
                 int offset = payload.offset();
@@ -454,7 +454,7 @@ public final class SocksServerFactory implements StreamFactory
                                       .streamId(replyId)
                                       .trace(supplyTraceId.getAsLong())
                                       .groupId(0)
-                                      .padding(replyPadding)
+                                      .reserved(sizeOf + replyPadding)
                                       .payload(buffer, offset, sizeOf)
                                       .build();
 
@@ -688,7 +688,7 @@ public final class SocksServerFactory implements StreamFactory
                                       .streamId(initialId)
                                       .trace(supplyTraceId.getAsLong())
                                       .groupId(0)
-                                      .padding(replyPadding)
+                                      .reserved(sizeOf + replyPadding)
                                       .payload(buffer, offset, sizeOf)
                                       .build();
 
