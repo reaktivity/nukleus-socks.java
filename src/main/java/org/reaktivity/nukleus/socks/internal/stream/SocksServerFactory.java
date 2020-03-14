@@ -40,7 +40,7 @@ import org.reaktivity.nukleus.socks.internal.SocksConfiguration;
 import org.reaktivity.nukleus.socks.internal.SocksNukleus;
 import org.reaktivity.nukleus.socks.internal.types.OctetsFW;
 import org.reaktivity.nukleus.socks.internal.types.SocksAddressFW;
-import org.reaktivity.nukleus.socks.internal.types.StringFW;
+import org.reaktivity.nukleus.socks.internal.types.String8FW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksAuthenticationMethod;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyFW;
 import org.reaktivity.nukleus.socks.internal.types.codec.SocksCommandReplyType;
@@ -73,7 +73,7 @@ public final class SocksServerFactory implements StreamFactory
     private final SocksCommandRequestFW socksCommandRequestRO = new SocksCommandRequestFW();
     private final SocksNetworkAddressFW socksNetworkAddressRO = new SocksNetworkAddressFW();
     private final OctetsFW octetsRO = new OctetsFW();
-    private final StringFW stringRO = new StringFW();
+    private final String8FW string8RO = new String8FW();
     private final SocksRouteExFW socksRouteRO = new SocksRouteExFW();
 
     private final BeginFW.Builder beginRW = new BeginFW.Builder();
@@ -86,7 +86,7 @@ public final class SocksServerFactory implements StreamFactory
     private final SocksCommandReplyFW.Builder socksCommandReplyRW = new SocksCommandReplyFW.Builder();
     private final SocksBeginExFW.Builder socksBeginExRW = new SocksBeginExFW.Builder();
     private final OctetsFW.Builder octetsRW = new OctetsFW.Builder();
-    private final StringFW.Builder stringRW = new StringFW.Builder();
+    private final String8FW.Builder string8RW = new String8FW.Builder();
     private final SocksRouteExFW.Builder socksRouteRW = new SocksRouteExFW.Builder();
 
     private final RouteManager router;
