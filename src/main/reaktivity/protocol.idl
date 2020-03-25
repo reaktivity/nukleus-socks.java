@@ -67,7 +67,7 @@ scope protocol
         {
             case 1: octets[4] ipv4Address;
             case 4: octets[16] ipv6Address;
-            case 3: string domainName;
+            case 3: string8 domainName;
         }
 
         struct SocksCommandRequest
