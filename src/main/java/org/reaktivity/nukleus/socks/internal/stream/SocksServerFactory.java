@@ -208,10 +208,14 @@ public final class SocksServerFactory implements StreamFactory
         private final long replyId;
         private long authorization;
 
-        private int initialBudget;
-        private int initialPadding;
-        private int replyBudget;
-        private int replyPadding;
+        private long initialSeq;
+        private long initialAck;
+        private int initialMax;
+
+        private long replySeq;
+        private long replyAck;
+        private int replyMax;
+        private int replyPad;
 
         private long decodeTraceId;
         private DecoderState decodeState;
@@ -300,20 +304,28 @@ public final class SocksServerFactory implements StreamFactory
         private void onNetworkData(
             DataFW data)
         {
-            initialBudget -= data.reserved();
-            if (initialBudget < 0)
+            final long sequence = data.sequence();
+            final long acknowledge = data.acknowledge();
+            final long traceId = data.traceId();
+            final OctetsFW payload = data.payload();
+
+            assert acknowledge <= sequence;
+            assert sequence >= initialSeq;
+
+            authorization = data.authorization();
+            initialSeq = sequence + data.reserved();
+
+            assert initialAck <= initialSeq;
+
+            if (initialSeq > initialAck + initialMax)
             {
-                doNetworkReset(data.traceId());
+                doNetworkReset(traceId);
             }
             else
             {
-                final OctetsFW payload = data.payload();
-                decodeTraceId = data.traceId();
                 DirectBuffer buffer = payload.buffer();
                 int offset = payload.offset();
                 int limit = payload.limit();
-                authorization = data.authorization();
-                decodeTraceId = data.typeId();
 
                 if (bufferSlot != BufferPool.NO_SLOT)
                 {
@@ -324,6 +336,8 @@ public final class SocksServerFactory implements StreamFactory
                     offset = 0;
                     limit = bufferSlot;
                 }
+
+                decodeTraceId = traceId;
 
                 DecoderState previous = null;
                 while (offset <= limit && previous != decodeState)
@@ -365,13 +379,27 @@ public final class SocksServerFactory implements StreamFactory
         private void onNetworkWindow(
             WindowFW window)
         {
-            final int replyCredit = window.credit();
+            final long sequence = window.sequence();
+            final long acknowledge = window.acknowledge();
+            final int maximum = window.maximum();
+            final int padding = window.padding();
 
-            replyBudget += replyCredit;
-            replyPadding += window.padding();
+            assert acknowledge <= sequence;
+            assert sequence <= replySeq;
+            assert acknowledge >= replyAck;
+            assert maximum >= replyMax;
 
-            final int initialCredit = bufferPool.slotCapacity() - initialBudget;
-            doNetworkWindow(supplyTraceId.getAsLong(), initialCredit);
+            this.replyAck = acknowledge;
+            this.replyMax = maximum;
+            this.replyPad = padding;
+
+            assert replyAck <= replySeq;
+
+            // TODO
+            this.initialMax = replyMax;
+            this.initialAck = replyAck;
+
+            doNetworkWindow(supplyTraceId.getAsLong(), 0);
         }
 
         private void onSocksConnect(
@@ -441,6 +469,9 @@ public final class SocksServerFactory implements StreamFactory
             final BeginFW begin = beginRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                                          .routeId(routeId)
                                          .streamId(replyId)
+                                         .sequence(replySeq)
+                                         .acknowledge(replyAck)
+                                         .maximum(replyMax)
                                          .traceId(traceId)
                                          .affinity(affinity)
                                          .build();
@@ -454,17 +485,25 @@ public final class SocksServerFactory implements StreamFactory
             int offset,
             int sizeOf)
         {
+            final int reserved = sizeOf + replyPad;
+
             final DataFW data = dataRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                                       .routeId(routeId)
                                       .streamId(replyId)
+                                      .sequence(replySeq)
+                                      .acknowledge(replyAck)
+                                      .maximum(replyMax)
                                       .traceId(supplyTraceId.getAsLong())
                                       .budgetId(0L)
-                                      .reserved(sizeOf + replyPadding)
+                                      .reserved(reserved)
                                       .payload(buffer, offset, sizeOf)
                                       .build();
 
             network.accept(data.typeId(), data.buffer(), data.offset(), data.sizeof());
-            router.setThrottle(replyId, this::onNetwork);
+
+            replySeq += reserved;
+
+            assert replyAck <= replySeq;
         }
 
         private void doNetworkEnd(
@@ -473,6 +512,9 @@ public final class SocksServerFactory implements StreamFactory
             final EndFW end = endRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                                    .routeId(routeId)
                                    .streamId(replyId)
+                                   .sequence(replySeq)
+                                   .acknowledge(replyAck)
+                                   .maximum(replyMax)
                                    .traceId(traceId)
                                    .build();
 
@@ -485,6 +527,9 @@ public final class SocksServerFactory implements StreamFactory
             final AbortFW abort = abortRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                                          .routeId(routeId)
                                          .streamId(replyId)
+                                         .sequence(replySeq)
+                                         .acknowledge(replyAck)
+                                         .maximum(replyMax)
                                          .traceId(traceId)
                                          .build();
 
@@ -493,23 +538,20 @@ public final class SocksServerFactory implements StreamFactory
 
         private void doNetworkWindow(
             long traceId,
-            int initialCredit)
+            int padding)
         {
-            if (initialCredit > 0)
-            {
-                initialBudget += initialCredit;
+            final WindowFW window = windowRW.wrap(writeBuffer, 0, writeBuffer.capacity())
+                                            .routeId(routeId)
+                                            .streamId(initialId)
+                                            .sequence(initialSeq)
+                                            .acknowledge(initialAck)
+                                            .maximum(initialMax)
+                                            .traceId(traceId)
+                                            .budgetId(0L)
+                                            .padding(padding)
+                                            .build();
 
-                final WindowFW window = windowRW.wrap(writeBuffer, 0, writeBuffer.capacity())
-                                                .routeId(routeId)
-                                                .streamId(initialId)
-                                                .traceId(traceId)
-                                                .budgetId(0L)
-                                                .credit(initialCredit)
-                                                .padding(initialPadding)
-                                                .build();
-
-                network.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
-            }
+            network.accept(window.typeId(), window.buffer(), window.offset(), window.sizeof());
         }
 
         private void doNetworkReset(
@@ -563,10 +605,14 @@ public final class SocksServerFactory implements StreamFactory
         private long initialId;
         private long replyId;
 
-        private int initialBudget;
-        private int initialPadding;
-        private int replyBudget;
-        private int replyPadding;
+        private long initialSeq;
+        private long initialAck;
+        private int initialMax;
+
+        private long replySeq;
+        private long replyAck;
+        private int replyMax;
+        private int replyPad;
 
         private long decodeTraceId;
         private DecoderState decodeState;
@@ -677,6 +723,9 @@ public final class SocksServerFactory implements StreamFactory
             final BeginFW begin = beginRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                                          .routeId(routeId)
                                          .streamId(initialId)
+                                         .sequence(initialSeq)
+                                         .acknowledge(initialAck)
+                                         .maximum(initialMax)
                                          .traceId(traceId)
                                          .affinity(affinity)
                                          .extension(socksBeginEx.buffer(), socksBeginEx.offset(), socksBeginEx.sizeof())
@@ -690,16 +739,25 @@ public final class SocksServerFactory implements StreamFactory
             int offset,
             int sizeOf)
         {
+            final int reserved = sizeOf + replyPad;
+
             final DataFW data = dataRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                                       .routeId(routeId)
                                       .streamId(initialId)
+                                      .sequence(initialSeq)
+                                      .acknowledge(initialAck)
+                                      .maximum(initialMax)
                                       .traceId(supplyTraceId.getAsLong())
                                       .budgetId(0L)
-                                      .reserved(sizeOf + replyPadding)
+                                      .reserved(reserved)
                                       .payload(buffer, offset, sizeOf)
                                       .build();
 
             application.accept(data.typeId(), data.buffer(), data.offset(), data.sizeof());
+
+            initialSeq += reserved;
+
+            assert initialAck <= initialSeq;
         }
 
         private void doApplicationEnd(
@@ -708,6 +766,9 @@ public final class SocksServerFactory implements StreamFactory
             final EndFW end = endRW.wrap(writeBuffer, 0, writeBuffer.capacity())
                                    .routeId(routeId)
                                    .streamId(initialId)
+                                   .sequence(initialSeq)
+                                   .acknowledge(initialAck)
+                                   .maximum(initialMax)
                                    .traceId(traceId)
                                    .build();
 
